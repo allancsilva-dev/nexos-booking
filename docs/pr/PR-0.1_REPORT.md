@@ -3,12 +3,13 @@
 ## 1. Resumo
 - Status: PASS
 - Escopo executado: monorepo com `pnpm` workspaces + Turborepo; apps vazios `apps/web` (Next App Router) e `apps/api` (NestJS sem rota de negócio); `packages/shared` como stub compilável; `packages/config` com configs compartilhadas de TypeScript/ESLint/Prettier; `docker-compose.yml` com PostgreSQL + serviços `web`/`api`; `.env.example` só com placeholders; `.env` ignorado; Renovate configurado; lockfile gerado e validado com `--frozen-lockfile`.
-- Observações: A stack Docker foi validada com `docker compose up -d` e `docker compose ps`. O grep obrigatório amplo continua produzindo falso positivo em documentação canônica; o fechamento deste PR foi coberto por secret scan dirigido PASS sobre os arquivos do PR, sem segredo real encontrado.
+- Observações: A stack Docker foi validada com `docker compose up -d` e `docker compose ps`. O grep obrigatório amplo continua produzindo falso positivo em documentação canônica; o fechamento deste PR foi coberto por secret scan dirigido PASS sobre os arquivos do PR, sem segredo real encontrado. O `.env` local de desenvolvimento foi criado na raiz e permanece ignorado pelo Git.
 
 ## 2. Arquivos criados/alterados
 - `.gitignore`
 - `.dockerignore`
 - `.env.example`
+- `.env` (local, ignorado pelo Git)
 - `.renovaterc.json`
 - `package.json`
 - `pnpm-workspace.yaml`

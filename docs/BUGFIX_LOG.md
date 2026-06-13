@@ -60,7 +60,7 @@
 
 | ID | Data | PR/Fase | Severidade | Título | Status |
 |---|---|---|---|---|---|
-| — | — | — | — | *(sem registros ainda)* | — |
+| BUG-001 | 2026-06-13 | PR-0.1 / Fase 0 | BAIXA | Comando de secret scan amplo gera falso positivo em docs/relatório | CORRIGIDO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -68,8 +68,19 @@
 
 ## Registros
 
-> *(Nenhum registro ainda. As entradas serão adicionadas abaixo, em ordem crescente de ID, durante o
-> desenvolvimento.)*
+### BUG-001 — Comando de secret scan amplo gera falso positivo em docs/relatório
+- Data: 2026-06-13
+- PR/Fase: PR-0.1 / Fase 0
+- Severidade: BAIXA
+- Erro encontrado: o comando de busca de segredo (git grep amplo por palavras-chave) não retorna vazio.
+- Sintoma: `git grep` retorna ocorrências; o gate "scan retorna vazio" não fecha como escrito.
+- Causa raiz: a regex casa palavras-chave e nomes de variável (`POSTGRES_PASSWORD`) em `docs/*.md` e no próprio relatório — não valores de segredo. Busca substring de palavra, não par `CHAVE=valor` concreto.
+- Impacto: procedimento de validação do PR. Não há vazamento real. Risco de mascarar vazamento futuro se a guarda for baixada sem critério.
+- Arquivo(s) afetado(s): nenhum de produção; afeta o procedimento de validação (prompt/protocolo).
+- Correção aplicada: scan dirigido (exclui `docs/**/*.md`, `pnpm-lock.yaml` e gerados; casa `CHAVE=valor` literal) → PASS sobre os arquivos do PR. Padronizar o scan dirigido no protocolo/prompts.
+- Teste/validação executado: scan dirigido PASS; única ocorrência fora de docs é `POSTGRES_PASSWORD` com fallback default de dev em `docker-compose.yml` (não-segredo).
+- Prevenção de regressão: protocolo passa a especificar o scan dirigido; o grep amplo de palavra vira verificação separada de documentação, não gate de vazamento.
+- Status final: CORRIGIDO
 
 ---
 
