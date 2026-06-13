@@ -1,0 +1,7 @@
+.DS_Store
+.git
+.next
+.turbo
+dist
+node_modules
+coverage

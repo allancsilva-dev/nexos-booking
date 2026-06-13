@@ -1,0 +1,21 @@
+{
+  "name": "@nexos/api",
+  "private": true,
+  "scripts": {
+    "build": "pnpm exec tsc -p tsconfig.build.json",
+    "dev": "pnpm exec tsx watch src/main.ts",
+    "lint": "pnpm exec eslint .",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "latest",
+    "@nestjs/core": "latest",
+    "@nestjs/platform-express": "latest",
+    "@nexos/shared": "workspace:*",
+    "reflect-metadata": "latest",
+    "rxjs": "latest"
+  },
+  "devDependencies": {
+    "tsx": "latest"
+  }
+}

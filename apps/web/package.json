@@ -1,0 +1,16 @@
+{
+  "name": "@nexos/web",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "lint": "pnpm exec eslint .",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@nexos/shared": "workspace:*",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  }
+}
