@@ -5,6 +5,8 @@
     "build": "pnpm exec tsc -p tsconfig.build.json",
     "dev": "pnpm exec tsx watch src/main.ts",
     "lint": "pnpm exec eslint .",
+    "migrate:apply": "node ./scripts/apply-migrations.mjs",
+    "migrate:fresh": "node ./scripts/apply-migrations.mjs --fresh",
     "start": "node dist/main.js"
   },
   "dependencies": {

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  POSTGRES_DB: nexos_booking
+  POSTGRES_USER: nexos
+  POSTGRES_PASSWORD: nexos_dev_password
+  WEB_PORT: 3000
+  API_PORT: 3001
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+
+      - name: Start disposable Postgres
+        run: docker compose up -d postgres
+
+      - name: Apply migrations from zero
+        run: pnpm --filter @nexos/api migrate:fresh
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --no-git --redact
+
+      - name: Show Docker services
+        if: always()
+        run: docker compose ps
+
+      - name: Tear down Docker services
+        if: always()
+        run: docker compose down -v
