@@ -61,6 +61,7 @@
 | ID | Data | PR/Fase | Severidade | Título | Status |
 |---|---|---|---|---|---|
 | BUG-001 | 2026-06-13 | PR-0.1 / Fase 0 | BAIXA | Comando de secret scan amplo gera falso positivo em docs/relatório | CORRIGIDO |
+| BUG-002 | 2026-06-13 | PR-0.2 / Fase 0 | BAIXA | `pnpm audit` não executável no ambiente sandbox do executor | ACEITO_COMO_PENDÊNCIA |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -81,6 +82,20 @@
 - Teste/validação executado: scan dirigido PASS; única ocorrência fora de docs é `POSTGRES_PASSWORD` com fallback default de dev em `docker-compose.yml` (não-segredo).
 - Prevenção de regressão: protocolo passa a especificar o scan dirigido; o grep amplo de palavra vira verificação separada de documentação, não gate de vazamento.
 - Status final: CORRIGIDO
+
+### BUG-002 — `pnpm audit` não executável no ambiente sandbox do executor
+- Data: 2026-06-13
+- PR/Fase: PR-0.2 / Fase 0
+- Severidade: BAIXA
+- Erro encontrado: `pnpm audit --audit-level high` não roda no ambiente do executor.
+- Sintoma: `ENOTFOUND` / chamada externa ao serviço de advisories do npm bloqueada por política de exposição de metadados de dependência privada.
+- Causa raiz: o sandbox não tem egress permitido ao registry/advisories do npm; o audit exige contato externo. Não é defeito de código nem divergência de documento.
+- Impacto: o gate de supply-chain (ADR-021) não pode ser provado localmente; precisa do CI.
+- Arquivo(s) afetado(s): nenhum de produção; afeta o procedimento de validação. O step do gate vive em `.github/workflows/ci.yml`.
+- Correção aplicada: o step existe no workflow (`.github/workflows/ci.yml`) e roda no GitHub Actions, que tem egress. Padrão para PRs futuros: `pnpm audit` é gate de CI, `NÃO EXECUTADO` localmente é esperado e não vira PASS por inferência.
+- Teste/validação executado: não executável localmente (ver causa raiz); a verificação real fica delegada ao step `Audit dependencies` do GitHub Actions, comprovada no primeiro CI verde da branch.
+- Prevenção de regressão: ao registrar este padrão, `pnpm audit` fica fixado como gate de CI — `NÃO EXECUTADO` local deixa de reabrir discussão a cada PR.
+- Status final: ACEITO_COMO_PENDÊNCIA (verificação delegada ao CI)
 
 ---
 
