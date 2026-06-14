@@ -1,5 +1,5 @@
-import { sharedStub } from "@nexos/shared";
+import { ERROR_CODES } from "@nexos/shared";
 
 export default function HomePage() {
-  return <main>{sharedStub}</main>;
+  return <main>{`Contract base loaded: ${ERROR_CODES.length} error codes`}</main>;
 }

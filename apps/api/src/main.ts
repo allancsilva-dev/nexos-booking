@@ -3,7 +3,7 @@ import "reflect-metadata";
 import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
-import { sharedStub } from "@nexos/shared";
+import { ERROR_CODES } from "@nexos/shared";
 
 import { AppModule } from "./app.module";
 
@@ -12,7 +12,10 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 3001);
 
   await app.listen(port);
-  Logger.log(`API base online with ${sharedStub}`, "Bootstrap");
+  Logger.log(
+    `API base online with ${ERROR_CODES.length} contract error codes`,
+    "Bootstrap",
+  );
 }
 
 void bootstrap();
