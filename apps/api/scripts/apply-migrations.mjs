@@ -28,6 +28,7 @@ for (let index = 2; index < process.argv.length; index += 1) {
 }
 
 const fresh = args.has("--fresh");
+const gateSetup = args.has("--gate-setup");
 const migrationsDir = path.resolve(
   repoRoot,
   args.get("--migrations-dir") ?? path.relative(repoRoot, defaultMigrationsDir)
@@ -184,6 +185,19 @@ async function main() {
         `CREATE DATABASE ${quotedIdentifier(targetDatabase)};`,
         "SQL"
       ].join("\n")
+    );
+  }
+
+  if (gateSetup) {
+    const setupPath = path.resolve(__dirname, "gate-setup.sql");
+    const setupSql = readFileSync(setupPath, "utf8");
+    console.log("Running gate setup (provisioning app_runtime for test gate)");
+    runComposeCommand(
+      [
+        'export PGPASSWORD="$POSTGRES_PASSWORD"',
+        `psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d ${quotedLiteral(targetDatabase)}`
+      ].join("\n"),
+      { input: setupSql }
     );
   }
 

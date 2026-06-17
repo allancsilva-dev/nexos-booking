@@ -6,7 +6,7 @@
     "dev": "pnpm exec tsx watch src/main.ts",
     "lint": "pnpm exec eslint .",
     "migrate:apply": "node ./scripts/apply-migrations.mjs",
-    "migrate:fresh": "node ./scripts/apply-migrations.mjs --fresh",
+    "migrate:fresh": "node ./scripts/apply-migrations.mjs --fresh --gate-setup",
     "start": "node dist/main.js"
   },
   "dependencies": {
@@ -14,10 +14,14 @@
     "@nestjs/core": "latest",
     "@nestjs/platform-express": "latest",
     "@nexos/shared": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.21.0",
     "reflect-metadata": "latest",
     "rxjs": "latest"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
     "tsx": "latest"
   }
 }
