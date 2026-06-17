@@ -9,15 +9,18 @@
     "migrate:fresh": "node ./scripts/apply-migrations.mjs --fresh --gate-setup",
     "start": "node dist/main.js",
     "test:db": "node ./scripts/test-rls.mjs",
-    "test:http": "node ./scripts/test-http.mjs"
+    "test:http": "node ./scripts/test-http.mjs",
+    "test:auth": "node ./scripts/test-auth.mjs"
   },
   "dependencies": {
     "@nestjs/common": "latest",
     "@nestjs/core": "latest",
     "@nestjs/platform-express": "latest",
     "@nexos/shared": "workspace:*",
+    "@node-rs/argon2": "^2.0.2",
     "drizzle-orm": "^0.45.2",
     "helmet": "^8.2.0",
+    "jose": "^6.2.3",
     "pg": "^8.21.0",
     "reflect-metadata": "latest",
     "rxjs": "latest"

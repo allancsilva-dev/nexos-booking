@@ -10,6 +10,7 @@ env:
   POSTGRES_DB: nexos_booking
   POSTGRES_USER: nexos
   POSTGRES_PASSWORD: nexos_dev_password
+  JWT_SECRET: ci-test-jwt-secret-key-not-for-production
   WEB_PORT: 3000
   API_PORT: 3001
 
@@ -49,6 +50,15 @@ jobs:
 
       - name: Apply migrations from zero
         run: pnpm --filter @nexos/api migrate:fresh
+
+      - name: Test DB (RLS isolation)
+        run: pnpm --filter @nexos/api test:db
+
+      - name: Test HTTP (error filter, health, headers)
+        run: pnpm --filter @nexos/api test:http
+
+      - name: Test Auth (register, login, refresh, tenant, sessions, rate limit)
+        run: pnpm --filter @nexos/api test:auth
 
       - name: Secret scan
         uses: gitleaks/gitleaks-action@v2

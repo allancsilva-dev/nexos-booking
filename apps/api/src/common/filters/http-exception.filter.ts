@@ -7,6 +7,7 @@ import {
 import type { Response, Request } from "express";
 
 import { buildErrorEnvelope } from "../errors/build-error-envelope";
+import { RateLimitException } from "../exceptions/rate-limit.exception";
 import { ValidationException } from "../exceptions/validation.exception";
 
 @Catch()
@@ -17,6 +18,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const requestId =
       (request.headers["x-request-id"] as string) ?? "unknown";
+
+    if (exception instanceof RateLimitException) {
+      response.setHeader("Retry-After", String(exception.retryAfterSeconds));
+      response
+        .status(exception.getStatus())
+        .json(
+          buildErrorEnvelope({
+            code: "RATE_LIMITED",
+            message: "Too many requests. Please try again later.",
+            requestId,
+          }),
+        );
+      return;
+    }
 
     if (exception instanceof ValidationException) {
       const body = exception.getResponse() as {

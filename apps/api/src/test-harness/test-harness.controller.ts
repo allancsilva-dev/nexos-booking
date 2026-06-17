@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Req, Res } from "@nestjs/common";
+import { Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
 import type { Request, Response } from "express";
 
 import { ValidationException } from "../common/exceptions/validation.exception";
+import { AuthGuard } from "../auth/guards/auth.guard";
+import { TenantGuard } from "../auth/guards/tenant.guard";
 
 @Controller("__test")
 export class TestHarnessController {
@@ -26,5 +28,11 @@ export class TestHarnessController {
       url: req.url,
       body: req.body ?? null,
     });
+  }
+
+  @Get("tenant-required")
+  @UseGuards(AuthGuard, TenantGuard)
+  tenantRequired(): { ok: boolean } {
+    return { ok: true };
   }
 }

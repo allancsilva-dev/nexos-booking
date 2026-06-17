@@ -2,8 +2,9 @@ import { Module } from "@nestjs/common";
 
 import { DbModule } from "./db";
 import { HealthModule } from "./health/health.module";
+import { AuthModule } from "./auth";
 
-const dynamicImports = [DbModule, HealthModule];
+const dynamicImports = [DbModule, HealthModule, AuthModule];
 
 if (process.env.ENABLE_HTTP_TEST_HARNESS === "1") {
   // Dynamic import only for test harness - never active in production

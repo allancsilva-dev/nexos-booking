@@ -86,6 +86,17 @@ async function bootstrap() {
   // 6. Global exception filter - catches all unhandled errors, mounts error envelope
   app.useGlobalFilters(new HttpExceptionFilter());
 
+  // 7. Global prefix /api/v1 — health/ready/__test remain at root
+  app.setGlobalPrefix("api/v1", {
+    exclude: ["health", "ready", "__test/(.*)"],
+  });
+
+  // 8. Trust proxy — accept X-Forwarded-For only from configured trusted hop
+  const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+  if (trustProxyHops > 0) {
+    app.getHttpAdapter().getInstance().set("trust proxy", trustProxyHops);
+  }
+
   await app.listen(port);
   Logger.log(
     `API online on port ${port} with ${ERROR_CODES.length} contract error codes`,
