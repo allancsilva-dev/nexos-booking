@@ -133,8 +133,8 @@ function startApi(enableHarness, opts = {}) {
 
     const dotEnv = loadDotEnv(repoRoot);
 
-    const dbPort = envOverrides.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? "5432";
-    const dbHost = envOverrides.POSTGRES_HOST ?? "127.0.0.1";
+    const dbPort = envOverrides.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? "5432";
+    const dbHost = envOverrides.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? "127.0.0.1";
 
     const env = {
       ...process.env,
@@ -149,10 +149,11 @@ function startApi(enableHarness, opts = {}) {
       PGPASSWORD: undefined,
       PGDATABASE: undefined,
       PGPORT: undefined,
-      // Build explicit DATABASE_URL
+      // Build explicit DATABASE_URL — prefer dotEnv, then process.env, then defaults
       DATABASE_URL:
         dotEnv.DATABASE_URL ??
-        `postgres://${dotEnv.POSTGRES_USER ?? "nexos_booking"}:${dotEnv.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${dotEnv.POSTGRES_DB ?? "nexos_booking"}`,
+        process.env.DATABASE_URL ??
+        `postgres://${dotEnv.POSTGRES_USER ?? process.env.POSTGRES_USER ?? "nexos_booking"}:${dotEnv.POSTGRES_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${dotEnv.POSTGRES_DB ?? process.env.POSTGRES_DB ?? "nexos_booking"}`,
     };
 
     // Use direct tsx binary path — pnpm exec strips env vars in spawned child processes

@@ -111,8 +111,8 @@ function startApi(enableHarness, opts = {}) {
     const apiDir = new URL("..", import.meta.url).pathname;
     const repoRoot = path.resolve(apiDir, "../..");
     const dotEnv = loadDotEnv(repoRoot);
-    const dbPort = envOverrides.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? "5432";
-    const dbHost = envOverrides.POSTGRES_HOST ?? "127.0.0.1";
+    const dbPort = envOverrides.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? "5432";
+    const dbHost = envOverrides.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? "127.0.0.1";
 
     const env = {
       ...process.env,
@@ -128,7 +128,8 @@ function startApi(enableHarness, opts = {}) {
       PGPORT: undefined,
       DATABASE_URL:
         dotEnv.DATABASE_URL ??
-        `postgres://${dotEnv.POSTGRES_USER ?? "nexos_booking"}:${dotEnv.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${dotEnv.POSTGRES_DB ?? "nexos_booking"}`,
+        process.env.DATABASE_URL ??
+        `postgres://${dotEnv.POSTGRES_USER ?? process.env.POSTGRES_USER ?? "nexos_booking"}:${dotEnv.POSTGRES_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${dotEnv.POSTGRES_DB ?? process.env.POSTGRES_DB ?? "nexos_booking"}`,
     };
 
     const tsxBin = path.resolve(apiDir, "node_modules/.bin/tsx");

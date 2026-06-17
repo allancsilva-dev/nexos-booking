@@ -63,6 +63,8 @@
 | BUG-001 | 2026-06-13 | PR-0.1 / Fase 0 | BAIXA | Comando de secret scan amplo gera falso positivo em docs/relatório | CORRIGIDO |
 | BUG-002 | 2026-06-13 | PR-0.2 / Fase 0 | BAIXA | `pnpm audit` não executável no ambiente sandbox do executor | ACEITO_COMO_PENDÊNCIA |
 | BUG-003 | 2026-06-17 | PR-1.3 / Fase 1 | BLOQUEANTE | GitHub Actions secret scan falha por checkout raso (shallow clone sem histórico git) | CORRIGIDO |
+| BUG-004 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:db falha com `relation "users" does not exist` — migrations aplicadas em banco diferente dos testes | CORRIGIDO |
+| BUG-005 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:http T14/T24 falham 503 — harness HTTP constrói DATABASE_URL com defaults errados, ignorando POSTGRES_* do CI | CORRIGIDO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -111,6 +113,36 @@
 - Teste/validação executado: re-run do workflow no GitHub Actions pendente; espera-se que o step `Secret scan` passe com histórico completo.
 - Branch/commit relacionado: `main` / `a3ba3054ccf5034088a604920ea472852cc93bf0`
 - Prevenção de regressão: `fetch-depth: 0` está fixado no workflow; qualquer novo commit dispara o checkout completo por padrão.
+- Status final: CORRIGIDO
+
+### BUG-004 — CI: test:db falha com `relation "users" does not exist` — banco divergente
+- Data: 2026-06-17
+- PR/Fase: PR-1.4 / Fase 1
+- Severidade: BLOQUEANTE
+- Erro encontrado: `pnpm --filter @nexos/api test:db` falha no CI com `ERROR: relation "users" does not exist`.
+- Sintoma: O test:db roda contra `nexos_booking` (definido no `POSTGRES_DB` do CI), mas `migrate:fresh` aplica migrations em `nexos_migrations_gate` (hardcoded no script `apply-migrations.mjs`). O banco dos testes nunca recebe migrations.
+- Causa raiz: `POSTGRES_DB` do CI era `nexos_booking`, divergente do target padrão do `migrate:fresh` (`nexos_migrations_gate`). Docker, migrations e testes usavam bancos diferentes.
+- Impacto: CI remoto bloqueado — test:db falha antes de chegar ao test:http e test:auth.
+- Arquivo(s) afetado(s): `.github/workflows/ci.yml`.
+- Correção aplicada: alterado `POSTGRES_DB` de `nexos_booking` para `nexos_migrations_gate` no env do CI. Adicionados `POSTGRES_HOST`, `POSTGRES_PORT`, `JWT_ISSUER`, `JWT_AUDIENCE`, `ACCESS_TOKEN_TTL_SECONDS`, `TRUST_PROXY_HOPS` para os harnesses de teste.
+- Teste/validação executado: localmente lint, build, test:db, test:http, test:auth passam com o mesmo `POSTGRES_DB`.
+- Branch/commit relacionado: `main` / `5e1ab93`
+- Prevenção de regressão: `POSTGRES_DB` do CI é `nexos_migrations_gate` e coincide com o default do `migrate:fresh`.
+- Status final: CORRIGIDO
+
+### BUG-005 — CI: test:http T14/T24 falham 503 — DATABASE_URL do harness ignora POSTGRES_* do CI
+- Data: 2026-06-17
+- PR/Fase: PR-1.4 / Fase 1
+- Severidade: BLOQUEANTE
+- Erro encontrado: `test:http` T14 e T24 falham com `/ready` retornando 503 em vez de 200.
+- Sintoma: A API iniciada pelo harness HTTP não conecta ao Postgres porque o `DATABASE_URL` construído pelo `startApi()` usa apenas `dotEnv` (vazio no CI) e defaults hardcoded (`nexos_booking`), ignorando `process.env.POSTGRES_*` definidos pelo CI. O `db.config.ts` prioriza `DATABASE_URL` sobre `POSTGRES_*`, então a conexão usa credenciais erradas.
+- Causa raiz: `apps/api/scripts/test-http.mjs` e `test-auth.mjs` constroem `DATABASE_URL` usando apenas `dotEnv.POSTGRES_*` com fallback para defaults hardcoded. Quando `.env` não existe (CI), os valores de `process.env.POSTGRES_*` (corretos, definidos pelo workflow) são ignorados.
+- Impacto: CI remoto bloqueado — test:http e test:auth falham porque a API não conecta ao banco.
+- Arquivo(s) afetado(s): `apps/api/scripts/test-http.mjs`, `apps/api/scripts/test-auth.mjs`.
+- Correção aplicada: a construção de `DATABASE_URL` e `dbHost`/`dbPort` agora inclui `process.env.POSTGRES_*` na cadeia de fallback (`dotEnv` → `process.env` → defaults). Também adicionado `process.env.DATABASE_URL` como fallback antes da construção.
+- Teste/validação executado: localmente lint, build, test:db, test:http (24/24), test:auth (36/36), audit passam.
+- Branch/commit relacionado: `main` (pendente commit)
+- Prevenção de regressão: a cadeia de fallback `dotEnv → process.env → defaults` garante que o harness funcione tanto localmente (com `.env`) quanto no CI (sem `.env`, com `process.env`).
 - Status final: CORRIGIDO
 
 ---
