@@ -8,7 +8,8 @@
     "migrate:apply": "node ./scripts/apply-migrations.mjs",
     "migrate:fresh": "node ./scripts/apply-migrations.mjs --fresh --gate-setup",
     "start": "node dist/main.js",
-    "test:db": "node ./scripts/test-rls.mjs"
+    "test:db": "node ./scripts/test-rls.mjs",
+    "test:http": "node ./scripts/test-http.mjs"
   },
   "dependencies": {
     "@nestjs/common": "latest",
@@ -16,11 +17,13 @@
     "@nestjs/platform-express": "latest",
     "@nexos/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
+    "helmet": "^8.2.0",
     "pg": "^8.21.0",
     "reflect-metadata": "latest",
     "rxjs": "latest"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
     "tsx": "latest"

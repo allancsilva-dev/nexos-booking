@@ -53,6 +53,12 @@ export function createPoolConfig(): PoolConfig {
   };
 }
 
+let sharedPool: Pool | null = null;
+
 export function createPool(): Pool {
-  return new Pool(createPoolConfig());
+  if (!sharedPool) {
+    sharedPool = new Pool(createPoolConfig());
+  }
+  return sharedPool;
 }
+

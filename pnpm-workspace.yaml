@@ -1,6 +1,8 @@
 packages:
   - apps/*
   - packages/*
+overrides:
+  multer: 2.2.0
 onlyBuiltDependencies:
   - esbuild
   - sharp
