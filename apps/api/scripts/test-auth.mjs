@@ -155,6 +155,15 @@ function repoRoot() {
   return path.resolve(new URL("..", import.meta.url).pathname, "../..");
 }
 
+function resolveDbEnv() {
+  const dotEnv = loadDotEnv(repoRoot());
+  return {
+    user: dotEnv.POSTGRES_USER ?? process.env.POSTGRES_USER ?? "nexos_booking",
+    pass: dotEnv.POSTGRES_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? "nexos_booking_local_password",
+    db: dotEnv.POSTGRES_DB ?? process.env.POSTGRES_DB ?? "nexos_booking",
+  };
+}
+
 function extractCookie(cookies, name) {
   for (const c of cookies) {
     const match = c.match(new RegExp(`^${name}=([^;]+)`));
@@ -367,10 +376,7 @@ function disableMembership(dbUser, dbPass, dbName, userId, orgId) {
   // ── T7b: Multi-org: login with 2 orgs emits access WITHOUT org ──
   console.log("\n─── Multi-Org (ADR-020) ───\n");
 
-  const dotEnv = loadDotEnv(repoRoot());
-  const dbUser = dotEnv.POSTGRES_USER ?? "nexos_booking";
-  const dbPass = dotEnv.POSTGRES_PASSWORD ?? "nexos_booking_local_password";
-  const dbName = dotEnv.POSTGRES_DB ?? "nexos_booking";
+  const { user: dbUser, pass: dbPass, db: dbName } = resolveDbEnv();
 
   let multiOrgAccessToken = null;
   let org2Id = null;
@@ -884,12 +890,9 @@ console.log("All tests passed.\n");
 // ═══════════════════════════════════════════════════════════════
 
 function checkPasswordHash(userId) {
-  const dotEnv = loadDotEnv(repoRoot());
-  const pw = dotEnv.POSTGRES_PASSWORD ?? "nexos_booking_local_password";
-  const user = dotEnv.POSTGRES_USER ?? "nexos_booking";
-  const db = dotEnv.POSTGRES_DB ?? "nexos_booking";
+  const { user, pass, db } = resolveDbEnv();
   const result = execSync(
-    `docker compose exec -T -e PGPASSWORD="${pw}" postgres psql -t -U "${user}" -d "${db}" -c "SELECT password_hash FROM users WHERE id = '${userId}';"`,
+    `docker compose exec -T -e PGPASSWORD="${pass}" postgres psql -t -U "${user}" -d "${db}" -c "SELECT password_hash FROM users WHERE id = '${userId}';"`,
     { cwd: repoRoot(), encoding: "utf8" },
   );
   return result.trim();

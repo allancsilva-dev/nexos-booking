@@ -65,6 +65,7 @@
 | BUG-003 | 2026-06-17 | PR-1.3 / Fase 1 | BLOQUEANTE | GitHub Actions secret scan falha por checkout raso (shallow clone sem histórico git) | CORRIGIDO |
 | BUG-004 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:db falha com `relation "users" does not exist` — migrations aplicadas em banco diferente dos testes | CORRIGIDO |
 | BUG-005 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:http T14/T24 falham 503 — harness HTTP constrói DATABASE_URL com defaults errados, ignorando POSTGRES_* do CI | CORRIGIDO |
+| BUG-006 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:auth comandos psql diretos usam credenciais hardcoded (`nexos_booking`) em vez de `process.env.POSTGRES_*` | CORRIGIDO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -143,6 +144,21 @@
 - Teste/validação executado: localmente lint, build, test:db, test:http (24/24), test:auth (36/36), audit passam.
 - Branch/commit relacionado: `main` (pendente commit)
 - Prevenção de regressão: a cadeia de fallback `dotEnv → process.env → defaults` garante que o harness funcione tanto localmente (com `.env`) quanto no CI (sem `.env`, com `process.env`).
+- Status final: CORRIGIDO
+
+### BUG-006 — CI: test:auth comandos psql diretos usam credenciais hardcoded antigas
+- Data: 2026-06-17
+- PR/Fase: PR-1.4 / Fase 1
+- Severidade: BLOQUEANTE
+- Erro encontrado: `pnpm --filter @nexos/api test:auth` falha no CI com `psql: FATAL: role "nexos_booking" does not exist`. T3, T8, T32 falharam (29/36 PASS).
+- Sintoma: Comandos `docker compose exec ... psql` dentro do `test-auth.mjs` (`checkPasswordHash`, `createSecondOrg`, `disableMembership`) usavam `nexos_booking`/`nexos_booking_local_password` hardcoded como fallback. No CI, `.env` não existe e `process.env.POSTGRES_*` não era consultado. T9/T10/T24/T25 falharam em cascata porque T8 (seed multi-org) falhou.
+- Causa raiz: As funções de helper SQL usavam apenas `dotEnv` (vazio no CI) com fallback para hardcodes antigos, sem consultar `process.env`.
+- Impacto: CI remoto bloqueado — test:auth falha em testes dependentes de seed SQL (multi-org, DISABLED binding, check de password hash).
+- Arquivo(s) afetado(s): `apps/api/scripts/test-auth.mjs`.
+- Correção aplicada: Criado helper `resolveDbEnv()` com cadeia de fallback `dotEnv → process.env → hardcoded`. Funções `checkPasswordHash`, `createSecondOrg` (via callers) e `disableMembership` (via callers) passaram a usar `resolveDbEnv()`. `resolveDbEnv()` movido para o escopo de módulo (fora do bloco `try`).
+- Teste/validação executado: localmente lint, build, test:db, test:http (24/24), test:auth (36/36), audit passam. T3, T8, T32 confirmados verdes localmente.
+- Branch/commit relacionado: `main` (pendente commit)
+- Prevenção de regressão: `resolveDbEnv()` é o ponto único de resolução de credenciais de banco nos testes de auth; qualquer novo helper SQL deve usá-lo.
 - Status final: CORRIGIDO
 
 ---
