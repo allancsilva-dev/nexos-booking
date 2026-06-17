@@ -7,10 +7,16 @@ on:
       - main
 
 env:
-  POSTGRES_DB: nexos_booking
+  POSTGRES_DB: nexos_migrations_gate
+  POSTGRES_HOST: localhost
+  POSTGRES_PORT: 5432
   POSTGRES_USER: nexos
   POSTGRES_PASSWORD: nexos_dev_password
   JWT_SECRET: ci-test-jwt-secret-key-not-for-production
+  JWT_ISSUER: nexos-booking
+  JWT_AUDIENCE: nexos-api
+  ACCESS_TOKEN_TTL_SECONDS: 900
+  TRUST_PROXY_HOPS: 0
   WEB_PORT: 3000
   API_PORT: 3001
 
