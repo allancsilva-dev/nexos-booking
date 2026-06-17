@@ -3,7 +3,7 @@
 ## 1. Resumo
 
 - **Status final: PASS** (24/24 testes HTTP passam — correção de fechamento aplicada)
-- **CI remoto não verificado** — validação local aceita temporariamente; GitHub Actions deve rodar após push e antes do PR-1.4
+- **CI remoto:** workflow corrigido (BUG-003 — fetch-depth: 0 adicionado ao checkout). Re-run pendente no GitHub Actions para validar o commit `a3ba305`.
 - **Gate de supply-chain:** `pnpm audit --audit-level high` → PASS (0 high/critical, 2 moderate informativos, multer fixado via override)
 - **Causa raiz do T12 corrigida:** path de resolução do `.env` no harness estava errado (`../../..` de `apps/api/` caía em `~/Projetos/`; corrigido para `../..` = raiz do repo)
 
@@ -161,7 +161,7 @@ pnpm audit --audit-level high
 
 ## 9. Pendências
 
-- **PEND-001:** CI remoto (GitHub Actions) não verificado para PR-1.1/PR-1.2
+- **PEND-001:** CI remoto (GitHub Actions) para PR-1.1/PR-1.2/PR-1.3 — workflow corrigido (BUG-003, `fetch-depth: 0` no checkout). Aguardando re-run verde no commit `a3ba305`. Cobertura parcial: `test:db` e `test:http` ausentes do workflow.
 - **PEND-002:** `/ready` usa `SELECT 1` fora dos wrappers de tenant/system context — exceção restrita a readiness, sem acesso a dados de negócio
 
 ## 10. Higiene de teardown

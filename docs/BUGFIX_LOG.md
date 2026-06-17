@@ -62,6 +62,7 @@
 |---|---|---|---|---|---|
 | BUG-001 | 2026-06-13 | PR-0.1 / Fase 0 | BAIXA | Comando de secret scan amplo gera falso positivo em docs/relatório | CORRIGIDO |
 | BUG-002 | 2026-06-13 | PR-0.2 / Fase 0 | BAIXA | `pnpm audit` não executável no ambiente sandbox do executor | ACEITO_COMO_PENDÊNCIA |
+| BUG-003 | 2026-06-17 | PR-1.3 / Fase 1 | BLOQUEANTE | GitHub Actions secret scan falha por checkout raso (shallow clone sem histórico git) | CORRIGIDO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -96,6 +97,21 @@
 - Teste/validação executado: não executável localmente (ver causa raiz); a verificação real fica delegada ao step `Audit dependencies` do GitHub Actions, comprovada no primeiro CI verde da branch.
 - Prevenção de regressão: ao registrar este padrão, `pnpm audit` fica fixado como gate de CI — `NÃO EXECUTADO` local deixa de reabrir discussão a cada PR.
 - Status final: ACEITO_COMO_PENDÊNCIA (verificação delegada ao CI)
+
+### BUG-003 — GitHub Actions secret scan falha por checkout raso (shallow clone sem histórico git)
+- Data: 2026-06-17
+- PR/Fase: PR-1.3 / Fase 1
+- Severidade: BLOQUEANTE
+- Erro encontrado: o job `validate` do GitHub Actions falhou no step `Secret scan` (gitleaks) com `fatal: ambiguous argument 'b57758de...^..a3ba3054...': unknown revision or path not in the working tree`.
+- Sintoma: Gitleaks tenta resolver um intervalo de commits (base^..HEAD) que não existe no clone raso do runner. O `actions/checkout@v4` padrão usa `fetch-depth: 1` (histórico raso), insuficiente para o scan.
+- Causa raiz: o step de checkout do workflow não especificava `fetch-depth: 0`, resultando em clone raso sem o commit base necessário para o Gitleaks calcular o range de scan.
+- Impacto: CI remoto bloqueado — impossível validar o workflow no commit do PR-1.3 antes de avançar para PR-1.4.
+- Arquivo(s) afetado(s): `.github/workflows/ci.yml` (step `Checkout`).
+- Correção aplicada: adicionado `with: fetch-depth: 0` ao step `actions/checkout@v4`, garantindo clone completo com histórico git.
+- Teste/validação executado: re-run do workflow no GitHub Actions pendente; espera-se que o step `Secret scan` passe com histórico completo.
+- Branch/commit relacionado: `main` / `a3ba3054ccf5034088a604920ea472852cc93bf0`
+- Prevenção de regressão: `fetch-depth: 0` está fixado no workflow; qualquer novo commit dispara o checkout completo por padrão.
+- Status final: CORRIGIDO
 
 ---
 
