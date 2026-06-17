@@ -7,7 +7,8 @@
     "lint": "pnpm exec eslint .",
     "migrate:apply": "node ./scripts/apply-migrations.mjs",
     "migrate:fresh": "node ./scripts/apply-migrations.mjs --fresh --gate-setup",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "test:db": "node ./scripts/test-rls.mjs"
   },
   "dependencies": {
     "@nestjs/common": "latest",
