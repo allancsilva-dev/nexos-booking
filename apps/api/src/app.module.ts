@@ -7,6 +7,7 @@ import { AuthModule } from "./auth";
 import { OrganizationsModule } from "./organizations";
 import { AuthorizationModule } from "./authorization";
 import { MaintenanceModule } from "./maintenance";
+import { ProfessionalsModule } from "./professionals";
 
 const dynamicImports = [
   DbModule,
@@ -16,6 +17,7 @@ const dynamicImports = [
   AuthorizationModule,
   ScheduleModule.forRoot(),
   MaintenanceModule,
+  ProfessionalsModule,
 ];
 
 if (process.env.ENABLE_HTTP_TEST_HARNESS === "1") {

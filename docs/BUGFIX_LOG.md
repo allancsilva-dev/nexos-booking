@@ -68,6 +68,7 @@
 | BUG-006 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:auth comandos psql diretos usam credenciais hardcoded (`nexos_booking`) em vez de `process.env.POSTGRES_*` | CORRIGIDO |
 | BUG-007 | 2026-06-19 | PR-1.4 / Fase 1 | ALTA | `AuthService.generateSlug()` usa check-then-insert (SELECT → INSERT), viola ADR-011. Colisão de slug pode virar 500. | ABERTO |
 | BUG-008 | 2026-06-20 | PR-1.4 / Fase 1 | MÉDIA | Auth DTOs (`LoginInput`, `RegisterInput`, `SwitchOrgInput`, `MeResponse`) ausentes de `packages/shared`, divergindo de API §12/§21. Herdado do PR-1.4. Schemas definidos localmente em `apps/web` e `apps/api`. | ABERTO |
+| PROPOSTA-001 | 2026-06-20 | PR-2.1 / Fase 2 | MÉDIA | Proposta de novo ErrorCode `PROFESSIONAL_USER_TAKEN` (409). Aprovado pelo api-contract-guardian — adicionado ao catálogo em `packages/shared/src/error-code.ts`. API_CONTRACTS.md §7 deve ser atualizado para incluir `PROFESSIONAL_USER_TAKEN` na categoria Profissionais. (Unique parcial `professionals_org_user_uk` — B1 do schema.) | ABERTO (canonical doc pendente) |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 

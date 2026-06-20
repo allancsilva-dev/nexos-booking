@@ -21,3 +21,5 @@ export type {
 } from "./dto/organization.dto.js";
 export { AcceptInviteSchema } from "./dto/accept-invite.dto.js";
 export type { AcceptInviteInput } from "./dto/accept-invite.dto.js";
+export { ProfessionalSchema } from "./dto/professional.dto.js";
+export type { ProfessionalDTO } from "./dto/professional.dto.js";

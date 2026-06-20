@@ -48,6 +48,8 @@ export const ERROR_CODES = [
   "CANCEL_TOKEN_EXPIRED",
   // Jornada
   "WORKING_HOURS_CONFLICT",
+  // Profissionais
+  "PROFESSIONAL_USER_TAKEN",
 ] as const;
 
 /** Union estável dos códigos de erro do contrato. */

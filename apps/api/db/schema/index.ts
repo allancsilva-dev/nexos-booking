@@ -111,6 +111,9 @@ export const professionals = pgTable("professionals", {
   uniqueIndex("professionals_org_slug_uk").on(table.organization_id, sql`lower(${table.slug})`),
   index("professionals_org_idx").on(table.organization_id),
   unique("professionals_org_id_uk").on(table.organization_id, table.id),
+  uniqueIndex("professionals_org_user_uk")
+    .on(table.organization_id, table.user_id)
+    .where(sql`${table.user_id} IS NOT NULL`),
 ]);
 
 // ─── 6.2 services ──────────────────────────────────────────────────

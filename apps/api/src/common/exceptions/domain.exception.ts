@@ -60,3 +60,19 @@ export class EmailNotVerifiedException extends DomainException {
     );
   }
 }
+
+export class SlugReservedException extends DomainException {
+  constructor() {
+    super("SLUG_RESERVED", "Slug is reserved", HttpStatus.UNPROCESSABLE_ENTITY);
+  }
+}
+
+export class ProfessionalUserTakenException extends DomainException {
+  constructor() {
+    super(
+      "PROFESSIONAL_USER_TAKEN",
+      "User is already linked to another professional",
+      HttpStatus.CONFLICT,
+    );
+  }
+}
