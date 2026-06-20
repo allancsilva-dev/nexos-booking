@@ -19,6 +19,7 @@ const SENSITIVE_KEYS = new Set([
   "secret",
   "apikey",
   "api_key",
+  "idempotency-key",
 ]);
 
 const REDACTED = "[REDACTED]";

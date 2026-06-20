@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
 
 import { DbModule } from "./db";
@@ -9,6 +10,7 @@ import { AuthorizationModule } from "./authorization";
 import { MaintenanceModule } from "./maintenance";
 import { ProfessionalsModule } from "./professionals";
 import { ServicesModule } from "./services";
+import { IdempotencyInterceptor } from "./common/interceptors/idempotency.interceptor";
 
 const dynamicImports = [
   DbModule,
@@ -31,5 +33,6 @@ if (process.env.ENABLE_HTTP_TEST_HARNESS === "1") {
 
 @Module({
   imports: dynamicImports,
+  providers: [{ provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
 })
 export class AppModule {}

@@ -66,10 +66,21 @@ export class MaintenanceService {
     }
   }
 
-  // TODO: Enable in PR-3.2 (motor de idempotência)
-  // @Cron("45 * * * *")
-  private async cleanupIdempotencyKeys() {
-    void idempotencyKeys;
-    // Scaffold inerte. Sem @Cron ativo. Sem DELETE real. Ativação só no PR-3.2.
+  @Cron("45 * * * *")
+  async cleanupIdempotencyKeys() {
+    try {
+      const result = await withSystemContext(this.db, async (tx) => {
+        return tx
+          .delete(idempotencyKeys)
+          .where(lt(idempotencyKeys.expires_at, new Date()));
+      });
+      this.logger.log(
+        `[maintenance] idempotency_keys: ${result.rowCount ?? 0} rows deleted`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `[maintenance] idempotency_keys failed: ${err instanceof Error ? err.message : "unknown"}`,
+      );
+    }
   }
 }

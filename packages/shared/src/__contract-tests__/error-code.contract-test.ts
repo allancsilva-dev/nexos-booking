@@ -8,7 +8,7 @@
 import { ERROR_CODES, type ErrorCode } from "../error-code.js";
 import type { Equal, Expect } from "./type-utils.js";
 
-/** União esperada — exatamente os 32 códigos do contrato. */
+/** União esperada — exatamente os 33 códigos do contrato. */
 type ExpectedErrorCode =
   // Genéricos
   | "VALIDATION_ERROR"
@@ -38,6 +38,7 @@ type ExpectedErrorCode =
   | "SLUG_RESERVED"
   | "LAST_OWNER"
   // Idempotência
+  | "IDEMPOTENCY_KEY_REQUIRED"
   | "IDEMPOTENCY_KEY_REUSED"
   | "IDEMPOTENCY_IN_PROGRESS"
   // Agenda
@@ -49,13 +50,15 @@ type ExpectedErrorCode =
   | "CANCEL_TOKEN_INVALID"
   | "CANCEL_TOKEN_EXPIRED"
   // Jornada
-  | "WORKING_HOURS_CONFLICT";
+  | "WORKING_HOURS_CONFLICT"
+  // Profissionais
+  | "PROFESSIONAL_USER_TAKEN";
 
 /** A união materializada equivale exatamente à esperada (nem mais, nem menos). */
 type _AssertUnionExact = Expect<Equal<ErrorCode, ExpectedErrorCode>>;
 
-/** A constante materializa exatamente 32 códigos (tupla `as const`). */
-type _AssertCount = Expect<Equal<(typeof ERROR_CODES)["length"], 32>>;
+/** A constante materializa exatamente 34 códigos (tupla `as const`). */
+type _AssertCount = Expect<Equal<(typeof ERROR_CODES)["length"], 34>>;
 
 /** `RATE_LIMITED` É um código aceito. */
 const _rateLimitedIsCode: ErrorCode = "RATE_LIMITED";

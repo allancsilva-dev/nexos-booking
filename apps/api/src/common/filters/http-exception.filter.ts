@@ -55,6 +55,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     if (exception instanceof DomainException) {
+      if (exception.retryAfterSeconds !== undefined) {
+        response.setHeader("Retry-After", String(exception.retryAfterSeconds));
+      }
       response.status(exception.getStatus()).json(
         buildErrorEnvelope({
           code: exception.errorCode as ErrorCode,

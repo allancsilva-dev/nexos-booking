@@ -2,10 +2,12 @@ import { HttpException, HttpStatus } from "@nestjs/common";
 
 export class DomainException extends HttpException {
   public readonly errorCode: string;
+  public readonly retryAfterSeconds?: number;
 
-  constructor(errorCode: string, message: string, status: HttpStatus) {
+  constructor(errorCode: string, message: string, status: HttpStatus, retryAfterSeconds?: number) {
     super(message, status);
     this.errorCode = errorCode;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 

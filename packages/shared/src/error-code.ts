@@ -36,6 +36,7 @@ export const ERROR_CODES = [
   "SLUG_RESERVED",
   "LAST_OWNER",
   // Idempotência
+  "IDEMPOTENCY_KEY_REQUIRED",
   "IDEMPOTENCY_KEY_REUSED",
   "IDEMPOTENCY_IN_PROGRESS",
   // Agenda
