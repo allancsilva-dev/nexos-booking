@@ -60,3 +60,9 @@ export type {
   CreateAppointmentInput,
   RescheduleInput,
 } from "./dto/appointment.dto.js";
+export {
+  PublicServiceSummarySchema,
+  PublicProfessionalSummarySchema,
+  PublicVitrineResponseSchema,
+} from "./dto/public-vitrine.dto.js";
+export type { PublicVitrineResponse } from "./dto/public-vitrine.dto.js";

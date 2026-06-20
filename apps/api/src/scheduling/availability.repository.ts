@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { eq, and, lt, gt, inArray } from "drizzle-orm";
+import { eq, and, lt, gt, inArray, sql } from "drizzle-orm";
 import type { DbTransaction } from "../db/db.types";
 import {
   professionals,
@@ -126,6 +126,24 @@ export class AvailabilityRepository {
           gt(appointments.ends_at, new Date(from)),
         ),
       );
+  }
+
+  async findProfessionalBySlug(
+    tx: DbTransaction,
+    orgId: string,
+    slug: string,
+  ) {
+    const rows = await tx
+      .select()
+      .from(professionals)
+      .where(
+        and(
+          eq(professionals.organization_id, orgId),
+          eq(sql`lower(${professionals.slug})`, slug.toLowerCase()),
+        ),
+      )
+      .limit(1);
+    return rows[0] ?? null;
   }
 
   async findProfessionalService(

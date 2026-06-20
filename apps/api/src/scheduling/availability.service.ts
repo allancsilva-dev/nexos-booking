@@ -81,7 +81,7 @@ export class AvailabilityService {
     const { from, to, serviceId } = query;
 
     return withTenantContext(this.db, orgId, userId, async (tx) => {
-      if (role === "PROFESSIONAL") {
+      if (userId && role === "PROFESSIONAL") {
         const profByUser = await this.repo.findProfessionalByUserId(
           tx,
           orgId,

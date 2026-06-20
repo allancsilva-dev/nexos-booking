@@ -11,6 +11,7 @@ import { MaintenanceModule } from "./maintenance";
 import { ProfessionalsModule } from "./professionals";
 import { ServicesModule } from "./services";
 import { AppointmentsModule } from "./appointments";
+import { PublicBookingModule } from "./public-booking/public-booking.module";
 import { IdempotencyInterceptor } from "./common/interceptors/idempotency.interceptor";
 
 const dynamicImports = [
@@ -24,6 +25,7 @@ const dynamicImports = [
   ProfessionalsModule,
   ServicesModule,
   AppointmentsModule,
+  PublicBookingModule,
 ];
 
 if (process.env.ENABLE_HTTP_TEST_HARNESS === "1") {
