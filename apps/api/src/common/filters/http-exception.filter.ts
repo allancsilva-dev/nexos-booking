@@ -5,10 +5,12 @@ import {
   HttpException,
 } from "@nestjs/common";
 import type { Response, Request } from "express";
+import type { ErrorCode } from "@nexos/shared";
 
 import { buildErrorEnvelope } from "../errors/build-error-envelope";
 import { RateLimitException } from "../exceptions/rate-limit.exception";
 import { ValidationException } from "../exceptions/validation.exception";
+import { DomainException } from "../exceptions/domain.exception";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -49,6 +51,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
             details: body.details,
           }),
         );
+      return;
+    }
+
+    if (exception instanceof DomainException) {
+      response.status(exception.getStatus()).json(
+        buildErrorEnvelope({
+          code: exception.errorCode as ErrorCode,
+          message: exception.message,
+          requestId,
+        }),
+      );
       return;
     }
 

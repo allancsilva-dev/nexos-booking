@@ -9,3 +9,15 @@ export * from "./error-code.js";
 export * from "./error-envelope.js";
 export * from "./datetime.js";
 export * from "./money.js";
+export {
+  OrganizationSchema,
+  MemberSchema,
+  InvitationSchema,
+} from "./dto/organization.dto.js";
+export type {
+  OrganizationDTO,
+  MemberDTO,
+  InvitationDTO,
+} from "./dto/organization.dto.js";
+export { AcceptInviteSchema } from "./dto/accept-invite.dto.js";
+export type { AcceptInviteInput } from "./dto/accept-invite.dto.js";

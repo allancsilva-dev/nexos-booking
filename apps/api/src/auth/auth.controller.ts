@@ -22,6 +22,7 @@ import type { VerifyEmailInput } from "./dto/verify-email.dto";
 import type { ForgotPasswordInput } from "./dto/forgot-password.dto";
 import type { ResetPasswordInput } from "./dto/reset-password.dto";
 import type { PasswordChangeInput } from "./dto/password-change.dto";
+import type { AcceptInviteInput } from "./dto/accept-invite.dto";
 
 const REFRESH_COOKIE = "refresh_token";
 const REFRESH_COOKIE_PATH = "/api/v1/auth/refresh";
@@ -214,5 +215,37 @@ export class AuthController {
       body.currentPassword,
       body.newPassword,
     );
+  }
+
+  @Post("accept-invite")
+  async acceptInvite(
+    @Body() body: AcceptInviteInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const payload = (req as unknown as { accessPayload?: { sub: string } })
+      .accessPayload;
+    const userId = payload?.sub;
+
+    const result = await this.auth.acceptInvite(
+      body.token,
+      userId,
+      body.name,
+      body.password,
+    );
+
+    if (result.refreshToken) {
+      setRefreshCookie(res, result.refreshToken);
+      res.status(HttpStatus.CREATED);
+      return {
+        user: result.user,
+        organization: result.organization,
+        accessToken: result.accessToken,
+      };
+    }
+
+    return {
+      organization: result.organization,
+    };
   }
 }

@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  forwardRef,
 } from "@nestjs/common";
 import { RateLimitException } from "../common/exceptions/rate-limit.exception";
 import { randomUUID, randomBytes, createHash } from "node:crypto";
@@ -24,6 +25,7 @@ import { ResendSender } from "./notifications/resend-sender";
 import type { RegisterInput } from "./dto/register.dto";
 import type { LoginInput } from "./dto/login.dto";
 import type { SwitchOrgInput } from "./dto/switch-org.dto";
+import { InvitationsService } from "../organizations/invitations/invitations.service";
 
 const SLUG_MAX_RETRIES = 10;
 const RESERVED_SLUGS = new Set([
@@ -33,7 +35,7 @@ const RESERVED_SLUGS = new Set([
   "support", "status", "api-docs",
 ]);
 
-@Injectable()
+  @Injectable()
 export class AuthService {
   private readonly rateLimiter: RateLimiter;
 
@@ -44,6 +46,8 @@ export class AuthService {
     @Inject(SessionService) private readonly session: SessionService,
     @Inject(AuthRepository) private readonly repo: AuthRepository,
     @Inject(ResendSender) private readonly notification: ResendSender,
+    @Inject(forwardRef(() => InvitationsService))
+    private readonly invitations: InvitationsService,
   ) {
     this.rateLimiter = new MemoryRateLimiter();
   }
@@ -674,6 +678,31 @@ export class AuthService {
 
       return { success: true };
     });
+  }
+
+  async acceptInvite(
+    token: string,
+    userId?: string,
+    name?: string,
+    password?: string,
+  ): Promise<{
+    user?: { id: string; name: string; email: string };
+    organization?: { id: string; name: string; slug: string };
+    accessToken?: string;
+    refreshToken?: string;
+  }> {
+    const rlResult = await this.rateLimiter.consume(
+      `accept-invite:ip:${token.slice(0, 8)}`,
+      10,
+      3600_000,
+    );
+    if (!rlResult.allowed) {
+      throw new RateLimitException(
+        Math.ceil((rlResult.resetAt - Date.now()) / 1000),
+      );
+    }
+
+    return this.invitations.accept(token, userId, name, password);
   }
 
   private async generateSlug(

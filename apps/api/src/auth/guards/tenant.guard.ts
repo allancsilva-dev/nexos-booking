@@ -20,6 +20,7 @@ interface AccessPayload {
 export interface TenantContext {
   orgId: string;
   userId: string;
+  role: string;
 }
 
 @Injectable()
@@ -40,7 +41,10 @@ export class TenantGuard implements CanActivate {
     }
 
     const rows = await this.db.client
-      .select({ id: organizationUsers.id })
+      .select({
+        id: organizationUsers.id,
+        role: organizationUsers.role,
+      })
       .from(organizationUsers)
       .where(
         and(
@@ -55,6 +59,12 @@ export class TenantGuard implements CanActivate {
       throw new ForbiddenException("No active organization");
     }
 
+    (req as unknown as { tenant: TenantContext }).tenant = {
+      orgId: payload.org,
+      userId: payload.sub,
+      role: rows[0]!.role,
+    };
+
     return true;
   }
 
@@ -64,6 +74,9 @@ export class TenantGuard implements CanActivate {
 
     if (!payload?.org) return null;
 
-    return { orgId: payload.org, userId: payload.sub };
+    const tenant = (req as unknown as { tenant?: TenantContext }).tenant;
+    if (tenant) return tenant;
+
+    return { orgId: payload.org, userId: payload.sub, role: "" };
   }
 }

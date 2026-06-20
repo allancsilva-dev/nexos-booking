@@ -78,6 +78,8 @@ export class ResendSender implements NotificationSender {
         return "Verify your email address";
       case "password-reset":
         return "Reset your password";
+      case "invitation":
+        return "You've been invited to join an organization";
       default:
         return "Notification from Nexos";
     }
@@ -92,6 +94,8 @@ export class ResendSender implements NotificationSender {
         return `<p>Hello ${vars.name ?? "there"},</p><p>Please verify your email by clicking the link below:</p><p><a href="${vars.link ?? "#"}">Verify Email</a></p><p>This link expires in 24 hours.</p>`;
       case "password-reset":
         return `<p>Hello,</p><p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${vars.link ?? "#"}">Reset Password</a></p><p>This link expires in 24 hours. If you did not request this, you can ignore this email.</p>`;
+      case "invitation":
+        return `<p>Hello,</p><p>${vars.inviterName ?? "Someone"} has invited you to join <strong>${vars.orgName ?? "an organization"}</strong>.</p><p>Click the link below to accept the invitation:</p><p><a href="${vars.link ?? "#"}">Accept Invitation</a></p><p>This invitation expires in 7 days.</p>`;
       default:
         return `<p>${vars.message ?? ""}</p>`;
     }

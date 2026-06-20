@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -11,8 +11,10 @@ import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
 import { AuthGuard } from "./guards/auth.guard";
 import { CsrfGuard } from "./guards/csrf.guard";
 import { TenantGuard } from "./guards/tenant.guard";
+import { OrganizationsModule } from "../organizations";
 
 @Module({
+  imports: [forwardRef(() => OrganizationsModule)],
   controllers: [AuthController],
   providers: [
     AuthService,
