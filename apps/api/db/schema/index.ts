@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, integer, boolean, smallint, time, char, inet, jsonb, primaryKey, unique, uniqueIndex, index, foreignKey } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { sql, isNotNull } from "drizzle-orm";
 
 // ─── 4.1 users (global) ────────────────────────────────────────────
 export const users = pgTable("users", {
@@ -180,6 +180,9 @@ export const clients = pgTable("clients", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   unique("clients_org_id_uk").on(table.organization_id, table.id),
+  uniqueIndex("clients_org_phone_uk")
+    .on(table.organization_id, table.phone_normalized)
+    .where(isNotNull(table.phone_normalized)),
 ]);
 
 // ─── 8.1 appointments ──────────────────────────────────────────────

@@ -30,6 +30,9 @@ export type { WorkingHoursInput, ShiftDTO } from "./dto/working-hours.dto.js";
 export { AvailabilityBlockSchema, CreateBlockSchema } from "./dto/availability-block.dto.js";
 export type { AvailabilityBlockDTO, CreateBlockInput } from "./dto/availability-block.dto.js";
 export { alignToSlotGrid } from "./slot-grid.js";
+export { normalizePhone } from "./phone.js";
+export { ClientSchema } from "./dto/client.dto.js";
+export type { ClientDTO } from "./dto/client.dto.js";
 export {
   AvailabilityQuerySchema,
   AvailabilitySlotSchema,
@@ -42,3 +45,18 @@ export type {
   AvailabilitySlot,
   AvailabilityDay,
 } from "./dto/availability.dto.js";
+export {
+  APPOINTMENT_STATUSES,
+  APPOINTMENT_TRANSITIONS,
+  isAllowedTransition,
+  isTerminal,
+  AppointmentSchema,
+  CreateAppointmentSchema,
+  RescheduleSchema,
+} from "./dto/appointment.dto.js";
+export type {
+  AppointmentStatus,
+  AppointmentDTO,
+  CreateAppointmentInput,
+  RescheduleInput,
+} from "./dto/appointment.dto.js";

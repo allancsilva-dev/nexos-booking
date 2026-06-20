@@ -78,3 +78,53 @@ export class ProfessionalUserTakenException extends DomainException {
     );
   }
 }
+
+export class AppointmentConflictException extends DomainException {
+  constructor() {
+    super(
+      "APPOINTMENT_CONFLICT",
+      "Slot already occupied",
+      HttpStatus.CONFLICT,
+    );
+  }
+}
+
+export class AppointmentVersionConflictException extends DomainException {
+  constructor() {
+    super(
+      "APPOINTMENT_VERSION_CONFLICT",
+      "Appointment was modified by another request",
+      HttpStatus.CONFLICT,
+    );
+  }
+}
+
+export class InvalidStatusTransitionException extends DomainException {
+  constructor() {
+    super(
+      "INVALID_STATUS_TRANSITION",
+      "Invalid status transition",
+      HttpStatus.CONFLICT,
+    );
+  }
+}
+
+export class OutsideWorkingHoursException extends DomainException {
+  constructor() {
+    super(
+      "OUTSIDE_WORKING_HOURS",
+      "Appointment is outside working hours",
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+  }
+}
+
+export class WithinBlockException extends DomainException {
+  constructor() {
+    super(
+      "WITHIN_BLOCK",
+      "Appointment falls within an availability block",
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+  }
+}
