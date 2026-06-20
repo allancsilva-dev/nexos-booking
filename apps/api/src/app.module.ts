@@ -1,10 +1,12 @@
 import { Module } from "@nestjs/common";
+import { ScheduleModule } from "@nestjs/schedule";
 
 import { DbModule } from "./db";
 import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth";
 import { OrganizationsModule } from "./organizations";
 import { AuthorizationModule } from "./authorization";
+import { MaintenanceModule } from "./maintenance";
 
 const dynamicImports = [
   DbModule,
@@ -12,6 +14,8 @@ const dynamicImports = [
   AuthModule,
   OrganizationsModule,
   AuthorizationModule,
+  ScheduleModule.forRoot(),
+  MaintenanceModule,
 ];
 
 if (process.env.ENABLE_HTTP_TEST_HARNESS === "1") {

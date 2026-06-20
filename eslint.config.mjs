@@ -8,7 +8,7 @@ const globalIgnores = {
 const apiConfig = [
   {
     files: ["apps/api/src/**/*.ts"],
-    ignores: ["apps/api/src/db/**/*.ts"],
+    ignores: ["apps/api/src/db/**/*.ts", "apps/api/src/maintenance/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
