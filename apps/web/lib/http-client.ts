@@ -8,6 +8,7 @@ export class ApiError extends Error {
   code: ErrorCode;
   requestId: string;
   status: number;
+  details?: Array<{ field: string; issue: string }>;
 
   constructor(body: ErrorBody, status: number) {
     super(body.message);
@@ -15,6 +16,7 @@ export class ApiError extends Error {
     this.code = body.code;
     this.requestId = body.requestId;
     this.status = status;
+    this.details = body.details;
   }
 }
 
