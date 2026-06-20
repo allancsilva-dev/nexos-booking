@@ -2,6 +2,9 @@
   "extends": "../../packages/config/tsconfig/next.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
     "ignoreDeprecations": "6.0",
     "plugins": [
       {

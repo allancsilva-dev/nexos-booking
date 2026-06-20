@@ -1,5 +1,14 @@
-import { ERROR_CODES } from "@nexos/shared";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
-  return <main>{`Contract base loaded: ${ERROR_CODES.length} error codes`}</main>;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/login");
+  }, [router]);
+
+  return null;
 }

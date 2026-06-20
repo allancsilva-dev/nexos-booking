@@ -66,6 +66,8 @@
 | BUG-004 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:db falha com `relation "users" does not exist` — migrations aplicadas em banco diferente dos testes | CORRIGIDO |
 | BUG-005 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:http T14/T24 falham 503 — harness HTTP constrói DATABASE_URL com defaults errados, ignorando POSTGRES_* do CI | CORRIGIDO |
 | BUG-006 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:auth comandos psql diretos usam credenciais hardcoded (`nexos_booking`) em vez de `process.env.POSTGRES_*` | CORRIGIDO |
+| BUG-007 | 2026-06-19 | PR-1.4 / Fase 1 | ALTA | `AuthService.generateSlug()` usa check-then-insert (SELECT → INSERT), viola ADR-011. Colisão de slug pode virar 500. | ABERTO |
+| BUG-008 | 2026-06-20 | PR-1.4 / Fase 1 | MÉDIA | Auth DTOs (`LoginInput`, `RegisterInput`, `SwitchOrgInput`, `MeResponse`) ausentes de `packages/shared`, divergindo de API §12/§21. Herdado do PR-1.4. Schemas definidos localmente em `apps/web` e `apps/api`. | ABERTO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -160,6 +162,21 @@
 - Branch/commit relacionado: `main` (pendente commit)
 - Prevenção de regressão: `resolveDbEnv()` é o ponto único de resolução de credenciais de banco nos testes de auth; qualquer novo helper SQL deve usá-lo.
 - Status final: CORRIGIDO
+
+### BUG-007 — `AuthService.generateSlug()` usa check-then-insert, viola ADR-011
+- Data: 2026-06-19
+- PR/Fase: PR-1.4 / Fase 1 (herdado, detectado na auditoria do PR-1.6)
+- Severidade: ALTA
+- Erro encontrado: `AuthService.generateSlug()` em `apps/api/src/auth/auth.service.ts:699-710` faz `SELECT ... WHERE slug = candidate` seguido de `INSERT` — padrão check-then-insert. Duas inserções concorrentes com mesmo slug-base podem ambas passar no `SELECT` e a segunda explodir no `UNIQUE (lower(slug))` com `500`.
+- Sintoma: Sob concorrência real (dois registros simultâneos com mesmo nome de empresa), a segunda transação recebe erro de unique violation não tratado → `500 Internal Server Error` em vez de `409 SLUG_TAKEN`.
+- Causa raiz: Geração de slug não segue ADR-011 (retry-on-conflict). O `SELECT` prévio cria janela de corrida (TOCTOU) que o `UNIQUE` do banco fecha com erro bruto, não com código de negócio.
+- Impacto: Registro de empresa sob concorrência pode resultar em `500` para o usuário. Probabilidade baixa no MVP (single-instance, baixo volume de registros simultâneos), mas o padrão está errado e contradiz ADR-011.
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.service.ts` (método `generateSlug()`).
+- Correção aplicada: **Não aplicada neste momento.** O PR-1.6 não corrige código do PR-1.4. O `OrganizationsService` do PR-1.6 implementará retry-on-conflict correto (tenta INSERT → captura `23505` → próximo candidato), sem replicar o bug. A correção do `AuthService.generateSlug()` existente será feita em PR de remediação dedicado.
+- Teste/validação executado: Não se aplica (correção pendente).
+- Branch/commit relacionado: `main` (código atual com o bug)
+- Prevenção de regressão: O `OrganizationsService` do PR-1.6 implementa o padrão correto como referência. O `AuthService.generateSlug()` será refatorado para usar o mesmo `SlugGenerator` + retry-on-conflict em PR futuro.
+- Status final: ABERTO
 
 ---
 

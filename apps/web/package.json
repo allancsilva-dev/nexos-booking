@@ -11,6 +11,24 @@
     "@nexos/shared": "workspace:*",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "@tanstack/react-query": "^5",
+    "zustand": "^5",
+    "sonner": "^2",
+    "react-hook-form": "^7",
+    "@hookform/resolvers": "^3",
+    "zod": "^3",
+    "clsx": "^2",
+    "tailwind-merge": "^3",
+    "lucide-react": "^0",
+    "class-variance-authority": "^0.7",
+    "next-themes": "^0.4",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "@radix-ui/react-separator": "^1",
+    "@radix-ui/react-avatar": "^1",
+    "@radix-ui/react-dropdown-menu": "^2",
+    "@radix-ui/react-slot": "^1",
+    "@radix-ui/react-label": "^2"
   }
 }
