@@ -52,16 +52,16 @@ function resolveRoute(context: ExecutionContext): string {
   return `${httpMethod} ${joined}`;
 }
 
-function getTenant(req: Request): TenantContext {
-  const tenant = (req as unknown as { tenant?: TenantContext }).tenant;
-  if (!tenant) {
-    throw new DomainException(
-      "UNAUTHENTICATED",
-      "Tenant context required for idempotent operations",
-      HttpStatus.UNAUTHORIZED,
-    );
+function resolveTenantContext(req: Request): { orgId: string; userId: string | null } | null {
+  const authTenant = (req as unknown as { tenant?: TenantContext }).tenant;
+  if (authTenant?.orgId) {
+    return { orgId: authTenant.orgId, userId: authTenant.userId };
   }
-  return tenant;
+  const publicTenant = (req as unknown as { publicTenant?: { organizationId: string } }).publicTenant;
+  if (publicTenant?.organizationId) {
+    return { orgId: publicTenant.organizationId, userId: null };
+  }
+  return null;
 }
 
 function extractErrorCode(err: unknown): ErrorCode {
@@ -110,9 +110,16 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     const route = resolveRoute(context);
-    const tenant = getTenant(req);
-    const orgId = tenant.orgId;
-    const userId = tenant.userId;
+    const tenantCtx = resolveTenantContext(req);
+    if (!tenantCtx) {
+      throw new DomainException(
+        "BAD_REQUEST",
+        "Tenant context required for idempotent operations",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const { orgId } = tenantCtx;
+    const userId = tenantCtx.userId as string; // withTenantContext handles null internally
     const requestHash = hashPayload(req.body);
 
     const existing = await withTenantContext(this.db, orgId, userId, async (tx) => {

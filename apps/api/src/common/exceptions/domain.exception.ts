@@ -128,3 +128,33 @@ export class WithinBlockException extends DomainException {
     );
   }
 }
+
+export class CancelTokenInvalidException extends DomainException {
+  constructor() {
+    super(
+      "CANCEL_TOKEN_INVALID",
+      "Cancel token is invalid",
+      HttpStatus.GONE,
+    );
+  }
+}
+
+export class CancelTokenExpiredException extends DomainException {
+  constructor() {
+    super(
+      "CANCEL_TOKEN_EXPIRED",
+      "Cancel token has expired",
+      HttpStatus.GONE,
+    );
+  }
+}
+
+export class CancelTokenGoneException extends DomainException {
+  constructor() {
+    super(
+      "CANCEL_TOKEN_INVALID",
+      "Cancel token is no longer valid",
+      HttpStatus.GONE,
+    );
+  }
+}

@@ -1,6 +1,21 @@
-import { Controller, Get, Param, Query, Req, HttpException, HttpStatus } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Body,
+  Req,
+  HttpException,
+  HttpStatus,
+  UseGuards,
+} from "@nestjs/common";
 import type { Request } from "express";
 import { PublicBookingService } from "./public-booking.service";
+import { PublicTenantGuard } from "./guards/public-tenant.guard";
+import { Idempotent } from "../common/decorators/idempotent.decorator";
+import { PublicBookingInputSchema } from "@nexos/shared";
+import type { PublicBookingInput } from "@nexos/shared";
 
 function getClientIp(req: Request): string {
   return req.ip ?? "unknown";
@@ -57,5 +72,53 @@ export class PublicBookingController {
       professionalSlug,
       { from, to, serviceId },
     );
+  }
+
+  @Idempotent()
+  @UseGuards(PublicTenantGuard)
+  @Post(":orgSlug/appointments")
+  async bookAppointment(
+    @Req() req: Request,
+    @Param("orgSlug") orgSlug: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = PublicBookingInputSchema.safeParse(body);
+    if (!parsed.success) {
+      const details = parsed.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        issue: issue.code === "invalid_type" ? "required" : issue.code,
+      }));
+      validationError(details);
+    }
+    const result = await this.service.bookAppointment(
+      getClientIp(req),
+      orgSlug,
+      parsed.data as PublicBookingInput,
+    );
+    return result;
+  }
+
+  @Post("cancel/preview")
+  async previewCancel(@Req() req: Request, @Body() body: unknown) {
+    const token: string | undefined =
+      typeof body === "object" && body !== null && "token" in body
+        ? (body as { token: string }).token
+        : undefined;
+    if (!token) {
+      validationError([{ field: "token", issue: "required" }]);
+    }
+    return this.service.previewCancel(getClientIp(req), token);
+  }
+
+  @Post("cancel")
+  async cancelByToken(@Req() req: Request, @Body() body: unknown) {
+    const token: string | undefined =
+      typeof body === "object" && body !== null && "token" in body
+        ? (body as { token: string }).token
+        : undefined;
+    if (!token) {
+      validationError([{ field: "token", issue: "required" }]);
+    }
+    return this.service.cancelByToken(getClientIp(req), token);
   }
 }

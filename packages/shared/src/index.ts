@@ -66,3 +66,23 @@ export {
   PublicVitrineResponseSchema,
 } from "./dto/public-vitrine.dto.js";
 export type { PublicVitrineResponse } from "./dto/public-vitrine.dto.js";
+export {
+  PublicBookingInputSchema,
+  PublicBookingResponseSchema,
+  MAX_BOOKING_HORIZON_DAYS,
+  MIN_SCHEDULE_NOTICE_MIN,
+} from "./dto/public-booking.dto.js";
+export type {
+  PublicBookingInput,
+  PublicBookingResponse,
+} from "./dto/public-booking.dto.js";
+export {
+  CancelPreviewInputSchema,
+  CancelPreviewResponseSchema,
+  CancelInputSchema,
+} from "./dto/public-cancel.dto.js";
+export type {
+  CancelPreviewInput,
+  CancelPreviewResponse,
+  CancelInput,
+} from "./dto/public-cancel.dto.js";
