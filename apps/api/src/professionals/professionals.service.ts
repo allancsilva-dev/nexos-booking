@@ -8,6 +8,7 @@ import {
 import { sql } from "drizzle-orm";
 
 import { DbService } from "../db";
+import { withTenantContext } from "../db/tenant-context";
 import { ProfessionalsRepository } from "./professionals.repository";
 import { auditLogs } from "../../db/schema";
 import {
@@ -80,7 +81,7 @@ export class ProfessionalsService {
   ) {}
 
   async findAll(orgId: string) {
-    return this.db.client.transaction(async (tx) => {
+    return withTenantContext(this.db, orgId, null, async (tx) => {
       const rows = await this.repo.findAll(tx, orgId);
       return rows.map(mapProfessional);
     });
@@ -91,7 +92,7 @@ export class ProfessionalsService {
     userId: string,
     input: CreateProfessionalInput,
   ) {
-    return this.db.client.transaction(async (tx) => {
+    return withTenantContext(this.db, orgId, userId, async (tx) => {
       if (input.userId) {
         const ok = await this.repo.findMembershipActive(tx, orgId, input.userId);
         if (!ok) {
@@ -177,7 +178,7 @@ export class ProfessionalsService {
     userId: string,
     input: UpdateProfessionalInput,
   ) {
-    return this.db.client.transaction(async (tx) => {
+    return withTenantContext(this.db, orgId, userId, async (tx) => {
       const professional = await this.repo.findById(tx, orgId, id);
       if (!professional) {
         throw new NotFoundException("Professional not found");
