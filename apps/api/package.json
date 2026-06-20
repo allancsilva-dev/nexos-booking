@@ -12,7 +12,8 @@
     "test:http": "node ./scripts/test-http.mjs",
     "test:auth": "node ./scripts/test-auth.mjs",
     "test:auth-email": "node ./scripts/test-auth-email.mjs",
-    "test:maintenance": "node scripts/test-maintenance.mjs"
+    "test:maintenance": "node scripts/test-maintenance.mjs",
+    "test:idempotency": "node scripts/test-idempotency.mjs"
   },
   "dependencies": {
     "@nestjs/common": "latest",
@@ -25,6 +26,7 @@
     "jose": "^6.2.3",
     "pg": "^8.21.0",
     "reflect-metadata": "latest",
+    "@nestjs/event-emitter": "^3",
     "@nestjs/schedule": "^5",
     "resend": "latest",
     "rxjs": "latest"

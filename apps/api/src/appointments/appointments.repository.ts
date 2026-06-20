@@ -268,6 +268,7 @@ export class AppointmentsRepository {
       metadata: Record<string, unknown>;
     },
   ) {
-    await tx.insert(appointmentEvents).values(row);
+    const result = await tx.insert(appointmentEvents).values(row).returning();
+    return result[0]!;
   }
 }

@@ -223,6 +223,9 @@ export const appointmentEvents = pgTable("appointment_events", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("appointment_events_appt_idx").on(table.appointment_id, table.created_at),
+  index("appointment_events_unpublished_idx")
+    .on(table.created_at)
+    .where(sql`${table.published_at} IS NULL AND ${table.publish_failed_at} IS NULL`),
 ]);
 
 // ─── 9.1 idempotency_keys ──────────────────────────────────────────
