@@ -4,20 +4,23 @@ import {
   ConflictException,
   UnauthorizedException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import { RateLimitException } from "../common/exceptions/rate-limit.exception";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID, randomBytes, createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { DbService } from "../db";
 import type { DbTransaction } from "../db/db.types";
-import { organizations, refreshSessions } from "../../db/schema";
+import { organizations, refreshSessions, auditLogs } from "../../db/schema";
 import { PasswordService } from "./password/password.service";
 import { JwtService } from "./jwt/jwt.service";
 import { SessionService } from "./sessions/session.service";
 import { AuthRepository } from "./auth.repository";
 import { MemoryRateLimiter } from "./rate-limit/rate-limiter.memory";
 import type { RateLimiter } from "./rate-limit/rate-limiter.interface";
+import { ResendSender } from "./notifications/resend-sender";
 import type { RegisterInput } from "./dto/register.dto";
 import type { LoginInput } from "./dto/login.dto";
 import type { SwitchOrgInput } from "./dto/switch-org.dto";
@@ -40,6 +43,7 @@ export class AuthService {
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(SessionService) private readonly session: SessionService,
     @Inject(AuthRepository) private readonly repo: AuthRepository,
+    @Inject(ResendSender) private readonly notification: ResendSender,
   ) {
     this.rateLimiter = new MemoryRateLimiter();
   }
@@ -366,6 +370,309 @@ export class AuthService {
       });
 
       return { accessToken };
+    });
+  }
+
+  async verifyEmail(token: string): Promise<{ verified: boolean }> {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+
+    return this.db.client.transaction(async (tx) => {
+      const record = await this.repo.findVerificationTokenByHash(
+        tx,
+        tokenHash,
+        "EMAIL_VERIFY",
+      );
+
+      if (!record) {
+        throw new HttpException(
+          "Verification token not found",
+          HttpStatus.GONE,
+        );
+      }
+
+      if (record.used_at) {
+        throw new HttpException(
+          "Verification token has already been used",
+          HttpStatus.GONE,
+        );
+      }
+
+      if (new Date(record.expires_at) <= new Date()) {
+        throw new HttpException(
+          "Verification token has expired",
+          HttpStatus.GONE,
+        );
+      }
+
+      const consumed = await this.repo.consumeToken(tx, record.id);
+      if (!consumed) {
+        throw new HttpException(
+          "Verification token has already been used",
+          HttpStatus.GONE,
+        );
+      }
+
+      await this.repo.updateEmailVerifiedAt(tx, record.user_id);
+
+      await tx.insert(auditLogs).values({
+        actor_user_id: record.user_id,
+        action: "EMAIL_VERIFIED",
+        target_type: "user",
+        target_id: record.user_id,
+      });
+
+      return { verified: true };
+    });
+  }
+
+  async resendVerification(userId: string): Promise<void> {
+    const rlResult = await this.rateLimiter.consume(
+      `resend:user:${userId}`,
+      3,
+      3600_000,
+    );
+    if (!rlResult.allowed) {
+      throw new RateLimitException(
+        Math.ceil((rlResult.resetAt - Date.now()) / 1000),
+      );
+    }
+
+    const user = await this.db.client.transaction(async (tx) => {
+      return this.repo.findUserById(tx, userId);
+    });
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    const plainToken = randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256").update(plainToken).digest("hex");
+
+    await this.db.client.transaction(async (tx) => {
+      await this.repo.invalidatePreviousTokens(
+        tx,
+        userId,
+        "EMAIL_VERIFY",
+      );
+
+      await this.repo.createVerificationToken(tx, {
+        userId,
+        purpose: "EMAIL_VERIFY",
+        tokenHash,
+        expiresAt: new Date(Date.now() + 24 * 3600_000),
+      });
+    });
+
+    this.notification
+      .send("email", "verify-email", user.email, {
+        token: plainToken,
+        name: user.name,
+      })
+      .catch(() => {});
+  }
+
+  async forgotPassword(email: string, ip: string): Promise<void> {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const emailResult = await this.rateLimiter.consume(
+      `forgot:email:${normalizedEmail}`,
+      3,
+      3600_000,
+    );
+    if (!emailResult.allowed) {
+      throw new RateLimitException(
+        Math.ceil((emailResult.resetAt - Date.now()) / 1000),
+      );
+    }
+
+    const ipResult = await this.rateLimiter.consume(
+      `forgot:ip:${ip}`,
+      10,
+      3600_000,
+    );
+    if (!ipResult.allowed) {
+      throw new RateLimitException(
+        Math.ceil((ipResult.resetAt - Date.now()) / 1000),
+      );
+    }
+
+    void createHash("sha256").update(normalizedEmail).digest("hex");
+
+    return this.db.client.transaction(async (tx) => {
+      const user = await this.repo.findUserByEmail(tx, normalizedEmail);
+
+      if (user) {
+        const plainToken = randomBytes(32).toString("hex");
+        const tokenHash = createHash("sha256")
+          .update(plainToken)
+          .digest("hex");
+
+        await this.repo.createVerificationToken(tx, {
+          userId: user.id,
+          purpose: "PASSWORD_RESET",
+          tokenHash,
+          expiresAt: new Date(Date.now() + 24 * 3600_000),
+        });
+
+        this.notification
+          .send("email", "password-reset", user.email, {
+            token: plainToken,
+            name: user.name,
+          })
+          .catch(() => {});
+      } else {
+        void randomBytes(32).toString("hex");
+        void createHash("sha256")
+          .update(randomBytes(32).toString("hex"))
+          .digest("hex");
+      }
+    });
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{ success: boolean }> {
+    if (newPassword.length < 8) {
+      throw new HttpException(
+        "Password must be at least 8 characters",
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+
+    return this.db.client.transaction(async (tx) => {
+      const record = await this.repo.findVerificationTokenByHash(
+        tx,
+        tokenHash,
+        "PASSWORD_RESET",
+      );
+
+      if (!record) {
+        throw new HttpException(
+          "Reset token not found",
+          HttpStatus.GONE,
+        );
+      }
+
+      if (record.used_at) {
+        throw new HttpException(
+          "Reset token has already been used",
+          HttpStatus.GONE,
+        );
+      }
+
+      if (new Date(record.expires_at) <= new Date()) {
+        throw new HttpException(
+          "Reset token has expired",
+          HttpStatus.GONE,
+        );
+      }
+
+      const consumed = await this.repo.consumeToken(tx, record.id);
+      if (!consumed) {
+        throw new HttpException(
+          "Reset token has already been used",
+          HttpStatus.GONE,
+        );
+      }
+
+      const passwordHash = await this.password.hash(newPassword);
+
+      await this.repo.updatePasswordHash(tx, record.user_id, passwordHash);
+
+      const revokedCount = await this.session.revokeAllForUser(
+        tx,
+        record.user_id,
+      );
+
+      await tx.insert(auditLogs).values({
+        actor_user_id: record.user_id,
+        action: "PASSWORD_CHANGED",
+        target_type: "user",
+        target_id: record.user_id,
+      });
+
+      await tx.insert(auditLogs).values({
+        actor_user_id: record.user_id,
+        action: "SESSION_REVOKED",
+        target_type: "user",
+        target_id: record.user_id,
+        metadata: {
+          count: revokedCount,
+          reason: "password_reset",
+        },
+      });
+
+      return { success: true };
+    });
+  }
+
+  async changePassword(
+    userId: string,
+    currentFamilyId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ success: boolean }> {
+    if (newPassword.length < 8) {
+      throw new HttpException(
+        "Password must be at least 8 characters",
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    if (newPassword === currentPassword) {
+      throw new HttpException(
+        "New password must be different from current password",
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    return this.db.client.transaction(async (tx) => {
+      const user = await this.repo.findUserById(tx, userId);
+      if (!user) {
+        throw new UnauthorizedException("User not found");
+      }
+
+      const valid = await this.password.verify(
+        user.password_hash,
+        currentPassword,
+      );
+      if (!valid) {
+        throw new UnauthorizedException("Current password is incorrect");
+      }
+
+      const newHash = await this.password.hash(newPassword);
+
+      await this.repo.updatePasswordHash(tx, userId, newHash);
+
+      const revokedCount =
+        await this.session.revokeAllForUserExceptFamily(
+          tx,
+          userId,
+          currentFamilyId,
+        );
+
+      await tx.insert(auditLogs).values({
+        actor_user_id: userId,
+        action: "PASSWORD_CHANGED",
+        target_type: "user",
+        target_id: userId,
+      });
+
+      await tx.insert(auditLogs).values({
+        actor_user_id: userId,
+        action: "SESSION_REVOKED",
+        target_type: "user",
+        target_id: userId,
+        metadata: {
+          count: revokedCount,
+          reason: "password_change",
+        },
+      });
+
+      return { success: true };
     });
   }
 

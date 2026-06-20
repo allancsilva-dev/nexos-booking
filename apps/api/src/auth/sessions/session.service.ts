@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { randomUUID, createHash } from "node:crypto";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, ne } from "drizzle-orm";
 
 import type { DbTransaction } from "../../db/db.types";
 import { refreshSessions } from "../../../db/schema";
@@ -151,5 +151,39 @@ export class SessionService {
           isNull(refreshSessions.revoked_at),
         ),
       );
+  }
+
+  async revokeAllForUser(
+    tx: DbTransaction,
+    userId: string,
+  ): Promise<number> {
+    const result = await tx
+      .update(refreshSessions)
+      .set({ revoked_at: new Date() })
+      .where(
+        and(
+          eq(refreshSessions.user_id, userId),
+          isNull(refreshSessions.revoked_at),
+        ),
+      );
+    return result.rowCount ?? 0;
+  }
+
+  async revokeAllForUserExceptFamily(
+    tx: DbTransaction,
+    userId: string,
+    exceptFamilyId: string,
+  ): Promise<number> {
+    const result = await tx
+      .update(refreshSessions)
+      .set({ revoked_at: new Date() })
+      .where(
+        and(
+          eq(refreshSessions.user_id, userId),
+          isNull(refreshSessions.revoked_at),
+          ne(refreshSessions.family_id, exceptFamilyId),
+        ),
+      );
+    return result.rowCount ?? 0;
   }
 }

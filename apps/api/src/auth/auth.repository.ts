@@ -1,10 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import type { DbTransaction } from "../db/db.types";
 import {
   users,
   organizations,
   organizationUsers,
+  verificationTokens,
 } from "../../db/schema";
 
 @Injectable()
@@ -141,5 +142,98 @@ export class AuthRepository {
       .where(eq(users.id, userId))
       .limit(1);
     return rows[0] ?? null;
+  }
+
+  async createVerificationToken(
+    tx: DbTransaction,
+    params: {
+      userId: string;
+      purpose: string;
+      tokenHash: string;
+      expiresAt: Date;
+    },
+  ) {
+    const [row] = await tx
+      .insert(verificationTokens)
+      .values({
+        user_id: params.userId,
+        purpose: params.purpose,
+        token_hash: params.tokenHash,
+        expires_at: params.expiresAt,
+      })
+      .returning();
+    return row!;
+  }
+
+  async findVerificationTokenByHash(
+    tx: DbTransaction,
+    hash: string,
+    purpose: string,
+  ) {
+    const rows = await tx
+      .select()
+      .from(verificationTokens)
+      .where(
+        and(
+          eq(verificationTokens.token_hash, hash),
+          eq(verificationTokens.purpose, purpose),
+        ),
+      )
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  async consumeToken(
+    tx: DbTransaction,
+    id: string,
+  ): Promise<boolean> {
+    const result = await tx
+      .update(verificationTokens)
+      .set({ used_at: new Date() })
+      .where(
+        and(
+          eq(verificationTokens.id, id),
+          isNull(verificationTokens.used_at),
+        ),
+      );
+    return (result.rowCount ?? 0) === 1;
+  }
+
+  async invalidatePreviousTokens(
+    tx: DbTransaction,
+    userId: string,
+    purpose: string,
+  ): Promise<void> {
+    await tx
+      .update(verificationTokens)
+      .set({ used_at: new Date() })
+      .where(
+        and(
+          eq(verificationTokens.user_id, userId),
+          eq(verificationTokens.purpose, purpose),
+          isNull(verificationTokens.used_at),
+        ),
+      );
+  }
+
+  async updateEmailVerifiedAt(
+    tx: DbTransaction,
+    userId: string,
+  ): Promise<void> {
+    await tx
+      .update(users)
+      .set({ email_verified_at: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  async updatePasswordHash(
+    tx: DbTransaction,
+    userId: string,
+    hash: string,
+  ): Promise<void> {
+    await tx
+      .update(users)
+      .set({ password_hash: hash })
+      .where(eq(users.id, userId));
   }
 }

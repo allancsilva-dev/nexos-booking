@@ -10,7 +10,8 @@
     "start": "node dist/main.js",
     "test:db": "node ./scripts/test-rls.mjs",
     "test:http": "node ./scripts/test-http.mjs",
-    "test:auth": "node ./scripts/test-auth.mjs"
+    "test:auth": "node ./scripts/test-auth.mjs",
+    "test:auth-email": "node ./scripts/test-auth-email.mjs"
   },
   "dependencies": {
     "@nestjs/common": "latest",
@@ -23,6 +24,7 @@
     "jose": "^6.2.3",
     "pg": "^8.21.0",
     "reflect-metadata": "latest",
+    "resend": "latest",
     "rxjs": "latest"
   },
   "devDependencies": {

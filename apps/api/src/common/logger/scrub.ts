@@ -39,6 +39,12 @@ function looksLikePhone(value: unknown): boolean {
   return digits.length >= 10 && digits.length <= 15;
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function looksLikeEmail(value: unknown): boolean {
+  return typeof value === "string" && EMAIL_REGEX.test(value);
+}
+
 export function scrub(obj: unknown, depth = 0): unknown {
   if (depth > 20) return "[MAX_DEPTH]";
   if (obj === null || obj === undefined) return obj;
@@ -56,6 +62,8 @@ export function scrub(obj: unknown, depth = 0): unknown {
       } else if (looksLikeJwt(value)) {
         result[key] = REDACTED;
       } else if (looksLikePhone(value)) {
+        result[key] = REDACTED;
+      } else if (looksLikeEmail(value)) {
         result[key] = REDACTED;
       } else if (typeof value === "object" && value !== null) {
         result[key] = scrub(value, depth + 1);

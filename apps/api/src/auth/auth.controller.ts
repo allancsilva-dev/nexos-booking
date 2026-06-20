@@ -18,6 +18,10 @@ import { CsrfGuard } from "./guards/csrf.guard";
 import type { RegisterInput } from "./dto/register.dto";
 import type { LoginInput } from "./dto/login.dto";
 import type { SwitchOrgInput } from "./dto/switch-org.dto";
+import type { VerifyEmailInput } from "./dto/verify-email.dto";
+import type { ForgotPasswordInput } from "./dto/forgot-password.dto";
+import type { ResetPasswordInput } from "./dto/reset-password.dto";
+import type { PasswordChangeInput } from "./dto/password-change.dto";
 
 const REFRESH_COOKIE = "refresh_token";
 const REFRESH_COOKIE_PATH = "/api/v1/auth/refresh";
@@ -164,5 +168,51 @@ export class AuthController {
   ) {
     const payload = (req as unknown as { accessPayload: { sub: string; sid: string; org?: string } }).accessPayload;
     return this.auth.switchOrg(payload.sub, payload.sid, body);
+  }
+
+  @Post("verify-email")
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Body() body: VerifyEmailInput) {
+    return this.auth.verifyEmail(body.token);
+  }
+
+  @Post("verify-email/resend")
+  @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(AuthGuard)
+  async resendVerification(@Req() req: Request) {
+    const payload = (req as unknown as { accessPayload: { sub: string; sid: string; org?: string } }).accessPayload;
+    await this.auth.resendVerification(payload.sub);
+  }
+
+  @Post("password/forgot")
+  @HttpCode(HttpStatus.ACCEPTED)
+  async forgotPassword(
+    @Body() body: ForgotPasswordInput,
+    @Req() req: Request,
+  ) {
+    const ip = getClientIp(req);
+    await this.auth.forgotPassword(body.email, ip);
+  }
+
+  @Post("password/reset")
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() body: ResetPasswordInput) {
+    return this.auth.resetPassword(body.token, body.newPassword);
+  }
+
+  @Post("password/change")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard)
+  async changePassword(
+    @Body() body: PasswordChangeInput,
+    @Req() req: Request,
+  ) {
+    const payload = (req as unknown as { accessPayload: { sub: string; sid: string; org?: string } }).accessPayload;
+    return this.auth.changePassword(
+      payload.sub,
+      payload.sid,
+      body.currentPassword,
+      body.newPassword,
+    );
   }
 }

@@ -71,13 +71,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? ("NOT_FOUND" as const)
             : status === 409
               ? ("APPOINTMENT_CONFLICT" as const)
+              : status === 410
+                ? ("VERIFICATION_TOKEN_INVALID" as const)
               : status === 429
                 ? ("RATE_LIMITED" as const)
                 : status === 401
                   ? ("UNAUTHENTICATED" as const)
                   : status === 403
                     ? ("AUTHZ_DENIED" as const)
-                    : ("INTERNAL_ERROR" as const);
+                    : status === 422
+                      ? ("VALIDATION_ERROR" as const)
+                      : ("INTERNAL_ERROR" as const);
 
       response.status(status).json(
         buildErrorEnvelope({
