@@ -27,3 +27,5 @@ export { ServiceSchema } from "./dto/service.dto.js";
 export type { ServiceDTO } from "./dto/service.dto.js";
 export { WorkingHoursSchema, ShiftSchema } from "./dto/working-hours.dto.js";
 export type { WorkingHoursInput, ShiftDTO } from "./dto/working-hours.dto.js";
+export { AvailabilityBlockSchema, CreateBlockSchema } from "./dto/availability-block.dto.js";
+export type { AvailabilityBlockDTO, CreateBlockInput } from "./dto/availability-block.dto.js";
