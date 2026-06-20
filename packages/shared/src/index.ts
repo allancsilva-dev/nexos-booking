@@ -29,3 +29,16 @@ export { WorkingHoursSchema, ShiftSchema } from "./dto/working-hours.dto.js";
 export type { WorkingHoursInput, ShiftDTO } from "./dto/working-hours.dto.js";
 export { AvailabilityBlockSchema, CreateBlockSchema } from "./dto/availability-block.dto.js";
 export type { AvailabilityBlockDTO, CreateBlockInput } from "./dto/availability-block.dto.js";
+export { alignToSlotGrid } from "./slot-grid.js";
+export {
+  AvailabilityQuerySchema,
+  AvailabilitySlotSchema,
+  AvailabilityDaySchema,
+  AvailabilityResponseSchema,
+} from "./dto/availability.dto.js";
+export type {
+  AvailabilityQuery,
+  AvailabilityResponse,
+  AvailabilitySlot,
+  AvailabilityDay,
+} from "./dto/availability.dto.js";
