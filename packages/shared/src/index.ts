@@ -86,3 +86,17 @@ export type {
   CancelPreviewResponse,
   CancelInput,
 } from "./dto/public-cancel.dto.js";
+export {
+  AppointmentListItemSchema,
+  AppointmentListResponseSchema,
+} from "./dto/appointment-list.dto.js";
+export type {
+  AppointmentListItemDTO,
+  AppointmentListResponse,
+} from "./dto/appointment-list.dto.js";
+export {
+  AppointmentEventSchema,
+} from "./dto/appointment-event.dto.js";
+export type {
+  AppointmentEventDTO,
+} from "./dto/appointment-event.dto.js";

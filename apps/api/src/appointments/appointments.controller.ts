@@ -1,9 +1,11 @@
 import {
   Controller,
   Inject,
+  Get,
   Post,
   Patch,
   Param,
+  Query,
   Body,
   Req,
   UseGuards,
@@ -178,6 +180,62 @@ export class AppointmentsController {
       tenant.role,
       id,
       version,
+    );
+  }
+
+  @Get()
+  @UseGuards(AuthGuard, TenantGuard)
+  async listAppointments(
+    @Req() req: Request,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("professionalId") professionalId?: string,
+    @Query("serviceId") serviceId?: string,
+    @Query("status") status?: string,
+    @Query("cursor") cursor?: string,
+    @Query("limit") limit?: string,
+  ) {
+    if (!from || !to) {
+      throw new HttpException(
+        {
+          error: {
+            code: "VALIDATION_ERROR" as const,
+            message: "Query params 'from' and 'to' are required",
+          },
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const tenant = getTenant(req);
+    return this.service.listAppointments(
+      tenant.orgId,
+      tenant.userId,
+      tenant.role,
+      {
+        from,
+        to,
+        professionalId,
+        serviceId,
+        status,
+        cursor,
+        limit: limit ? parseInt(limit, 10) : undefined,
+      },
+    );
+  }
+
+  @Get(":id/events")
+  @UseGuards(AuthGuard, TenantGuard)
+  async getEvents(
+    @Req() req: Request,
+    @Param("id") id: string,
+  ) {
+    const tenant = getTenant(req);
+    return this.service.getEvents(
+      tenant.orgId,
+      tenant.userId,
+      tenant.role,
+      id,
     );
   }
 }

@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { eq, and, lt, gt } from "drizzle-orm";
+import { eq, and, lt, gt, gte, or, asc } from "drizzle-orm";
 import type { DbTransaction } from "../db/db.types";
 import {
   professionals,
@@ -270,5 +270,90 @@ export class AppointmentsRepository {
   ) {
     const result = await tx.insert(appointmentEvents).values(row).returning();
     return result[0]!;
+  }
+
+  async findAppointments(
+    tx: DbTransaction,
+    orgId: string,
+    filters: {
+      from: Date;
+      to: Date;
+      professionalId?: string;
+      serviceId?: string;
+      status?: string;
+      cursor?: { startsAt: Date; id: string };
+      limit: number;
+    },
+  ) {
+    const conditions: ReturnType<typeof eq>[] = [
+      eq(appointments.organization_id, orgId),
+      gte(appointments.starts_at, filters.from),
+      lt(appointments.starts_at, filters.to),
+    ];
+
+    if (filters.professionalId) {
+      conditions.push(eq(appointments.professional_id, filters.professionalId));
+    }
+    if (filters.serviceId) {
+      conditions.push(eq(appointments.service_id, filters.serviceId));
+    }
+    if (filters.status) {
+      conditions.push(eq(appointments.status, filters.status));
+    }
+    if (filters.cursor) {
+      conditions.push(
+        or(
+          gt(appointments.starts_at, filters.cursor.startsAt),
+          and(
+            eq(appointments.starts_at, filters.cursor.startsAt),
+            gt(appointments.id, filters.cursor.id),
+          ),
+        )!,
+      );
+    }
+
+    return tx
+      .select({
+        id: appointments.id,
+        professional_id: appointments.professional_id,
+        service_id: appointments.service_id,
+        starts_at: appointments.starts_at,
+        ends_at: appointments.ends_at,
+        status: appointments.status,
+        source: appointments.source,
+        version: appointments.version,
+        client_name: clients.name,
+        client_phone: clients.phone,
+        professional_user_id: professionals.user_id,
+      })
+      .from(appointments)
+      .innerJoin(clients, eq(appointments.client_id, clients.id))
+      .innerJoin(professionals, eq(appointments.professional_id, professionals.id))
+      .where(and(...conditions))
+      .orderBy(asc(appointments.starts_at), asc(appointments.id))
+      .limit(filters.limit);
+  }
+
+  async findEventsByAppointment(
+    tx: DbTransaction,
+    orgId: string,
+    appointmentId: string,
+  ) {
+    return tx
+      .select({
+        id: appointmentEvents.id,
+        event_type: appointmentEvents.event_type,
+        actor_type: appointmentEvents.actor_type,
+        created_at: appointmentEvents.created_at,
+        metadata: appointmentEvents.metadata,
+      })
+      .from(appointmentEvents)
+      .where(
+        and(
+          eq(appointmentEvents.organization_id, orgId),
+          eq(appointmentEvents.appointment_id, appointmentId),
+        ),
+      )
+      .orderBy(asc(appointmentEvents.created_at), asc(appointmentEvents.id));
   }
 }

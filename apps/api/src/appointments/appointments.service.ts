@@ -131,6 +131,79 @@ function mapAppointment(
   };
 }
 
+function mapAppointmentListItem(
+  row: {
+    id: string;
+    professional_id: string;
+    service_id: string;
+    starts_at: Date;
+    ends_at: Date;
+    status: string;
+    source: string;
+    version: number;
+    client_name: string;
+    client_phone: string | null;
+    professional_user_id: string | null;
+  },
+  callerRole: string,
+  callerUserId: string,
+) {
+  const phone =
+    callerRole === "PROFESSIONAL" && row.professional_user_id !== callerUserId
+      ? row.client_phone
+        ? maskPhone(row.client_phone)
+        : null
+      : row.client_phone;
+
+  return {
+    id: row.id,
+    professionalId: row.professional_id,
+    serviceId: row.service_id,
+    clientName: row.client_name,
+    clientPhone: phone,
+    startsAt: row.starts_at.toISOString(),
+    endsAt: row.ends_at.toISOString(),
+    status: row.status,
+    source: row.source,
+    version: row.version,
+  };
+}
+
+function sanitizeEventMetadata(
+  raw: Record<string, unknown> | null,
+  eventType: string,
+): Record<string, unknown> {
+  const safe = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const allowed: string[] = {
+    CREATED: ["appointmentId", "professionalId", "serviceId", "clientId", "version", "outsideWorkingHours"],
+    RESCHEDULED: ["appointmentId", "version", "changedFields", "outsideWorkingHours"],
+    CANCELLED: ["appointmentId", "version"],
+    COMPLETED: ["appointmentId", "version"],
+    NO_SHOW: ["appointmentId", "version"],
+  }[eventType] ?? [];
+  const result: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in safe) result[key] = safe[key];
+  }
+  return result;
+}
+
+function encodeCursor(startsAt: Date, id: string): string {
+  return Buffer.from(JSON.stringify({ startsAt: startsAt.toISOString(), id })).toString("base64");
+}
+
+function decodeCursor(raw: string): { startsAt: Date; id: string } | null {
+  try {
+    const decoded = Buffer.from(raw, "base64").toString("utf-8");
+    const parsed = JSON.parse(decoded) as { startsAt: string; id: string };
+    const startsAt = new Date(parsed.startsAt);
+    if (isNaN(startsAt.getTime())) return null;
+    return { startsAt, id: parsed.id };
+  } catch {
+    return null;
+  }
+}
+
 @Injectable()
 export class AppointmentsService {
   constructor(
@@ -372,6 +445,7 @@ export class AppointmentsService {
             date: startsAt.toISOString().split("T")[0]!,
             version: 1,
             occurredAt: new Date().toISOString(),
+            organizationId: orgId,
           };
 
           return {
@@ -631,6 +705,7 @@ export class AppointmentsService {
           date: eventDate,
           version: version + 1,
           occurredAt: new Date().toISOString(),
+          organizationId: orgId,
         };
 
         return {
@@ -810,6 +885,7 @@ export class AppointmentsService {
           date: appointment.starts_at.toISOString().split("T")[0]!,
           version: version + 1,
           occurredAt: new Date().toISOString(),
+          organizationId: orgId,
         };
 
         return {
@@ -830,6 +906,158 @@ export class AppointmentsService {
     this.publishFastPath(orgId, userId, eventId, eventPayload);
 
     return result;
+  }
+
+  async listAppointments(
+    orgId: string,
+    userId: string,
+    role: string,
+    filters: {
+      from: string;
+      to: string;
+      professionalId?: string;
+      serviceId?: string;
+      status?: string;
+      cursor?: string;
+      limit?: number;
+    },
+  ) {
+    const fromDate = new Date(filters.from);
+    const toDate = new Date(filters.to);
+
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      throw new HttpException(
+        {
+          error: {
+            code: "VALIDATION_ERROR" as const,
+            message: "Invalid date range",
+            details: [{ field: "from", issue: "invalid_date" }, { field: "to", issue: "invalid_date" }],
+          },
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const windowMs = toDate.getTime() - fromDate.getTime();
+    if (windowMs <= 0 || windowMs > 31 * 24 * 60 * 60 * 1000) {
+      throw new HttpException(
+        {
+          error: {
+            code: "VALIDATION_ERROR" as const,
+            message: "Date range must be positive and at most 31 days",
+          },
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
+
+    const ALLOWED_STATUSES = ["SCHEDULED", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"];
+    if (filters.status && !ALLOWED_STATUSES.includes(filters.status)) {
+      throw new HttpException(
+        { error: { code: "VALIDATION_ERROR" as const, message: "Invalid status filter", details: [{ field: "status", issue: "must be one of: " + ALLOWED_STATUSES.join(", ") }] } },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    let cursor: { startsAt: Date; id: string } | undefined;
+    if (filters.cursor) {
+      const decoded = decodeCursor(filters.cursor);
+      if (!decoded) {
+        throw new HttpException(
+          {
+            error: {
+              code: "VALIDATION_ERROR" as const,
+              message: "Invalid cursor",
+            },
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+      cursor = decoded;
+    }
+
+    let effectiveProfessionalId = filters.professionalId;
+
+    if (role === "PROFESSIONAL") {
+      const profByUser = await withTenantContext(this.db, orgId, userId, async (tx) => {
+        return this.repo.findProfessionalByUserId(tx, orgId, userId);
+      });
+      if (!profByUser) {
+        throw new ForbiddenException("Forbidden");
+      }
+      if (effectiveProfessionalId && effectiveProfessionalId !== profByUser.id) {
+        throw new ForbiddenException("Forbidden");
+      }
+      effectiveProfessionalId = profByUser.id;
+    }
+
+    const rows = await withTenantContext(this.db, orgId, userId, async (tx) => {
+      return this.repo.findAppointments(tx, orgId, {
+        from: fromDate,
+        to: toDate,
+        professionalId: effectiveProfessionalId,
+        serviceId: filters.serviceId,
+        status: filters.status,
+        cursor,
+        limit: limit + 1,
+      });
+    });
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    let nextCursor: string | null = null;
+    if (hasMore && page.length > 0) {
+      const last = page[page.length - 1]!;
+      nextCursor = encodeCursor(last.starts_at, last.id);
+    }
+
+    const items = page.map((row) => mapAppointmentListItem(row, role, userId));
+
+    return { items, nextCursor };
+  }
+
+  async getEvents(
+    orgId: string,
+    userId: string,
+    role: string,
+    appointmentId: string,
+  ) {
+    const { events } = await withTenantContext(
+      this.db,
+      orgId,
+      userId,
+      async (tx) => {
+        const appointment = await this.repo.findAppointmentById(tx, orgId, appointmentId);
+        if (!appointment) {
+          throw new NotFoundException("Appointment not found");
+        }
+
+        const profByUser = await this.repo.findProfessionalByUserId(tx, orgId, userId);
+        if (role === "PROFESSIONAL") {
+          if (!profByUser) {
+            throw new ForbiddenException("Forbidden");
+          }
+          if (profByUser.id !== appointment.professional_id) {
+            throw new ForbiddenException("Forbidden");
+          }
+        }
+
+        const events = await this.repo.findEventsByAppointment(tx, orgId, appointmentId);
+
+        return { events };
+      },
+    );
+
+    return events.map((row) => ({
+      id: row.id,
+      eventType: row.event_type,
+      actorType: row.actor_type,
+      occurredAt: row.created_at.toISOString(),
+      metadata: sanitizeEventMetadata(row.metadata as Record<string, unknown> | null, row.event_type),
+    }));
   }
 
   private publishFastPath(
