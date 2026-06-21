@@ -100,3 +100,15 @@ export {
 export type {
   AppointmentEventDTO,
 } from "./dto/appointment-event.dto.js";
+export {
+  ClientListItemSchema,
+  ClientDetailSchema,
+  UpdateClientSchema,
+  AnonymizeResponseSchema,
+} from "./dto/client-management.dto.js";
+export type {
+  ClientListItemDTO,
+  ClientDetailDTO,
+  UpdateClientInput,
+  AnonymizeResponse,
+} from "./dto/client-management.dto.js";

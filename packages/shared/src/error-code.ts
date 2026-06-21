@@ -51,6 +51,9 @@ export const ERROR_CODES = [
   "WORKING_HOURS_CONFLICT",
   // Profissionais
   "PROFESSIONAL_USER_TAKEN",
+  // Clientes
+  "PHONE_TAKEN",
+  "ALREADY_ANONYMIZED",
 ] as const;
 
 /** Union estável dos códigos de erro do contrato. */
