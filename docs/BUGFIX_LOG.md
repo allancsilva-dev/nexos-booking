@@ -68,7 +68,10 @@
 | BUG-006 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:auth comandos psql diretos usam credenciais hardcoded (`nexos_booking`) em vez de `process.env.POSTGRES_*` | CORRIGIDO |
 | BUG-007 | 2026-06-19 | PR-1.4 / Fase 1 | ALTA | `AuthService.generateSlug()` usa check-then-insert (SELECT → INSERT), viola ADR-011. Colisão de slug pode virar 500. | ABERTO |
 | BUG-008 | 2026-06-20 | PR-1.4 / Fase 1 | MÉDIA | Auth DTOs (`LoginInput`, `RegisterInput`, `SwitchOrgInput`, `MeResponse`) ausentes de `packages/shared`, divergindo de API §12/§21. Herdado do PR-1.4. Schemas definidos localmente em `apps/web` e `apps/api`. | ABERTO |
+| BUG-009 | 2026-06-22 | PR-1.4 / Fase 1 | MÉDIA | `AuthService` instancia `new MemoryRateLimiter()` inline (PR-1.4), divergindo do contrato que prevê `RateLimiter` como interface trocável via DI. Troca para Redis exigirá corrigir AuthService. PR-4.1 não corrige; registra provider próprio no PublicBookingModule. | ABERTO |
+| DIV-PR-4.3-DESIGN-SPEC | 2026-06-22 | PR-4.3 / Fase 4 | MÉDIA | `nexos-booking-design-spec.md` ausente. PR-4.3 usa `FRONTEND_DESIGN_REF.md` como fallback operacional. Revisão humana limitada a roadmap + acessibilidade + contrato das APIs públicas. Quando a design spec primária existir, o fluxo público deve ser reconciliado contra ela. | ABERTO |
 | PROPOSTA-001 | 2026-06-20 | PR-2.1 / Fase 2 | MÉDIA | Proposta de novo ErrorCode `PROFESSIONAL_USER_TAKEN` (409). Aprovado pelo api-contract-guardian — adicionado ao catálogo em `packages/shared/src/error-code.ts`. API_CONTRACTS.md §7 deve ser atualizado para incluir `PROFESSIONAL_USER_TAKEN` na categoria Profissionais. (Unique parcial `professionals_org_user_uk` — B1 do schema.) | ABERTO (canonical doc pendente) |
+| PROPOSTA-002 | 2026-06-20 | PR-3.2 / Fase 3 | MÉDIA | Proposta de novo ErrorCode `IDEMPOTENCY_KEY_REQUIRED` (400). Header `Idempotency-Key` ausente em rota `@Idempotent()`. Aprovado pelo api-contract-guardian — deve ser adicionado a `packages/shared/src/error-code.ts` (400, envelope padrão). API_CONTRACTS.md §7 deve ser atualizado para incluir `IDEMPOTENCY_KEY_REQUIRED` na categoria Idempotência. (Header obrigatório — ADR-008 v3 / §5.) | ABERTO (canonical doc pendente) |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -178,6 +181,20 @@
 - Branch/commit relacionado: `main` (código atual com o bug)
 - Prevenção de regressão: O `OrganizationsService` do PR-1.6 implementa o padrão correto como referência. O `AuthService.generateSlug()` será refatorado para usar o mesmo `SlugGenerator` + retry-on-conflict em PR futuro.
 - Status final: ABERTO
+
+### PROPOSTA-002 — `IDEMPOTENCY_KEY_REQUIRED` ausente do catálogo de ErrorCode e de `API_CONTRACTS.md` §7
+- Data: 2026-06-20
+- PR/Fase: PR-3.2 / Fase 3
+- Severidade: MÉDIA
+- Erro encontrado: O header `Idempotency-Key` é **obrigatório** nas mutações de agendamento (API_CONTRACTS.md §5, ADR-008 v3; §16), mas não existe um ErrorCode específico para o caso de header ausente em rota `@Idempotent()`. O catálogo `error-code.ts` não contém `IDEMPOTENCY_KEY_REQUIRED`, e `API_CONTRACTS.md` §7 também não o lista.
+- Sintoma: Se a implementação do PR-3.2 usar `VALIDATION_ERROR` (422) para header ausente, viola a convenção `400 vs 422` (§4): header obrigatório ausente é **malformação estrutural** (`400 BAD_REQUEST`), não violação de regra semântica (`422`). Se usar `BAD_REQUEST` genérico, perde-se rastreabilidade e o front não pode fazer lógica/i18n específica.
+- Causa raiz: O contrato original (§5) prevê o header como obrigatório mas não provisionou um código de erro para o caso de ausência — o foco estava no fluxo feliz (header presente, chave nova ou replay).
+- Impacto: O middleware/guarda `@Idempotent()` precisa de um código estável para header ausente. Usar `BAD_REQUEST` (genérico) ou `VALIDATION_ERROR` (422) sem `details` é frágil para o front.
+- Arquivo(s) afetado(s): `packages/shared/src/error-code.ts` (deve adicionar `IDEMPOTENCY_KEY_REQUIRED`), `API_CONTRACTS.md` §7 (deve ser atualizado na categoria Idempotência).
+- Correção aplicada: **api-contract-guardian aprova** a adição de `IDEMPOTENCY_KEY_REQUIRED` ao catálogo `error-code.ts` como código aditivo. Mapeamento: **`400` + envelope padrão** (header obrigatório ausente = malformação estrutural, não regra de negócio). `API_CONTRACTS.md` §7 deve ser atualizado para listar `IDEMPOTENCY_KEY_REQUIRED` na categoria Idempotência — esta entrada serve como PROPOSTA para essa atualização canônica.
+- Teste/validação executado: Não se aplica (proposta documental). O PR-3.2 deve incluir `IDEMPOTENCY_KEY_REQUIRED` em `error-code.ts` e usá-lo no middleware `@Idempotent()`.
+- Prevenção de regressão: Teste contratual em `error-code.contract-test.ts` deve validar que `IDEMPOTENCY_KEY_REQUIRED` consta no array `ERROR_CODES`.
+- Status final: ABERTO (canonical doc e código pendentes)
 
 ---
 

@@ -13,6 +13,7 @@ import { ServicesModule } from "./services";
 import { AppointmentsModule } from "./appointments";
 import { PublicBookingModule } from "./public-booking/public-booking.module";
 import { RealtimeModule } from "./realtime/realtime.module";
+import { ClientsModule } from "./clients";
 import { IdempotencyInterceptor } from "./common/interceptors/idempotency.interceptor";
 
 const dynamicImports = [
@@ -28,6 +29,7 @@ const dynamicImports = [
   AppointmentsModule,
   PublicBookingModule,
   RealtimeModule,
+  ClientsModule,
 ];
 
 if (process.env.ENABLE_HTTP_TEST_HARNESS === "1") {

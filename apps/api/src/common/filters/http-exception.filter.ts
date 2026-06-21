@@ -5,12 +5,35 @@ import {
   HttpException,
 } from "@nestjs/common";
 import type { Response, Request } from "express";
-import type { ErrorCode } from "@nexos/shared";
+import { isErrorCode, type ErrorCode } from "@nexos/shared";
 
 import { buildErrorEnvelope } from "../errors/build-error-envelope";
 import { RateLimitException } from "../exceptions/rate-limit.exception";
 import { ValidationException } from "../exceptions/validation.exception";
 import { DomainException } from "../exceptions/domain.exception";
+
+function codeFromHttpException(exception: HttpException): ErrorCode {
+  const body = exception.getResponse();
+  if (typeof body === "object" && body !== null) {
+    const record = body as Record<string, unknown>;
+    if (isErrorCode(record.code)) return record.code;
+
+    const nestedError = record.error;
+    if (typeof nestedError === "object" && nestedError !== null) {
+      const nestedCode = (nestedError as Record<string, unknown>).code;
+      if (isErrorCode(nestedCode)) return nestedCode;
+    }
+  }
+
+  const status = exception.getStatus();
+  if (status === 400) return "BAD_REQUEST";
+  if (status === 404) return "NOT_FOUND";
+  if (status === 429) return "RATE_LIMITED";
+  if (status === 401) return "UNAUTHENTICATED";
+  if (status === 403) return "AUTHZ_DENIED";
+  if (status === 422) return "VALIDATION_ERROR";
+  return "INTERNAL_ERROR";
+}
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -80,24 +103,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
               : "Request failed."
             : "Request failed.";
 
-      const code =
-        status === 400
-          ? ("BAD_REQUEST" as const)
-          : status === 404
-            ? ("NOT_FOUND" as const)
-            : status === 409
-              ? ("APPOINTMENT_CONFLICT" as const)
-              : status === 410
-                ? ("VERIFICATION_TOKEN_INVALID" as const)
-              : status === 429
-                ? ("RATE_LIMITED" as const)
-                : status === 401
-                  ? ("UNAUTHENTICATED" as const)
-                  : status === 403
-                    ? ("AUTHZ_DENIED" as const)
-                    : status === 422
-                      ? ("VALIDATION_ERROR" as const)
-                      : ("INTERNAL_ERROR" as const);
+      const code = codeFromHttpException(exception);
 
       response.status(status).json(
         buildErrorEnvelope({

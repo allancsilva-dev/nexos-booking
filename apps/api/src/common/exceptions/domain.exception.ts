@@ -1,13 +1,50 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
+import type { ErrorCode } from "@nexos/shared";
 
 export class DomainException extends HttpException {
-  public readonly errorCode: string;
+  public readonly errorCode: ErrorCode;
   public readonly retryAfterSeconds?: number;
 
-  constructor(errorCode: string, message: string, status: HttpStatus, retryAfterSeconds?: number) {
+  constructor(errorCode: ErrorCode, message: string, status: HttpStatus, retryAfterSeconds?: number) {
     super(message, status);
     this.errorCode = errorCode;
     this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+export class EmailTakenException extends DomainException {
+  constructor() {
+    super("EMAIL_TAKEN", "Email already registered", HttpStatus.CONFLICT);
+  }
+}
+
+export class InvalidCredentialsException extends DomainException {
+  constructor(message = "Invalid credentials") {
+    super("INVALID_CREDENTIALS", message, HttpStatus.UNAUTHORIZED);
+  }
+}
+
+export class RefreshReusedException extends DomainException {
+  constructor() {
+    super("REFRESH_REUSED", "Refresh token reused", HttpStatus.UNAUTHORIZED);
+  }
+}
+
+export class TokenExpiredException extends DomainException {
+  constructor(message = "Session expired") {
+    super("TOKEN_EXPIRED", message, HttpStatus.UNAUTHORIZED);
+  }
+}
+
+export class NoActiveOrgException extends DomainException {
+  constructor() {
+    super("NO_ACTIVE_ORG", "No active organization", HttpStatus.FORBIDDEN);
+  }
+}
+
+export class AuthzDeniedException extends DomainException {
+  constructor() {
+    super("AUTHZ_DENIED", "Authorization denied", HttpStatus.FORBIDDEN);
   }
 }
 

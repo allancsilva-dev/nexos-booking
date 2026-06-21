@@ -1,3 +1,1 @@
-export interface SwitchOrgInput {
-  organizationId: string;
-}
+export type { SwitchOrgInput } from "@nexos/shared";

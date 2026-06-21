@@ -3,13 +3,16 @@ import {
   Inject,
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
 } from "@nestjs/common";
 import type { Request } from "express";
 import { eq, and } from "drizzle-orm";
 
 import { organizationUsers } from "../../../db/schema";
 import { DbService } from "../../db";
+import {
+  AuthzDeniedException,
+  NoActiveOrgException,
+} from "../../common/exceptions/domain.exception";
 
 interface AccessPayload {
   sub: string;
@@ -33,11 +36,11 @@ export class TenantGuard implements CanActivate {
       .accessPayload;
 
     if (!payload) {
-      throw new ForbiddenException("Not authenticated");
+      throw new AuthzDeniedException();
     }
 
     if (!payload.org) {
-      throw new ForbiddenException("No active organization");
+      throw new NoActiveOrgException();
     }
 
     const rows = await this.db.client
@@ -56,7 +59,7 @@ export class TenantGuard implements CanActivate {
       .limit(1);
 
     if (rows.length === 0) {
-      throw new ForbiddenException("No active organization");
+      throw new NoActiveOrgException();
     }
 
     (req as unknown as { tenant: TenantContext }).tenant = {

@@ -32,7 +32,10 @@ import { OrganizationsModule } from "../organizations";
     AuthGuard,
     CsrfGuard,
     TenantGuard,
+    PasswordService,
     JwtService,
+    SessionService,
+    ResendSender,
     AuthService,
   ],
 })

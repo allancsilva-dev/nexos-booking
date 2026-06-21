@@ -2,7 +2,6 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
   Inject,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
@@ -11,6 +10,7 @@ import type { Request } from "express";
 import { ROLES_KEY } from "../decorators/roles.decorator";
 import { DbService } from "../../db";
 import { auditLogs } from "../../../db/schema";
+import { AuthzDeniedException } from "../../common/exceptions/domain.exception";
 
 interface TenantInfo {
   orgId: string;
@@ -21,7 +21,7 @@ interface TenantInfo {
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(DbService) private readonly db: DbService,
   ) {}
 
@@ -32,20 +32,20 @@ export class RolesGuard implements CanActivate {
     );
 
     if (!requiredRoles || requiredRoles.length === 0) {
-      throw new ForbiddenException("Authorization denied");
+      throw new AuthzDeniedException();
     }
 
     const req = context.switchToHttp().getRequest<Request>();
     const tenant = (req as unknown as { tenant?: TenantInfo }).tenant;
 
     if (!tenant) {
-      throw new ForbiddenException("Authorization denied");
+      throw new AuthzDeniedException();
     }
 
     const hasRole = requiredRoles.includes(tenant.role);
     if (!hasRole) {
       this.writeAudit(tenant, requiredRoles);
-      throw new ForbiddenException("Authorization denied");
+      throw new AuthzDeniedException();
     }
 
     return true;

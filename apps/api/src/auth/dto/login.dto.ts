@@ -1,4 +1,1 @@
-export interface LoginInput {
-  email: string;
-  password: string;
-}
+export type { LoginInput } from "@nexos/shared";

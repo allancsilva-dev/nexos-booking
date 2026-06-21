@@ -1,9 +1,6 @@
 import {
   Injectable,
   Inject,
-  ConflictException,
-  UnauthorizedException,
-  ForbiddenException,
   HttpException,
   HttpStatus,
   forwardRef,
@@ -26,6 +23,15 @@ import type { RegisterInput } from "./dto/register.dto";
 import type { LoginInput } from "./dto/login.dto";
 import type { SwitchOrgInput } from "./dto/switch-org.dto";
 import { InvitationsService } from "../organizations/invitations/invitations.service";
+import {
+  AuthzDeniedException,
+  EmailTakenException,
+  InvalidCredentialsException,
+  NoActiveOrgException,
+  RefreshReusedException,
+  TokenExpiredException,
+} from "../common/exceptions/domain.exception";
+import { ValidationException } from "../common/exceptions/validation.exception";
 
 const SLUG_MAX_RETRIES = 10;
 const RESERVED_SLUGS = new Set([
@@ -35,7 +41,7 @@ const RESERVED_SLUGS = new Set([
   "support", "status", "api-docs",
 ]);
 
-  @Injectable()
+@Injectable()
 export class AuthService {
   private readonly rateLimiter: RateLimiter;
 
@@ -74,7 +80,9 @@ export class AuthService {
     }
 
     if (!input.password || input.password.length < 8) {
-      throw new ForbiddenException("Password must be at least 8 characters");
+      throw new ValidationException("Invalid input", [
+        { field: "password", issue: "Password must be at least 8 characters" },
+      ]);
     }
 
     const normalizedEmail = input.email.toLowerCase().trim();
@@ -82,7 +90,7 @@ export class AuthService {
     return this.db.client.transaction(async (tx) => {
       const existing = await this.repo.findUserByEmail(tx, normalizedEmail);
       if (existing) {
-        throw new ConflictException("Email already registered");
+        throw new EmailTakenException();
       }
 
       const passwordHash = await this.password.hash(input.password);
@@ -168,7 +176,7 @@ export class AuthService {
     return this.db.client.transaction(async (tx) => {
       const user = await this.repo.findUserByEmail(tx, normalizedEmail);
       if (!user) {
-        throw new UnauthorizedException("Invalid credentials");
+        throw new InvalidCredentialsException();
       }
 
       const valid = await this.password.verify(
@@ -176,13 +184,13 @@ export class AuthService {
         input.password,
       );
       if (!valid) {
-        throw new UnauthorizedException("Invalid credentials");
+        throw new InvalidCredentialsException();
       }
 
       const memberships = await this.repo.findMemberships(tx, user.id);
 
       if (memberships.length === 0) {
-        throw new ForbiddenException("No active organization");
+        throw new NoActiveOrgException();
       }
 
       const refreshToken = this.jwt.generateRefreshToken();
@@ -245,7 +253,7 @@ export class AuthService {
       await this.db.client.transaction(async (tx) => {
         await this.session.revokeFamily(tx, reuse.familyId!);
       });
-      throw new UnauthorizedException("Token reused");
+      throw new RefreshReusedException();
     }
 
     return this.db.client.transaction(async (tx) => {
@@ -261,7 +269,7 @@ export class AuthService {
       );
 
       if (!rotated) {
-        throw new UnauthorizedException("Invalid refresh token");
+        throw new TokenExpiredException();
       }
 
       const sessionRow = await tx
@@ -271,14 +279,14 @@ export class AuthService {
         .limit(1);
 
       if (sessionRow.length === 0) {
-        throw new UnauthorizedException("Invalid refresh token");
+        throw new TokenExpiredException();
       }
 
       const userId = sessionRow[0]!.user_id;
 
       const user = await this.repo.findUserById(tx, userId);
       if (!user) {
-        throw new UnauthorizedException("User not found");
+        throw new TokenExpiredException();
       }
 
       const memberships = await this.repo.findMemberships(tx, user.id);
@@ -313,7 +321,7 @@ export class AuthService {
     return this.db.client.transaction(async (tx) => {
       const user = await this.repo.findUserById(tx, userId);
       if (!user) {
-        throw new UnauthorizedException("User not found");
+        throw new InvalidCredentialsException();
       }
 
       const memberships = await this.repo.findOrganizationsForUser(
@@ -360,11 +368,11 @@ export class AuthService {
       );
 
       if (!membership) {
-        throw new ForbiddenException("Authorization denied");
+        throw new AuthzDeniedException();
       }
 
       if (membership.status === "DISABLED") {
-        throw new ForbiddenException("Authorization denied");
+        throw new AuthzDeniedException();
       }
 
       const accessToken = await this.jwt.signAccess({
@@ -636,7 +644,7 @@ export class AuthService {
     return this.db.client.transaction(async (tx) => {
       const user = await this.repo.findUserById(tx, userId);
       if (!user) {
-        throw new UnauthorizedException("User not found");
+        throw new InvalidCredentialsException();
       }
 
       const valid = await this.password.verify(
@@ -644,7 +652,7 @@ export class AuthService {
         currentPassword,
       );
       if (!valid) {
-        throw new UnauthorizedException("Current password is incorrect");
+        throw new InvalidCredentialsException("Current password is incorrect");
       }
 
       const newHash = await this.password.hash(newPassword);

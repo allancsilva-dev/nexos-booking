@@ -1,3 +1,4 @@
+import { Inject } from "@nestjs/common";
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -20,18 +21,24 @@ export class AppointmentsGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server!: Server;
+  server?: Server;
 
   private readonly logger = new ScrubbedLogger();
 
   constructor(
-    private readonly jwt: JwtService,
-    private readonly db: DbService,
-    private readonly kickService: KickService,
+    @Inject(JwtService) private readonly jwt: JwtService,
+    @Inject(DbService) private readonly db: DbService,
+    @Inject(KickService) private readonly kickService: KickService,
   ) {}
 
-  afterInit(server: Server) {
-    this.kickService.setServer(server);
+  afterInit(server?: Server) {
+    const socketServer = server ?? this.server;
+    if (!socketServer) {
+      this.logger.warn("[ws] socket server not available during gateway init");
+      return;
+    }
+    this.server = socketServer;
+    this.kickService.setServer(socketServer);
   }
 
   async handleConnection(client: Socket): Promise<void> {
@@ -124,6 +131,11 @@ export class AppointmentsGateway
 
   @OnEvent("appointment.changed")
   handleAppointmentChanged(event: PublishedEvent): void {
+    if (!this.server) {
+      this.logger.warn("[ws] socket server unavailable, skipping appointment.changed emit");
+      return;
+    }
+
     const payload = {
       appointmentId: event.appointmentId,
       professionalId: event.professionalId,

@@ -6,8 +6,10 @@ import { AvailabilityBlocksRepository } from "./availability-blocks.repository";
 import { AvailabilityService } from "./availability.service";
 import { AvailabilityRepository } from "./availability.repository";
 import { AvailabilityController } from "./availability.controller";
+import { AuthModule } from "../auth";
 
 @Module({
+  imports: [AuthModule],
   controllers: [AvailabilityController],
   providers: [
     WorkingHoursService,

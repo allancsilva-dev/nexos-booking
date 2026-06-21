@@ -112,3 +112,15 @@ export type {
   UpdateClientInput,
   AnonymizeResponse,
 } from "./dto/client-management.dto.js";
+export {
+  RegisterInputSchema,
+  LoginInputSchema,
+  SwitchOrgInputSchema,
+  MeResponseSchema,
+} from "./dto/auth.dto.js";
+export type {
+  RegisterInput,
+  LoginInput,
+  SwitchOrgInput,
+  MeResponse,
+} from "./dto/auth.dto.js";

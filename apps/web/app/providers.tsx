@@ -8,6 +8,26 @@ import { useAuthStore } from "@/stores/auth-store";
 import { AuthBootstrapContext, type BootstrapResult } from "@/hooks/use-auth-bootstrap";
 import type { MeResponse } from "@/lib/auth-schemas";
 
+type ErrorEnvelope = {
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};
+
+async function readErrorCode(response: Response): Promise<string | null> {
+  try {
+    const body = (await response.clone().json()) as ErrorEnvelope;
+    return body.error?.code ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isSessionExpiredCode(code: string | null): boolean {
+  return code === "TOKEN_EXPIRED" || code === "REFRESH_REUSED";
+}
+
 function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const [result, setResult] = useState<BootstrapResult>({ status: "loading" });
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
@@ -29,9 +49,18 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
         });
 
         if (!refreshRes.ok) {
+          const code = await readErrorCode(refreshRes);
           if (!cancelled) {
             clearAuth();
-            setResult({ status: "error", error: "Session expired" });
+            if (refreshRes.status === 401 && !isSessionExpiredCode(code)) {
+              setResult({ status: "idle" });
+            } else if (isSessionExpiredCode(code)) {
+              setResult({ status: "error", error: "Session expired" });
+            } else if (refreshRes.status >= 500) {
+              setResult({ status: "error", error: "API unavailable" });
+            } else {
+              setResult({ status: "error", error: "Failed to refresh session" });
+            }
           }
           return;
         }
@@ -127,7 +156,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
       } catch {
         if (!cancelled) {
           clearAuth();
-          setResult({ status: "error", error: "Connection error" });
+          setResult({ status: "error", error: "API unavailable" });
         }
       }
     }

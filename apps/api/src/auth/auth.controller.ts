@@ -15,14 +15,17 @@ import type { Request, Response } from "express";
 import { AuthService } from "./auth.service";
 import { AuthGuard } from "./guards/auth.guard";
 import { CsrfGuard } from "./guards/csrf.guard";
-import type { RegisterInput } from "./dto/register.dto";
-import type { LoginInput } from "./dto/login.dto";
-import type { SwitchOrgInput } from "./dto/switch-org.dto";
 import type { VerifyEmailInput } from "./dto/verify-email.dto";
 import type { ForgotPasswordInput } from "./dto/forgot-password.dto";
 import type { ResetPasswordInput } from "./dto/reset-password.dto";
 import type { PasswordChangeInput } from "./dto/password-change.dto";
 import type { AcceptInviteInput } from "./dto/accept-invite.dto";
+import {
+  RegisterInputSchema,
+  LoginInputSchema,
+  SwitchOrgInputSchema,
+} from "@nexos/shared";
+import { ValidationException } from "../common/exceptions/validation.exception";
 
 const REFRESH_COOKIE = "refresh_token";
 const REFRESH_COOKIE_PATH = "/api/v1/auth/refresh";
@@ -65,18 +68,35 @@ function getClientIp(req: Request): string {
   return (req.ip ?? req.socket.remoteAddress ?? "127.0.0.1");
 }
 
+function validationDetails(
+  issues: { path: PropertyKey[]; message: string }[],
+) {
+  return issues.map((issue) => ({
+    field: issue.path.map(String).join("."),
+    issue: issue.message,
+  }));
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
   @Post("register")
   async register(
-    @Body() body: RegisterInput,
+    @Body() body: unknown,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const parsed = RegisterInputSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationException(
+        "Invalid input",
+        validationDetails(parsed.error.issues),
+      );
+    }
+
     const ip = getClientIp(req);
-    const result = await this.auth.register(body, ip);
+    const result = await this.auth.register(parsed.data, ip);
 
     setRefreshCookie(res, result.refreshToken);
 
@@ -90,12 +110,20 @@ export class AuthController {
   @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(
-    @Body() body: LoginInput,
+    @Body() body: unknown,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const parsed = LoginInputSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationException(
+        "Invalid input",
+        validationDetails(parsed.error.issues),
+      );
+    }
+
     const ip = getClientIp(req);
-    const result = await this.auth.login(body, ip);
+    const result = await this.auth.login(parsed.data, ip);
 
     setRefreshCookie(res, result.refreshToken);
 
@@ -164,11 +192,19 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
   async switchOrg(
-    @Body() body: SwitchOrgInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
+    const parsed = SwitchOrgInputSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationException(
+        "Invalid input",
+        validationDetails(parsed.error.issues),
+      );
+    }
+
     const payload = (req as unknown as { accessPayload: { sub: string; sid: string; org?: string } }).accessPayload;
-    return this.auth.switchOrg(payload.sub, payload.sid, body);
+    return this.auth.switchOrg(payload.sub, payload.sid, parsed.data);
   }
 
   @Post("verify-email")

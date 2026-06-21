@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Inject,
   type CallHandler,
   type ExecutionContext,
   type NestInterceptor,
@@ -21,7 +22,7 @@ import { idempotencyKeys } from "../../../db/schema";
 import { DomainException } from "../exceptions/domain.exception";
 import { buildErrorEnvelope } from "../errors/build-error-envelope";
 import type { TenantContext } from "../../auth/guards/tenant.guard";
-import type { ErrorCode } from "@nexos/shared";
+import { isErrorCode, type ErrorCode } from "@nexos/shared";
 
 function canonicalize(value: unknown): string {
   if (value === null || value === undefined) return "null";
@@ -65,13 +66,23 @@ function resolveTenantContext(req: Request): { orgId: string; userId: string | n
 }
 
 function extractErrorCode(err: unknown): ErrorCode {
-  if (err instanceof DomainException) return err.errorCode as ErrorCode;
+  if (err instanceof DomainException) return err.errorCode;
   if (err instanceof HttpException) {
+    const body = err.getResponse();
+    if (typeof body === "object" && body !== null) {
+      const record = body as Record<string, unknown>;
+      if (isErrorCode(record.code)) return record.code;
+
+      const nestedError = record.error;
+      if (typeof nestedError === "object" && nestedError !== null) {
+        const nestedCode = (nestedError as Record<string, unknown>).code;
+        if (isErrorCode(nestedCode)) return nestedCode;
+      }
+    }
+
     const status = err.getStatus();
     if (status === 400) return "BAD_REQUEST";
     if (status === 404) return "NOT_FOUND";
-    if (status === 409) return "APPOINTMENT_CONFLICT";
-    if (status === 410) return "VERIFICATION_TOKEN_INVALID";
     if (status === 429) return "RATE_LIMITED";
     if (status === 401) return "UNAUTHENTICATED";
     if (status === 403) return "AUTHZ_DENIED";
@@ -83,8 +94,8 @@ function extractErrorCode(err: unknown): ErrorCode {
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
   constructor(
-    private readonly reflector: Reflector,
-    private readonly db: DbService,
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(DbService) private readonly db: DbService,
   ) {}
 
   async intercept(context: ExecutionContext, next: CallHandler): Promise<ReturnType<CallHandler["handle"]>> {
@@ -249,22 +260,33 @@ export class IdempotencyInterceptor implements NestInterceptor {
               requestId,
             });
 
-            withTenantContext(this.db, orgId, userId, async (tx) => {
-              await tx
-                .update(idempotencyKeys)
-                .set({
-                  state: "FAILED",
-                  response: envelope,
-                  response_status_code: statusCode,
-                })
-                .where(
-                  and(
-                    eq(idempotencyKeys.organization_id, orgId),
-                    eq(idempotencyKeys.key, key),
-                    eq(idempotencyKeys.route, route),
-                  ),
-                );
-            }).catch(() => {});
+            try {
+              await withTenantContext(this.db, orgId, userId, async (tx) => {
+                await tx
+                  .update(idempotencyKeys)
+                  .set({
+                    state: "FAILED",
+                    response: envelope,
+                    response_status_code: statusCode,
+                  })
+                  .where(
+                    and(
+                      eq(idempotencyKeys.organization_id, orgId),
+                      eq(idempotencyKeys.key, key),
+                      eq(idempotencyKeys.route, route),
+                    ),
+                  );
+              });
+            } catch (persistError) {
+              console.error("[idempotency] failed to persist FAILED state", {
+                requestId,
+                route,
+                error:
+                  persistError instanceof Error
+                    ? persistError.message
+                    : "unknown",
+              });
+            }
 
             throw err;
           })(),
