@@ -39,7 +39,9 @@ pnpm dev               # Turborepo (API :3001, Web :3000)
 
 | Comando | Descrição |
 |---|---|
-| `pnpm dev` | Sobe API + Web em dev |
+| `pnpm dev` | Sobe API (:3001) + Web (:3000) via Turborepo |
+| `pnpm --filter @nexos/api dev` | Sobe apenas a API (NestJS) |
+| `pnpm --filter @nexos/web dev` | Sobe apenas o frontend (Next.js) |
 | `pnpm build` | Build de todos os pacotes |
 | `pnpm lint` | Lint em todos os pacotes |
 | `pnpm --filter @nexos/api migrate:fresh` | Recria banco e aplica migrations do zero |
