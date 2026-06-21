@@ -10,6 +10,7 @@ import { sql } from "drizzle-orm";
 import { DbService } from "../db";
 import { OrganizationsRepository } from "./organizations.repository";
 import { SessionService } from "../auth/sessions/session.service";
+import { KickService } from "../realtime/kick.service";
 import { auditLogs } from "../../db/schema";
 import {
   LastOwnerException,
@@ -19,6 +20,7 @@ import {
   generateSlugCandidates,
   isReservedSlug,
 } from "./slug-generator";
+import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
 import type { UpdateOrganizationInput } from "./dto/update-organization.dto";
 import type { UpdateMemberInput } from "./dto/update-member.dto";
 
@@ -26,10 +28,13 @@ const SLUG_MAX_RETRIES = 10;
 
 @Injectable()
 export class OrganizationsService {
+  private readonly logger = new ScrubbedLogger();
+
   constructor(
     @Inject(DbService) private readonly db: DbService,
     @Inject(OrganizationsRepository) private readonly repo: OrganizationsRepository,
     @Inject(SessionService) private readonly session: SessionService,
+    @Inject(KickService) private readonly kickService: KickService,
   ) {}
 
   async me(userId: string) {
@@ -204,7 +209,9 @@ export class OrganizationsService {
     targetUserId: string,
     input: UpdateMemberInput,
   ) {
-    return this.db.client.transaction(async (tx) => {
+    let familyIds: string[] = [];
+
+    const result = await this.db.client.transaction(async (tx) => {
       const targetMembership = await this.repo.findMembership(
         tx,
         orgId,
@@ -256,7 +263,7 @@ export class OrganizationsService {
           status: "DISABLED",
         });
 
-        const revokedCount = await this.session.revokeAllForUser(
+        familyIds = await this.session.revokeAllForUser(
           tx,
           targetUserId,
         );
@@ -276,7 +283,7 @@ export class OrganizationsService {
           target_type: "user",
           target_id: targetUserId,
           metadata: {
-            count: revokedCount,
+            count: familyIds.length,
             reason: "member_disabled",
           },
         });
@@ -302,5 +309,17 @@ export class OrganizationsService {
 
       return this.repo.findMembership(tx, orgId, targetUserId);
     });
+
+    if (familyIds.length > 0) {
+      try {
+        this.kickService.kickBySids(familyIds);
+      } catch (err) {
+        this.logger.error(
+          `[kick] failed to kick sids after DISABLED: ${err instanceof Error ? err.message : "unknown"}`,
+        );
+      }
+    }
+
+    return result;
   }
 }

@@ -586,7 +586,7 @@ export class AuthService {
 
       await this.repo.updatePasswordHash(tx, record.user_id, passwordHash);
 
-      const revokedCount = await this.session.revokeAllForUser(
+      const familyIds = await this.session.revokeAllForUser(
         tx,
         record.user_id,
       );
@@ -604,7 +604,7 @@ export class AuthService {
         target_type: "user",
         target_id: record.user_id,
         metadata: {
-          count: revokedCount,
+          count: familyIds.length,
           reason: "password_reset",
         },
       });
@@ -651,7 +651,7 @@ export class AuthService {
 
       await this.repo.updatePasswordHash(tx, userId, newHash);
 
-      const revokedCount =
+      const familyIds =
         await this.session.revokeAllForUserExceptFamily(
           tx,
           userId,
@@ -671,7 +671,7 @@ export class AuthService {
         target_type: "user",
         target_id: userId,
         metadata: {
-          count: revokedCount,
+          count: familyIds.length,
           reason: "password_change",
         },
       });

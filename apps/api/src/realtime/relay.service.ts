@@ -39,6 +39,7 @@ export class OutboxRelayService {
               date: new Date(row.created_at).toISOString().split("T")[0]!,
               version: ((row.metadata as Record<string, unknown>)?.version as number) ?? 1,
               occurredAt: row.created_at.toISOString(),
+              organizationId: row.organization_id,
             };
             await this.publisher.publish(event);
             await tx

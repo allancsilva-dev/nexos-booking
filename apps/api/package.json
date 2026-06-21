@@ -27,14 +27,18 @@
     "pg": "^8.21.0",
     "reflect-metadata": "latest",
     "@nestjs/event-emitter": "^3",
+    "@nestjs/platform-socket.io": "^11",
     "@nestjs/schedule": "^5",
+    "@nestjs/websockets": "^11",
     "resend": "latest",
-    "rxjs": "latest"
+    "rxjs": "latest",
+    "socket.io": "^4"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
+    "socket.io-client": "^4",
     "tsx": "latest"
   }
 }

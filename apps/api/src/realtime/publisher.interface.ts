@@ -9,4 +9,5 @@ export interface PublishedEvent {
   date: string;
   version: number;
   occurredAt: string;
+  organizationId?: string;
 }

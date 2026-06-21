@@ -156,8 +156,18 @@ export class SessionService {
   async revokeAllForUser(
     tx: DbTransaction,
     userId: string,
-  ): Promise<number> {
-    const result = await tx
+  ): Promise<string[]> {
+    const rows = await tx
+      .select({ family_id: refreshSessions.family_id })
+      .from(refreshSessions)
+      .where(
+        and(
+          eq(refreshSessions.user_id, userId),
+          isNull(refreshSessions.revoked_at),
+        ),
+      );
+
+    await tx
       .update(refreshSessions)
       .set({ revoked_at: new Date() })
       .where(
@@ -166,15 +176,27 @@ export class SessionService {
           isNull(refreshSessions.revoked_at),
         ),
       );
-    return result.rowCount ?? 0;
+
+    return [...new Set(rows.map((r) => r.family_id))];
   }
 
   async revokeAllForUserExceptFamily(
     tx: DbTransaction,
     userId: string,
     exceptFamilyId: string,
-  ): Promise<number> {
-    const result = await tx
+  ): Promise<string[]> {
+    const rows = await tx
+      .select({ family_id: refreshSessions.family_id })
+      .from(refreshSessions)
+      .where(
+        and(
+          eq(refreshSessions.user_id, userId),
+          isNull(refreshSessions.revoked_at),
+          ne(refreshSessions.family_id, exceptFamilyId),
+        ),
+      );
+
+    await tx
       .update(refreshSessions)
       .set({ revoked_at: new Date() })
       .where(
@@ -184,6 +206,7 @@ export class SessionService {
           ne(refreshSessions.family_id, exceptFamilyId),
         ),
       );
-    return result.rowCount ?? 0;
+
+    return [...new Set(rows.map((r) => r.family_id))];
   }
 }
