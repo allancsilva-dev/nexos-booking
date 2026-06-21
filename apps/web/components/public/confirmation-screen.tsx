@@ -3,12 +3,14 @@
 import { CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmationActions } from "@/components/public/confirmation-actions";
 import { cn } from "@/lib/utils";
 
 interface ConfirmationScreenProps {
   professionalName: string;
   serviceName: string;
   startsAt: string;
+  endsAt: string;
   cancelToken: string;
   onNewBooking?: () => void;
   className?: string;
@@ -39,6 +41,7 @@ export function ConfirmationScreen({
   professionalName,
   serviceName,
   startsAt,
+  endsAt,
   cancelToken,
   onNewBooking,
   className,
@@ -80,19 +83,13 @@ export function ConfirmationScreen({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Cancelamento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-[var(--color-muted-foreground)] mb-2">
-            Guarde o codigo abaixo para cancelar seu agendamento:
-          </p>
-          <p className="break-all font-mono text-sm text-[var(--color-foreground)] bg-[var(--color-muted)] rounded-[var(--radius-control)] p-3 select-all">
-            {cancelToken}
-          </p>
-        </CardContent>
-      </Card>
+      <ConfirmationActions
+        serviceName={serviceName}
+        professionalName={professionalName}
+        startsAt={startsAt}
+        endsAt={endsAt}
+        cancelToken={cancelToken}
+      />
 
       {onNewBooking && (
         <div className="flex justify-center">

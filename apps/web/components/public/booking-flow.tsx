@@ -57,6 +57,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     professionalName: string;
     serviceName: string;
     startsAt: string;
+    endsAt: string;
     cancelToken: string;
   } | null>(null);
 
@@ -211,6 +212,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
         professionalName: result.professional.name,
         serviceName: result.service.name,
         startsAt: result.startsAt,
+        endsAt: result.endsAt,
         cancelToken,
       });
       setStep("done");
@@ -354,6 +356,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
         professionalName={bookingResult.professionalName}
         serviceName={bookingResult.serviceName}
         startsAt={bookingResult.startsAt}
+        endsAt={bookingResult.endsAt}
         cancelToken={bookingResult.cancelToken}
         onNewBooking={handleNewBooking}
         className={className}
