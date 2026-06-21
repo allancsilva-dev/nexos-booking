@@ -19,7 +19,13 @@ function buildConnectionString(): string {
   const port = process.env.POSTGRES_PORT ?? "5432";
   const db = process.env.POSTGRES_DB ?? "nexos_booking";
   const user = process.env.POSTGRES_USER ?? "nexos_booking";
-  const pass = process.env.POSTGRES_PASSWORD ?? "";
+  const pass = process.env.POSTGRES_PASSWORD;
+
+  if (!pass) {
+    throw new Error(
+      "POSTGRES_PASSWORD environment variable is not set. Define it in the project .env file or export it before starting the API.",
+    );
+  }
 
   const base = `postgres://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}:${port}/${db}`;
 
@@ -61,4 +67,3 @@ export function createPool(): Pool {
   }
   return sharedPool;
 }
-

@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import "./config/load-env";
 
 import { json } from "express";
 import type { Request, Response, NextFunction } from "express";
