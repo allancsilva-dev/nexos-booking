@@ -29,11 +29,13 @@ packages/
 
 ```bash
 pnpm install
-cp .env.example .env   # editar placeholders
-docker compose up -d   # PostgreSQL + API + Web
+cp .env.example .env              # editar placeholders
+docker compose up -d postgres     # só o banco
 pnpm --filter @nexos/api migrate:fresh
-pnpm dev               # Turborepo (API :3001, Web :3000)
+pnpm dev                          # raiz do projeto → Turborepo sobe API + Web
 ```
+
+Todos os comandos `pnpm` são executados na **raiz do projeto**. O Turborepo gerencia os workspaces automaticamente.
 
 ## Comandos
 
