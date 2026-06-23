@@ -75,6 +75,7 @@
 | INV-WEB-004 | 2026-06-23 | PR-DIAG-WEB | BAIXA | `PasswordChangeInput` citado no contrato não exportado no shared | ABERTO |
 | INV-WEB-005 | 2026-06-23 | PR-DIAG-WEB | BAIXA | Claims do access token não exportadas como schema no shared | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-006 | 2026-06-23 | PR-DIAG-WEB | ALTA | Web pública já existe parcialmente; roadmap/conductor partiam de premissa greenfield | ABERTO |
+| INV-RLS-001 | 2026-06-23 | PR-FIX-RLS-RUNTIME-ROLE-01 · PR-REVERIFY-RLS-RUNTIME-01 | ALTA | GRANT genérico de setup regrediu hardening append-only de audit_logs | CORRIGIDO |
 | DIV-PR-4.3 | a confirmar | PR-4.3 / Fase 4 | BAIXA | Design-spec primária ausente | ACEITO_COMO_PENDÊNCIA |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
@@ -318,6 +319,35 @@
 - Prevenção de regressão: ao surgir a spec primária, reconciliar contra o que foi construído e registrar
   o delta.
 - Status final: ACEITO_COMO_PENDÊNCIA (UI segue `FRONTEND_DESIGN_REF.md` até a primária aparecer)
+
+### INV-RLS-001 — GRANT genérico de setup regrediu hardening append-only de audit_logs
+- Data: 2026-06-23
+- PR/Fase: PR-FIX-RLS-RUNTIME-ROLE-01 (preparação de ambiente) · detectado no PR-REVERIFY-RLS-RUNTIME-01
+- Severidade: ALTA
+- Erro encontrado: durante a preparação de ambiente do PR-FIX-RLS-RUNTIME-ROLE-01, o comando
+  `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime` concedeu
+  `UPDATE`/`DELETE` em `audit_logs` para `app_runtime`, regredindo o hardening append-only da
+  migration 0006 (`DATABASE_SCHEMA_V2 §10.9`).
+- Sintoma: o PR-REVERIFY-RLS-RUNTIME-01 (2ª tentativa) detectou grants de `UPDATE`/`DELETE` em
+  `audit_logs` durante a Prova 4b, contaminando o re-VERIFY.
+- Causa raiz: o `GRANT ... ON ALL TABLES` genérico não foi seguido pelo `REVOKE UPDATE, DELETE ON
+  audit_logs FROM app_runtime` específico do hardening. A migration 0006 aplica a ordem correta
+  (GRANTs → REVOKE), mas um re-GRANT manual posterior desfaz o REVOKE.
+- Impacto: `audit_logs` perdeu temporariamente a propriedade append-only. Sem evidência de impacto
+  em produção neste diagnóstico. Em produção, o risco é mitigado somente se o provisionamento/IaC
+  aplicar a ordem correta: GRANT genérico seguido do REVOKE específico de audit_logs.
+- Arquivo(s) afetado(s): nenhum arquivo versionado. Ação de ambiente (psql manual durante setup).
+- Correção aplicada: `REVOKE UPDATE, DELETE ON audit_logs FROM app_runtime` reaplicado manualmente.
+  O PR-DIAG-RLS-GRANTS-APP-RUNTIME-01 confirmou em 2026-06-23 que os grants atuais estão corretos:
+  `audit_logs` possui apenas `INSERT`/`SELECT` para `app_runtime`.
+- Teste/validação executado: `PR-DIAG-RLS-GRANTS-APP-RUNTIME-01` auditou `information_schema.role_table_grants`
+  e confirmou 0 grants de `UPDATE`/`DELETE` em `audit_logs` para `app_runtime`. Default privileges
+  para novas tabelas: `app_runtime=arwd` (append/read/write/delete).
+- Prevenção de regressão: scripts de provisionamento/IaC devem aplicar o `REVOKE UPDATE, DELETE ON
+  audit_logs FROM app_runtime` após qualquer `GRANT ... ON ALL TABLES` genérico, reproduzindo a
+  ordem da migration 0006. Idealmente, o setup local deve executar a migration 0006 completa em vez
+  de grants manuais.
+- Status final: CORRIGIDO
 
 ---
 
