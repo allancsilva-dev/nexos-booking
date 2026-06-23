@@ -67,11 +67,22 @@
 | BUG-005 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:http T14/T24 falham 503 — harness HTTP constrói DATABASE_URL com defaults errados, ignorando POSTGRES_* do CI | CORRIGIDO |
 | BUG-006 | 2026-06-17 | PR-1.4 / Fase 1 | BLOQUEANTE | CI: test:auth comandos psql diretos usam credenciais hardcoded (`nexos_booking`) em vez de `process.env.POSTGRES_*` | CORRIGIDO |
 | BUG-007 | 2026-06-19 | PR-1.4 / Fase 1 | ALTA | `AuthService.generateSlug()` usa check-then-insert (SELECT → INSERT), viola ADR-011. Colisão de slug pode virar 500. | ABERTO |
-| BUG-008 | 2026-06-20 | PR-1.4 / Fase 1 | MÉDIA | Auth DTOs (`LoginInput`, `RegisterInput`, `SwitchOrgInput`, `MeResponse`) ausentes de `packages/shared`, divergindo de API §12/§21. Herdado do PR-1.4. Schemas definidos localmente em `apps/web` e `apps/api`. | ABERTO |
+| BUG-008 | 2026-06-20 | PR-1.4 / Fase 1 | MÉDIA | Auth DTOs (`LoginInput`, `RegisterInput`, `SwitchOrgInput`, `MeResponse`) ausentes de `packages/shared`, divergindo de API §12/§21. Herdado do PR-1.4. Corrigido no PR-6.4 (shared `auth.dto.ts` + uso em runtime API/web). | CORRIGIDO |
 | BUG-009 | 2026-06-22 | PR-1.4 / Fase 1 | MÉDIA | `AuthService` instancia `new MemoryRateLimiter()` inline (PR-1.4), divergindo do contrato que prevê `RateLimiter` como interface trocável via DI. Troca para Redis exigirá corrigir AuthService. PR-4.1 não corrige; registra provider próprio no PublicBookingModule. | ABERTO |
 | DIV-PR-4.3-DESIGN-SPEC | 2026-06-22 | PR-4.3 / Fase 4 | MÉDIA | `nexos-booking-design-spec.md` ausente. PR-4.3 usa `FRONTEND_DESIGN_REF.md` como fallback operacional. Revisão humana limitada a roadmap + acessibilidade + contrato das APIs públicas. Quando a design spec primária existir, o fluxo público deve ser reconciliado contra ela. | ABERTO |
 | PROPOSTA-001 | 2026-06-20 | PR-2.1 / Fase 2 | MÉDIA | Proposta de novo ErrorCode `PROFESSIONAL_USER_TAKEN` (409). Aprovado pelo api-contract-guardian — adicionado ao catálogo em `packages/shared/src/error-code.ts`. API_CONTRACTS.md §7 deve ser atualizado para incluir `PROFESSIONAL_USER_TAKEN` na categoria Profissionais. (Unique parcial `professionals_org_user_uk` — B1 do schema.) | ABERTO (canonical doc pendente) |
 | PROPOSTA-002 | 2026-06-20 | PR-3.2 / Fase 3 | MÉDIA | Proposta de novo ErrorCode `IDEMPOTENCY_KEY_REQUIRED` (400). Header `Idempotency-Key` ausente em rota `@Idempotent()`. Aprovado pelo api-contract-guardian — deve ser adicionado a `packages/shared/src/error-code.ts` (400, envelope padrão). API_CONTRACTS.md §7 deve ser atualizado para incluir `IDEMPOTENCY_KEY_REQUIRED` na categoria Idempotência. (Header obrigatório — ADR-008 v3 / §5.) | ABERTO (canonical doc pendente) |
+| BUG-010 | 2026-06-22 | PR-BUGFIX-1 / pós-MVP | BLOQUEANTE | Web não promove a sessão a `authenticated` após register/login — `AuthBootstrap` roda só na montagem do provider | CORRIGIDO |
+| BUG-011 | 2026-06-22 | PR-DIAG-AUTH-FLOW / pós-MVP | BLOQUEANTE | Cookie de refresh `Secure` não é persistido pelo browser em dev sobre HTTP — sessão nunca sobrevive a reload | ABERTO |
+| BUG-012 | 2026-06-22 | PR-DIAG-AUTH-FLOW / pós-MVP | ALTA | API conecta como superuser `nexos_booking` (bypassrls) — RLS efetivamente ignorada; falta paridade com `app_runtime` (PEND-001 canônico) | ABERTO |
+| BUG-013 | 2026-06-22 | PR-BUGFIX-1 / pós-MVP | MÉDIA | `org-switcher` versionado usa `org.id`; `/organizations/me` devolve `organizationId` — seletor de empresa quebrado no HEAD | CORRIGIDO |
+| BUG-014 | 2026-06-22 | PR-BUGFIX-1 / pós-MVP | MÉDIA | `useLoginMutation` não persiste `savedOrgId`/`activeOrg` — multi-org perde o hint de empresa no bootstrap | CORRIGIDO |
+| BUG-015 | 2026-06-22 | PR-DIAG-AUTH-FLOW / pós-MVP | BAIXA | Extensão `pg_trgm` ausente na base — migration 0007 fora de paridade com o schema | ABERTO |
+| BUG-016 | 2026-06-22 | PR-DIAG-AUTH-FLOW / pós-MVP | BAIXA | WARN path-to-regexp v8 no exclude de rota `__test/(.*)` durante o bootstrap | ABERTO |
+| BUG-017 | 2026-06-22 | PR-DIAG-AUTH-FLOW / pós-MVP | MÉDIA | `test:idempotency` T18b (heurística textual falso-negativa) e T24 (fixture FK sem org-pai) — defeitos do harness, não do código (PEND-003) | ABERTO |
+| PROPOSTA-C1 | 2026-06-22 | PR-BUGFIX-1 / pós-MVP | MÉDIA | Proposta de alinhar `API_CONTRACTS.md` §8 para refletir explicitamente `activeOrg: string \| null` no LoginResponse conforme ADR-020 que prevalece | ABERTO |
+| BUG-018 | 2026-06-22 | PR-BUGFIX-1 / pós-MVP | MÉDIA | Switch-org não recompõe sessão no frontend após troca de organização — bug funcional do ramo multi-org, deferido (PR-BUGFIX-1 corrige single-org pós-register/login) | ABERTO |
+| BUG-019 | 2026-06-22 | PR-BUGFIX-1 / pós-MVP | BLOQUEANTE | Runtime da API não carrega o `.env` da raiz — `POSTGRES_PASSWORD` ausente, senha vira `null` e o `pg` falha no SCRAM (`client password must be a string`) em todo login/query | CORRIGIDO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -182,6 +193,36 @@
 - Prevenção de regressão: O `OrganizationsService` do PR-1.6 implementa o padrão correto como referência. O `AuthService.generateSlug()` será refatorado para usar o mesmo `SlugGenerator` + retry-on-conflict em PR futuro.
 - Status final: ABERTO
 
+### BUG-008 — Auth DTOs ausentes de `packages/shared` (divergência API §12/§21)
+- Data: 2026-06-20
+- PR/Fase: PR-1.4 / Fase 1 (corrigido no PR-6.4)
+- Severidade: MÉDIA
+- Erro encontrado: `LoginInput`, `RegisterInput`, `SwitchOrgInput`, `MeResponse` não existiam em `packages/shared`; schemas eram definidos localmente em `apps/web` e `apps/api`, divergindo de API §12/§21 (contrato único no shared).
+- Sintoma: validação de payload duplicada/divergente entre web e API; shape de auth não tinha fonte única de verdade.
+- Causa raiz: DTOs de auth não foram provisionados no shared no PR-1.4; herdado como dívida.
+- Impacto: risco de drift de contrato entre front e back nos fluxos de register/login/switch-org/me.
+- Arquivo(s) afetado(s): `packages/shared/src/dto/auth.dto.ts`, `packages/shared/src/index.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/api/src/auth/dto/{register,login,switch-org}.dto.ts`, `apps/web/lib/auth-schemas.ts`, `apps/web/hooks/use-auth.ts`.
+- Correção aplicada: PR-6.4 criou `packages/shared/src/dto/auth.dto.ts` com `RegisterInputSchema`, `LoginInputSchema`, `SwitchOrgInputSchema`, `MeResponseSchema`; o shared reexporta (`index.ts`); a API valida em runtime via `safeParse` (`auth.controller.ts:90/117/198`) e os DTOs locais da API reexportam tipos do shared; a web reexporta os schemas do shared em `lib/auth-schemas.ts` e os consome em `hooks/use-auth.ts`.
+- Teste/validação executado: `pnpm lint`, `pnpm --filter @nexos/shared build`, `pnpm --filter @nexos/api build` PASS (PR-6.4); `POST /auth/register` com payload inválido retorna `422 VALIDATION_ERROR` (validação runtime pelo schema do shared). `pnpm --filter @nexos/web build` PASS fora do sandbox.
+- Branch/commit relacionado: `main` (mudanças do PR-6.4 não commitadas; ver `PR-6.4_REPORT.md`)
+- Prevenção de regressão: tipar os retornos de auth no front pelos DTOs do shared para falhar em build se o shape divergir; manter o catálogo de schemas de auth somente no shared.
+- Status final: CORRIGIDO
+
+### BUG-009 — `AuthService` instancia `new MemoryRateLimiter()` inline (não trocável via DI)
+- Data: 2026-06-22
+- PR/Fase: PR-1.4 / Fase 1
+- Severidade: MÉDIA
+- Erro encontrado: `AuthService` faz `this.rateLimiter = new MemoryRateLimiter()` inline (`apps/api/src/auth/auth.service.ts:58`), divergindo do contrato que prevê `RateLimiter` como interface trocável via DI.
+- Sintoma: a implementação concreta está acoplada ao service; trocar para Redis exigirá editar `AuthService`.
+- Causa raiz: provider de rate limit não registrado por DI/token; instanciação direta no construtor.
+- Impacto: dívida de arquitetura; PR-4.1 não corrige (registra provider próprio no `PublicBookingModule`).
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.service.ts` (linha ~58), `apps/api/src/auth/rate-limit/*`.
+- Correção aplicada: **Não aplicada.** Confirmado no HEAD que a instanciação inline persiste.
+- Teste/validação executado: `grep` em `auth.service.ts` confirma `new MemoryRateLimiter()` na linha 58 e `private readonly rateLimiter: RateLimiter` na 46.
+- Branch/commit relacionado: `main` (código atual com o débito)
+- Prevenção de regressão: registrar `RateLimiter` por token de DI no módulo e injetar no `AuthService`.
+- Status final: ABERTO
+
 ### PROPOSTA-002 — `IDEMPOTENCY_KEY_REQUIRED` ausente do catálogo de ErrorCode e de `API_CONTRACTS.md` §7
 - Data: 2026-06-20
 - PR/Fase: PR-3.2 / Fase 3
@@ -195,6 +236,209 @@
 - Teste/validação executado: Não se aplica (proposta documental). O PR-3.2 deve incluir `IDEMPOTENCY_KEY_REQUIRED` em `error-code.ts` e usá-lo no middleware `@Idempotent()`.
 - Prevenção de regressão: Teste contratual em `error-code.contract-test.ts` deve validar que `IDEMPOTENCY_KEY_REQUIRED` consta no array `ERROR_CODES`.
 - Status final: ABERTO (canonical doc e código pendentes)
+
+---
+
+## PR-DIAG-AUTH-FLOW — Diagnóstico read-only do fluxo de cadastro/auth (2026-06-22)
+
+> Passada de diagnóstico (read-only em código/documento). Massa efêmera criada apenas via API pública
+> (`diag+<ts>@example.test`, mascarada). API/Web subiram, Postgres conectado, jornada provada por curl
+> ponta-a-ponta. Backend de auth íntegro e conforme contrato; a falha de "não avançar após cadastrar"
+> é de estado de sessão no frontend (BUG-010), agravada por cookie em dev (BUG-011). Nenhuma correção
+> foi aplicada nesta passada. Veredito: `PASS_DIAG_COM_RESSALVA`.
+
+### Rastreabilidade DEF → BUG (reconciliação pré PR-FIX-1)
+
+Mapa canônico dos achados do diagnóstico (`DEF-1`..`DEF-7` + `PEND-003`) para os IDs do ledger.
+Sem colisão de ID, sem reuso e sem status enganoso.
+
+| Achado (diagnóstico) | BUG (ledger) | Título resumido | Severidade | Status |
+|---|---|---|---|---|
+| DEF-1 | BUG-010 | web não promove sessão a `authenticated` após register/login | BLOQUEANTE | CORRIGIDO (PR-BUGFIX-1) |
+| DEF-2 | BUG-011 | cookie refresh `Secure` não persiste em dev HTTP | BLOQUEANTE | ABERTO |
+| DEF-3 | BUG-012 | API conecta como superuser/bypass RLS (PEND-001 canônico) | ALTA | ABERTO |
+| DEF-4 | BUG-013 | org-switcher usa `org.id` vs `organizationId` | MÉDIA | CORRIGIDO (PR-BUGFIX-1) |
+| DEF-5 | BUG-014 | login não persiste `savedOrgId`/`activeOrg` | MÉDIA | CORRIGIDO (PR-BUGFIX-1) |
+| DEF-6 | BUG-015 | `pg_trgm` ausente | BAIXA | ABERTO |
+| DEF-7 | BUG-016 | warning path-to-regexp | BAIXA | ABERTO |
+| PEND-003 / idempotency | BUG-017 | harness T18b/T24 (defeitos do teste, não do código) | MÉDIA | ABERTO |
+
+### Reconciliação de PEND-001 (colisão de ID)
+
+- **PEND-001 canônico = paridade da role de runtime/RLS** (`nexos_booking` superuser/bypassrls vs
+  `app_runtime` least-privilege). Rastreado por **BUG-012**, severidade **ALTA**, e permanece **ALTA/ABERTO**
+  até API **e** CI conectarem com role sem bypass de RLS.
+- O `PEND-001` do `PR-6.4_REPORT.md` ("CI remoto pendente") **não pode ocupar o mesmo ID**: foi renomeado
+  para **`PEND-REL-001`** naquele relatório. "CI remoto" é pendência operacional do PR-6.4, não a paridade
+  de role; ocupar `PEND-001` mascarava o risco de segurança multi-tenant.
+- Hierarquia documental preservada (ADR → SCHEMA → API_CONTRACTS → PLANNING → ROADMAP, conforme
+  `MVP_EXECUTION_PLAN.md`): relatório de PR descreve estado/remediação e não altera contrato.
+
+### BUG-010 — Web não promove a sessão a `authenticated` após register/login
+- Data: 2026-06-22
+- PR/Fase: PR-BUGFIX-1 / pós-MVP
+- Severidade: BLOQUEANTE
+- Erro encontrado: `AuthBootstrap` (`apps/web/app/providers.tsx`, montado no root layout) calcula o estado de sessão em um `useEffect` de **montagem única**. As mutations de register/login só escrevem `accessToken`/`savedOrgId` no zustand store; nunca atualizam o `BootstrapResult` lido pelo `AuthGuard`.
+- Sintoma: após cadastrar (`router.push("/dashboard")`, navegação soft), `useAuthBootstrap().status` permanece `idle` (valor da carga inicial anônima). O `AuthGuard` renderiza `<OrgSwitcher/>` em vez dos children — o painel nunca aparece e o usuário fica preso. Sem erro HTTP; é gating de UI. (Backend provado verde: register `201`, me/org-me com shape correto.)
+- Causa raiz: o estado de autenticação do front depende exclusivamente de um bootstrap que só roda na montagem do provider e não é re-disparado/atualizado pelas mutations. Navegação client-side não remonta o provider.
+- Impacto: cadastro e login pela UI são funcionalmente inertes — cria-se empresa mas não se alcança nenhuma tela protegida. Causa raiz do sintoma relatado ("não avança para as próximas telas").
+- Arquivo(s) afetado(s): `apps/web/hooks/use-auth-bootstrap.ts`, `apps/web/app/providers.tsx`, `apps/web/hooks/use-auth.ts`.
+- Correção aplicada: **Corrigido em PR-BUGFIX-1.** Função `refreshSession()` extraída de bootstrap em `providers.tsx`; chama `GET /auth/me` e deserializa user/activeOrg/memberships. Novo shape `AuthBootstrapCtxValue` expõe tanto resultado quanto `refreshSession()`. Novo hook `useRefreshSession()` permite mutations (login/register) chamarem `refreshSession()` e atualizarem o bootstrap sem reload. Provider expõe `{ result, refreshSession }` no value. `useEffect` mount-only reutiliza `refreshSession()` na sequência. Ramificação ADR-020 internalizada em `refreshSession()`: activeOrg != null → authenticated; activeOrg == null → idle. Falhas HTTP e falhas abruptas de rede/parse em `/auth/me` chamam `clearAuth()` e definem `idle`/`error`, sem promover para `authenticated` e sem unhandled rejection em `onSuccess`.
+- Teste/validação executado: `pnpm --filter @nexos/web lint` PASS; `pnpm --filter @nexos/web exec tsc --noEmit` PASS. `git diff -- apps/web/lib/auth-schemas.ts` vazio. Code-review PASS_COM_RESSALVA (NOTE-1 resolvida; BUG-018 aberto/deferido). API contract PASS (MeResponse fonte única; headers respeitados). Jornada interativa em navegador NÃO EXECUTADA (pendência de CI web/e2e).
+- Branch/commit relacionado: PR-BUGFIX-1 (diff em working tree; commit não realizado)
+- Prevenção de regressão: teste de fluxo (e2e/integração) cobrindo register→`/dashboard` autenticado e login→`/dashboard` autenticado sem reload (PEND ciclo seguinte).
+- Status final: CORRIGIDO
+
+### BUG-011 — Cookie de refresh `Secure` não é persistido pelo browser em dev sobre HTTP
+- Data: 2026-06-22
+- PR/Fase: PR-DIAG-AUTH-FLOW / pós-MVP
+- Severidade: BLOQUEANTE
+- Erro encontrado: o cookie de refresh é emitido com `Secure` (`apps/api/src/auth/auth.controller.ts`, `setRefreshCookie`), correto por contrato §3.2. Em dev o app roda sobre `http://localhost`, e o navegador descarta cookies `Secure` enviados por origem não-HTTPS.
+- Sintoma: via curl o cookie é armazenado e o refresh funciona (`200`, rotaciona); no navegador o cookie nunca é guardado, então todo reload chama `/auth/refresh` sem cookie → `401 UNAUTHENTICATED` → estado `idle`. A sessão nunca sobrevive a um reload em dev. Mascara o BUG-010 atrás de "sessão expirada/anônima".
+- Causa raiz: ausência de tratamento de ambiente (HTTPS local ou `Secure` condicional a `NODE_ENV`) para dev. O atributo `Secure` em si está correto para produção.
+- Impacto: impossível verificar/usar a jornada web em dev sobre HTTP puro; recuperação de sessão por reload não funciona localmente. Casa com PEND-002 (browser não executado).
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.controller.ts` (`setRefreshCookie`/`clearRefreshCookie`); setup de dev (host/HTTPS).
+- Correção aplicada: **Não aplicada** (diagnóstico read-only). Proposta: `secure` condicional a `process.env.NODE_ENV === "production"`, **ou** servir web/api sob HTTPS confiável em dev. Decisão de segurança/produto — não alterar a obrigatoriedade de `Secure` em produção (§3.2).
+- Teste/validação executado: `Set-Cookie: refresh_token=…; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth/refresh` observado; jar do curl mostra flag `Secure`; refresh por curl `200`. Comportamento de browser inferido do atributo (NÃO EXECUTADO em navegador).
+- Branch/commit relacionado: `main`
+- Prevenção de regressão: documentar setup de dev (HTTPS) e/ou teste que valide `secure` por ambiente.
+- Status final: ABERTO
+
+### BUG-012 — API conecta como superuser `nexos_booking`; RLS efetivamente bypassada (paridade de role)
+- Data: 2026-06-22
+- PR/Fase: PR-DIAG-AUTH-FLOW / pós-MVP
+- Severidade: ALTA
+- Erro encontrado: o runtime conecta ao Postgres com a role `nexos_booking`, que é **superuser** e tem `rolbypassrls=true`. RLS está `ENABLE`+`FORCE` nas 13 tabelas tenant-scoped, mas superuser **ignora RLS**. O `db.config.ts` usa `POSTGRES_USER` (= `nexos_booking`), não há role de runtime separada.
+- Sintoma: `pg_stat_activity` → 100% das conexões do app como `nexos_booking`; `pg_roles`: `nexos_booking rolsuper=t, rolbypassrls=t` vs `app_runtime rolsuper=f, rolbypassrls=f`. Hoje o isolamento de tenant depende apenas dos guards de aplicação (`TenantGuard`/`validateOrgId`), não do banco.
+- Causa raiz: divergência de role de runtime — o app não usa `app_runtime` (least-privilege, sujeito a RLS). Esta é a essência do **PEND-001 canônico (paridade de role)**.
+- Divergência documental (L1) — **resolvida**: o `PEND-001` do `PR-6.4_REPORT.md` estava descrito como "CI remoto pendente", colidindo com o PEND-001 canônico de **paridade da role runtime**. O PEND do relatório foi **renomeado para `PEND-REL-001`** e o PEND-001 canônico (paridade de role) permanece ALTA, rastreado por este BUG-012. O relatório (`PR-6.4_REPORT.md`) descreve estado/remediação e **não** muda contrato — prevalece a hierarquia canônica (ADR → SCHEMA → API_CONTRACTS → PLANNING → ROADMAP, conforme `MVP_EXECUTION_PLAN.md`).
+- Impacto: as provas de RLS desta passada ocorreram sem RLS de fato ativa; regressões de isolamento de tenant não são detectáveis neste ambiente. Risco de segurança/multi-tenant se prod/CI rodarem com a mesma role.
+- Arquivo(s) afetado(s): `.env` (`POSTGRES_USER`), `apps/api/src/db/db.config.ts`, scripts de migração/grant de role; pipeline de CI.
+- Correção aplicada: **Não aplicada** (diagnóstico read-only). Proposta: runtime e CI conectam como `app_runtime`; reabrir/confirmar PEND-001 canônico como paridade de role.
+- Teste/validação executado: `SELECT usename ... FROM pg_stat_activity` (todas `nexos_booking`); `SELECT rolsuper, rolbypassrls FROM pg_roles` (flags confirmadas).
+- Branch/commit relacionado: `main`
+- Prevenção de regressão: teste cross-tenant que prove `404`/vazio **por RLS** (não só por guard), exigindo conexão como `app_runtime` no CI.
+- Status final: ABERTO
+
+### BUG-013 — `org-switcher` versionado usa `org.id`; `/organizations/me` devolve `organizationId`
+- Data: 2026-06-22
+- PR/Fase: PR-BUGFIX-1 / pós-MVP
+- Severidade: MÉDIA
+- Erro encontrado: na versão **commitada** de `apps/web/components/shell/org-switcher.tsx`, `OrgItem` e os usos (`key`, `isActive`, `switch-org`) operam sobre `org.id`, mas `GET /organizations/me` retorna itens com `organizationId` (sem `id`). `org.id` é `undefined`.
+- Sintoma: `key={undefined}`, `isActive` sempre falso e `switch-org` chamado com `organizationId: undefined` — seletor de empresa quebrado no HEAD.
+- Causa raiz: shape divergente front × contrato (`MeResponse.memberships[].organizationId` / §10).
+- Impacto: mesmo destravando o BUG-010, a tela `OrgSwitcher` (estado `idle`) não lista/seleciona empresas corretamente.
+- Arquivo(s) afetado(s): `apps/web/components/shell/org-switcher.tsx`.
+- Correção aplicada: **Corrigido em PR-BUGFIX-1.** `OrgItem.id`→`OrgItem.organizationId` (linha 14); usos: `key={org.organizationId}`, `isActive = org.organizationId === savedOrgId`, `switchOrgMutation.mutate({ organizationId: org.organizationId })`. Coerente com contrato MeResponse.
+- Teste/validação executado: `GET /organizations/me` → `200 [{organizationId,…,role,status}]` (confirma o campo correto); code-reviewer PASS; type-check PASS; lint PASS.
+- Branch/commit relacionado: PR-BUGFIX-1 (diff em working tree; commit não realizado)
+- Prevenção de regressão: tipar o retorno de `/organizations/me` pelo DTO do shared para falhar em build se o shape divergir.
+- Status final: CORRIGIDO
+
+### BUG-014 — `useLoginMutation` não persiste `savedOrgId`/`activeOrg`
+- Data: 2026-06-22
+- PR/Fase: PR-BUGFIX-1 / pós-MVP
+- Severidade: MÉDIA
+- Erro encontrado: `useLoginMutation` (`apps/web/hooks/use-auth.ts`) só seta `accessToken` no store e ignora o `activeOrg` retornado pelo login; apenas `useRegisterMutation` seta `savedOrgId`.
+- Sintoma: após login, `savedOrgId=null`. Para conta multi-org (access sem `org` no claim, ADR-020), o bootstrap não tem hint de empresa salvo e cairia em `idle` sem destravar para a empresa esperada.
+- Causa raiz: a mutation de login não propaga a org ativa para o estado consumido pelo bootstrap/OrgSwitcher.
+- Impacto: menor para single-org (o claim já traz `org` e `/auth/me` resolve `activeOrg`); relevante para multi-org no fluxo de seleção de empresa.
+- Arquivo(s) afetado(s): `apps/web/hooks/use-auth.ts` (`useLoginMutation`).
+- Correção aplicada: **Corrigido em PR-BUGFIX-1.** `useLoginMutation.onSuccess` agora: guard SF-1 (`if (!data.accessToken) return;`) → `setAccessToken()` → `refreshSession()` que lê activeOrg de `GET /auth/me` e ramifica por ADR-020 (activeOrg != null → authenticated; activeOrg == null → idle).
+- Teste/validação executado: `POST /auth/login` → `200 {user, activeOrg, accessToken}` (campo `activeOrg` consumido por refreshSession); code-reviewer PASS_COM_RESSALVA; lint/tsc PASS.
+- Branch/commit relacionado: PR-BUGFIX-1 (diff em working tree; commit não realizado)
+- Prevenção de regressão: teste de fluxo multi-org (login → seleção/restauração de empresa).
+- Status final: CORRIGIDO
+
+### BUG-015 — Extensão `pg_trgm` ausente na base (migration 0007 fora de paridade)
+- Data: 2026-06-22
+- PR/Fase: PR-DIAG-AUTH-FLOW / pós-MVP
+- Severidade: BAIXA
+- Erro encontrado: `SELECT extname FROM pg_extension WHERE extname='pg_trgm'` retorna vazio. A migration `0007_pg_trgm` referida no roadmap não está refletida nesta base de dev.
+- Sintoma: `pg_trgm:ABSENT`. Índices/consultas por trigram (ex.: busca de clientes) podem degradar ou quebrar quando exercitados.
+- Causa raiz: base de dev fora de paridade com as migrations (extensão não criada) ou migration não aplicada neste container.
+- Impacto: funcionalidade de busca trigram não garantida em dev; risco de divergência entre `apps/api/db/schema` e o estado real do banco.
+- Arquivo(s) afetado(s): migrations (`0007_pg_trgm`), base de dev.
+- Correção aplicada: **Não aplicada** (diagnóstico read-only). Proposta: aplicar/conferir `migrate:apply` e validar paridade schema × migrations.
+- Teste/validação executado: query a `pg_extension` (ausente).
+- Branch/commit relacionado: `main`
+- Prevenção de regressão: gate de paridade migrations × schema no CI.
+- Status final: ABERTO
+
+### BUG-016 — WARN path-to-regexp v8 no exclude de rota `__test/(.*)`
+- Data: 2026-06-22
+- PR/Fase: PR-DIAG-AUTH-FLOW / pós-MVP
+- Severidade: BAIXA
+- Erro encontrado: `apps/api/src/main.ts` (`setGlobalPrefix(..., { exclude: ["__test/(.*)"] })`) usa sintaxe legada de path-to-regexp; o boot emite WARN `Unsupported route path: "__test/(.*)" … Attempting to auto-convert`.
+- Sintoma: WARN no log de bootstrap; funciona via auto-convert da lib (rotas mapeadas normalmente).
+- Causa raiz: path-to-regexp v8 exige parâmetros nomeados (ex.: `__test/*path`) em vez de `(.*)`.
+- Impacto: ruído de boot; risco futuro caso o auto-convert seja removido em versão posterior.
+- Arquivo(s) afetado(s): `apps/api/src/main.ts` (exclude do global prefix).
+- Correção aplicada: **Não aplicada** (diagnóstico read-only). Proposta: migrar o padrão para `__test/*path`.
+- Teste/validação executado: log de bootstrap (`grep -i warn`).
+- Branch/commit relacionado: `main`
+- Prevenção de regressão: Não se aplica.
+- Status final: ABERTO
+
+### BUG-017 — `test:idempotency` T18b e T24 vermelhos por defeitos do harness (triagem do PEND-003)
+- Data: 2026-06-22
+- PR/Fase: PR-DIAG-AUTH-FLOW / pós-MVP
+- Severidade: MÉDIA
+- Erro encontrado: `pnpm --filter @nexos/api test:idempotency` falha em T18b e T24 (T1–T17, T18a, T19–T23 PASS). Triagem do PEND-003 do PR-6.4_REPORT.md.
+- Sintoma: **T18b** FAIL ("Handler NOT inside tenant transaction (separate)" — expected `true`, actual `false`). **T24** ERROR (`insert ... idempotency_keys violates foreign key constraint ... Key (organization_id)=(77777777-…-777777777777) is not present in table "organizations"`).
+- Causa raiz: **T18b = teste quebrado (heurística textual falso-negativa)** — o código está correto: `IdempotencyInterceptor.executeAndUpdate` (`apps/api/src/common/interceptors/idempotency.interceptor.ts`) executa `next.handle()` **fora** de `withTenantContext`; só os writes de estado (`IN_PROGRESS`/`COMPLETED`/`FAILED`) são envoltos em tenant tx. A heurística do teste não detecta esse arranjo. **T24 = fixture quebrada** — a fixture insere `idempotency_keys` com `organization_id` que não existe em `organizations` (org-pai não semeada).
+- Impacto: **nenhum risco de código/produto**. São defeitos do test-harness. Mantê-los vermelhos sem triagem mascara a saúde real da idempotência (que está correta).
+- Arquivo(s) afetado(s): `apps/api/scripts/test-idempotency.mjs` + fixtures (T18b heurística, T24 seed). O interceptor (`idempotency.interceptor.ts`) está correto e **não** deve ser alterado.
+- Correção aplicada: **Não aplicada** (diagnóstico read-only). Proposta: corrigir a heurística de T18b e semear a org-pai em T24; não "ficar verde" removendo asserts válidos.
+- Teste/validação executado: execução do harness reproduziu T18b FAIL e T24 ERROR; leitura do interceptor confirma o arranjo correto handler-fora-de-tenant-tx.
+- Branch/commit relacionado: `main`
+- Prevenção de regressão: substituir heurística textual por asserção comportamental; fixture de T24 deve criar a organização antes do `idempotency_keys`.
+- Status final: ABERTO
+
+### PROPOSTA-C1 — Alinhar `API_CONTRACTS.md` §8 para refletir `activeOrg` conforme ADR-020
+- Data: 2026-06-22
+- PR/Fase: PR-BUGFIX-1 / pós-MVP
+- Severidade: MÉDIA
+- Erro encontrado: Divergência documental (L1). `API_CONTRACTS.md` §8 (LoginResponse) **não define explicitamente** o campo `activeOrg`, mas ADR-020 (prevalente por hierarquia documental) define que resposta de autenticação retorna `activeOrg: string | null`. Implementação de PR-BUGFIX-1 segue ADR-020 (autoridade); contrato canônico está em divergência.
+- Sintoma: Tipo local provisório `LoginResponse` foi anteriormente em `apps/web/lib/auth-schemas.ts` redeclara `activeOrg` como extensão de resposta HTTP; agora removido (arquivo revertido). Sem alinhamento de §8, a dívida de manutenção persiste, mas tipo provisório já foi eliminado.
+- Causa raiz: §8 foi redigida antes de ADR-020 ser totalmente especificado ou antes de validação ponta-a-ponta; foco no fluxo feliz (token, user) omitiu o campo de ramificação de autenticação.
+- Impacto: dívida de manutenção **baixa** (não há redeclaração local). A implementação é correta (ADR-020 prevalece); divergência é documental apenas entre ADR-020 e §8.
+- Arquivo(s) afetado(s): `API_CONTRACTS.md` (§8 — será alinhado quando PROPOSTA for aprovada); `@nexos/shared` (quando PROPOSTA for aprovada e se houver novo tipo `LoginResponse`, migra para shared).
+- Correção aplicada: **Canônico API_CONTRACTS.md NÃO foi alterado neste PR** (proibido). Implementação segue ADR-020 (autoridade). Tipo provisório em auth-schemas.ts foi **removido** (arquivo revertido). Quando PROPOSTA for aprovada, alinhará §8 e, se houver novo tipo, migrará para shared.
+- Teste/validação executado: Não se aplica (proposta documental). Implementação prova comportamento (BUG-010/013/014 CORRIGIDO; validação local lint+tsc, CI web pendente). `git diff HEAD -- apps/web/lib/auth-schemas.ts` vazio (tipo provisório removido).
+- Branch/commit relacionado: PR-BUGFIX-1 (canônico ainda pendente)
+- Prevenção de regressão: incluir `activeOrg` em testes contratuais de auth (e2e) quando PROPOSTA for aprovada.
+- Status final: ABERTO (canonical doc pendente de aprovação)
+
+### BUG-018 — Switch-org não recompõe sessão no frontend após troca de organização
+- Data: 2026-06-22
+- PR/Fase: PR-BUGFIX-1 / pós-MVP
+- Severidade: MÉDIA
+- Erro encontrado: ao trocar de organização (`useSwitchOrgMutation` → `POST /auth/switch-org`), o frontend não chama `refreshSession()`/`GET /auth/me` após o sucesso; o estado de sessão (user/activeOrg/memberships do `AuthBootstrap`) não é recomposto para a nova org.
+- Sintoma: no ramo multi-org, após escolher outra empresa no `OrgSwitcher`, a UI não reflete a org recém-ativada sem reload; o `BootstrapResult` permanece com os dados da org anterior.
+- Causa raiz: a mutation de switch-org não está ligada à origem única de promoção (`refreshSession`). Comportamento idêntico ao HEAD — não introduzido por este PR.
+- Impacto: bug funcional real do fluxo multi-org. **Deferido**: PR-BUGFIX-1 corrige o fluxo single-org pós-register/login (BUG-010/013/014) e não expande escopo para switch-org. Não é mero NOTE.
+- Arquivo(s) afetado(s): `apps/web/hooks/use-auth.ts` (`useSwitchOrgMutation`); requer expor/consumir `refreshSession` após o switch.
+- Correção aplicada: **Não aplicada** (fora do escopo de PR-BUGFIX-1, deferido).
+- Teste/validação executado: Não se aplica (deferido). Identificado na reauditoria do code-reviewer (originalmente NOTE-2), promovido a bug funcional por decisão humana.
+- Branch/commit relacionado: `main` (comportamento pré-existente do HEAD)
+- Prevenção de regressão: ao corrigir, `useSwitchOrgMutation` deve chamar `refreshSession(novoToken)` após sucesso; teste de fluxo multi-org (troca de org → UI recomposta sem reload).
+- Status final: ABERTO
+
+### BUG-019 — Runtime da API não carrega o `.env` da raiz; senha vazia vira `null` e quebra o SCRAM
+- Data: 2026-06-22
+- PR/Fase: PR-BUGFIX-1 / pós-MVP
+- Severidade: BLOQUEANTE
+- Erro encontrado: o processo da API (NestJS) não carrega nenhum arquivo `.env`. Os scripts de lançamento (`dev`: `tsx watch src/main.ts`; `start`: `node dist/main.js`) não usam `--env-file`, não há `dotenv` nem `ConfigModule`. Só `scripts/apply-migrations.mjs` tem seu próprio `loadEnv()`. Assim, `process.env.POSTGRES_PASSWORD` é `undefined` no runtime.
+- Sintoma: `[unhandled] Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string` em `AuthController.login` (e em qualquer transação) — `requestId=94901044-…`. Login pela UI retornava 500; o erro vinha da camada de banco, não da autenticação de usuário.
+- Causa raiz: sem o `.env` carregado, `POSTGRES_PASSWORD` é `undefined` → em `apps/api/src/db/db.config.ts:22` `pass` cai no default `""` → a connection string fica `postgres://nexos_booking:@localhost:5432/nexos_booking`. O `pg` interpreta senha vazia na URL como `password = null` (não string); no handshake SCRAM o cliente exige `typeof password === "string"` e lança o erro. (Reproduzido instanciando `pg.Client` com a mesma string: `client.password === null`.)
+- Impacto: nenhuma query ao banco funciona em dev quando se sobe a API pela raiz (`pnpm dev`) — login, register e todo fluxo autenticado quebram com 500. Mascara os bugs de sessão do frontend (BUG-010/011) atrás de uma falha de conexão.
+- Arquivo(s) afetado(s): `apps/api/src/load-env.ts` (novo), `apps/api/src/main.ts` (import inicial).
+- Correção aplicada: **Corrigido em PR-BUGFIX-1.** Novo `apps/api/src/load-env.ts` que, no startup, sobe a árvore a partir do `cwd` até achar o primeiro `.env`, faz parse (espelhando `parseDotEnv` de `apply-migrations.mjs` — mesma convenção do repo) e popula `process.env` **sem sobrescrever** chaves já definidas (container/CI continuam prevalecendo; no-op se o `.env` não existir). Importado como **primeira linha** de `main.ts` (`import "./load-env";`, antes de `reflect-metadata`), garantindo env disponível antes de qualquer leitura. A obrigatoriedade de senha no banco não é relaxada.
+- Teste/validação executado: `pnpm --filter @nexos/api exec tsc --noEmit` PASS. Simulação do caminho real (cwd=`apps/api`) resolve `/Users/.../nexos-booking/.env`, `POSTGRES_PASSWORD` passa a string não-vazia e `pg.Client.password` vira string (antes `null`). `POST /api/v1/auth/login` com credenciais inexistentes retorna `401 INVALID_CREDENTIALS` (banco conectado) em vez do erro SASL — antes 500.
+- Branch/commit relacionado: `fix/pr-bugfix-1-auth-session` / base `0cbf23d` (diff em working tree; commit não realizado)
+- Prevenção de regressão: manter o carregamento de `.env` no entrypoint da API; documentar/checar que `pnpm dev` na raiz sobe a API com `POSTGRES_*` resolvidos. Idealmente, validar presença das variáveis obrigatórias no boot (fail-fast) em PR futuro.
+- Status final: CORRIGIDO
 
 ---
 

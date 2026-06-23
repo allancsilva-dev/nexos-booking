@@ -149,7 +149,7 @@ Já havia alterações locais pré-existentes em `apps/api/src/app.module.ts`, `
 
 | ID | Severidade | Descrição |
 |---|---|---|
-| PEND-001 | MEDIA | CI remoto pendente. |
+| PEND-REL-001 | MEDIA | CI remoto pendente. (Renomeado de `PEND-001` para resolver colisão: `PEND-001` é canonicamente a paridade da role de runtime/RLS — ver BUG-012 no `BUGFIX_LOG.md`.) |
 | PEND-002 | MEDIA | Teste em navegador não executado; validação feita via build, `pnpm dev` e curl. |
 | PEND-003 | MEDIA | `test:idempotency` falhou em T18b por heurística textual ampla e em T24 por fixture FK ausente (`organization_id` inexistente). As checagens T1–T17, T18a, T19–T23 passaram. |
 | PEND-004 | BAIXA | `pnpm --filter @nexos/web build` e `pnpm --filter @nexos/api dev` precisam rodar fora do sandbox local por restrições de Turbopack/tsx a bind/IPC. |

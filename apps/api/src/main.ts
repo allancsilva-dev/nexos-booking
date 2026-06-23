@@ -1,3 +1,4 @@
+import "./load-env";
 import "reflect-metadata";
 import "./config/load-env";
 

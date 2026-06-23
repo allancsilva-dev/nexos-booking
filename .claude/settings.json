@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git checkout:*)",
+      "Bash(git clean:*)",
+      "Bash(git rebase:*)",
+      "Bash(rm -rf:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(npm publish:*)",
+      "Edit(docs/ARCHITECTURE_DECISIONS.md)",
+      "Write(docs/ARCHITECTURE_DECISIONS.md)",
+      "Edit(docs/DATABASE_SCHEMA_V2.md)",
+      "Write(docs/DATABASE_SCHEMA_V2.md)",
+      "Edit(docs/API_CONTRACTS.md)",
+      "Write(docs/API_CONTRACTS.md)",
+      "Edit(docs/PLANNING.md)",
+      "Write(docs/PLANNING.md)",
+      "Edit(docs/IMPLEMENTATION_ROADMAP.md)",
+      "Write(docs/IMPLEMENTATION_ROADMAP.md)",
+      "Edit(docs/POST_MVP_PRODUCT_ROADMAP.md)",
+      "Write(docs/POST_MVP_PRODUCT_ROADMAP.md)",
+      "Edit(docs/MVP_EXECUTION_PLAN.md)",
+      "Write(docs/MVP_EXECUTION_PLAN.md)",
+      "Edit(docs/archive/PATCHES_PLANNING_E_SCHEMA.md)",
+      "Write(docs/archive/PATCHES_PLANNING_E_SCHEMA.md)"
+    ]
+  }
+}

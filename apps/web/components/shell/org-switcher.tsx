@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 
 interface OrgItem {
-  id: string;
+  organizationId: string;
   name: string;
   slug: string;
 }
@@ -65,13 +65,15 @@ export function OrgSwitcher() {
         Empresas
       </p>
       {orgs.map((org) => {
-        const isActive = org.id === savedOrgId;
+        const isActive = org.organizationId === savedOrgId;
         return (
           <button
-            key={org.id}
+            key={org.organizationId}
             onClick={() => {
               if (!isActive) {
-                switchOrgMutation.mutate({ organizationId: org.id });
+                switchOrgMutation.mutate({
+                  organizationId: org.organizationId,
+                });
               }
             }}
             disabled={switchOrgMutation.isPending}
@@ -99,9 +101,9 @@ export function OrgSwitcher() {
             {isActive && (
               <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
             )}
-            {switchOrgMutation.isPending && switchOrgMutation.variables?.organizationId === org.id && (
-              <LoadingState variant="inline" />
-            )}
+            {switchOrgMutation.isPending &&
+              switchOrgMutation.variables?.organizationId ===
+                org.organizationId && <LoadingState variant="inline" />}
           </button>
         );
       })}
