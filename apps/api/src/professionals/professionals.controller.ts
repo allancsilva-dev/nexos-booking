@@ -26,6 +26,7 @@ import { RolesGuard } from "../authorization/guards/roles.guard";
 import { Roles } from "../authorization/decorators/roles.decorator";
 import type { CreateProfessionalInput } from "./dto/create-professional.dto";
 import type { UpdateProfessionalInput } from "./dto/update-professional.dto";
+import type { SetServicesInput } from "./dto/set-services.dto";
 import type { WorkingHoursInput } from "@nexos/shared";
 import type { CreateBlockInput } from "../scheduling/dto/create-block.dto";
 
@@ -83,6 +84,29 @@ export class ProfessionalsController {
   ) {
     const tenant = getTenant(req);
     return this.service.update(tenant.orgId, id, tenant.userId, body);
+  }
+
+  @Get(":id/services")
+  @UseGuards(AuthGuard, TenantGuard, RolesGuard)
+  @Roles("OWNER", "MANAGER")
+  async getServices(
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    const tenant = getTenant(req);
+    return this.service.getServices(tenant.orgId, id, tenant.userId);
+  }
+
+  @Put(":id/services")
+  @UseGuards(AuthGuard, TenantGuard, RolesGuard)
+  @Roles("OWNER", "MANAGER")
+  async setServices(
+    @Param("id") id: string,
+    @Body() body: SetServicesInput,
+    @Req() req: Request,
+  ) {
+    const tenant = getTenant(req);
+    return this.service.setServices(tenant.orgId, id, tenant.userId, body);
   }
 
   @Get(":professionalId/working-hours")

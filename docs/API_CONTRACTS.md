@@ -815,12 +815,24 @@ do contexto. Convenções (camelCase, ISO-8601, `priceCents`+`currency`, `404` p
 | `GET` | `/professionals` | membro | lista (inclui `active`) |
 | `POST` | `/professionals` | OWNER/MANAGER | `{ name, slug?, userId? }`; slug gerado do nome se ausente |
 | `PATCH` | `/professionals/:id` | OWNER/MANAGER | `name`, `slug`, `active`, `userId` |
+| `GET` | `/professionals/:id/services` | OWNER/MANAGER | lista de serviços vinculados ao profissional |
+| `PUT` | `/professionals/:id/services` | OWNER/MANAGER | `{ serviceIds: uuid[] }` — substitui a lista completa de vínculos |
 
 - Slug único por empresa, case-insensitive, colisão `-2`/`-3`, lista de reservadas (schema §6.1).
   Geração é **retry-on-conflict**, não check-then-insert (ADR-011) → colisão de corrida vira `409
   SLUG_TAKEN`, nunca `500`.
 - **`active=false` não cancela agendamentos futuros** (decisão consciente — schema §6.1): some da
   vitrine e do availability; o painel exibe os existentes e a equipe decide caso a caso.
+- **Vínculo com serviços (`professional_services`):** `GET /professionals/:id/services` retorna
+  `{ professionalId, serviceIds }`. `PUT /professionals/:id/services` recebe `{ serviceIds: uuid[] }`
+  e substitui a lista completa (substituição total, idempotente). `serviceIds: []` remove todos os
+  vínculos. Serviço `active=false` pode ser vinculado — `active` controla exposição/availability,
+  não a configuração de capacidade. `PUT` é all-or-nothing: erros de validação em qualquer
+  `serviceId` (UUID inválido ou serviço inexistente no tenant) retornam `422 VALIDATION_ERROR` com
+  `details[]` por índice (`serviceIds[i]`), sem aplicar `DELETE`/`INSERT`. Profissional inexistente
+  ou inativo → `404 NOT_FOUND`. Roles: OWNER, MANAGER. Concorrência: last-write-wins no MVP.
+  Remoção de vínculo não afeta agendamentos existentes — impacta apenas novos bookings e
+  availability futura (protegidos por E2a, `422 PROFESSIONAL_SERVICE_NOT_LINKED`).
 
 ### 20.2 `services`
 

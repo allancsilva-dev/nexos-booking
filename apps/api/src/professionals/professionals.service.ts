@@ -22,6 +22,7 @@ import {
 } from "../organizations/slug-generator";
 import type { CreateProfessionalInput } from "./dto/create-professional.dto";
 import type { UpdateProfessionalInput } from "./dto/update-professional.dto";
+import type { SetServicesInput } from "./dto/set-services.dto";
 
 const SLUG_MAX_RETRIES = 10;
 
@@ -335,6 +336,156 @@ export class ProfessionalsService {
       });
 
       return mapProfessional(updated!);
+    });
+  }
+
+  // ── professional_services ──────────────────────────────────────
+
+  async getServices(orgId: string, professionalId: string, userId: string) {
+    return withTenantContext(this.db, orgId, userId, async (tx) => {
+      const prof = await this.repo.findById(tx, orgId, professionalId);
+      if (!prof || !prof.active) {
+        throw new NotFoundException("Professional not found");
+      }
+
+      const serviceIds = await this.repo.getServiceIds(
+        tx,
+        orgId,
+        professionalId,
+      );
+
+      return { professionalId, serviceIds };
+    });
+  }
+
+  async setServices(
+    orgId: string,
+    professionalId: string,
+    userId: string,
+    input: SetServicesInput,
+  ) {
+    return withTenantContext(this.db, orgId, userId, async (tx) => {
+      // 1. Validar profissional
+      const prof = await this.repo.findById(tx, orgId, professionalId);
+      if (!prof || !prof.active) {
+        throw new NotFoundException("Professional not found");
+      }
+
+      // 2. Validar serviceIds é array
+      if (!Array.isArray(input.serviceIds)) {
+        throw new HttpException(
+          {
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "serviceIds must be an array",
+              details: [{ field: "serviceIds", issue: "must_be_array" }],
+            },
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+
+      // 3. Deduplicar
+      const unique = [...new Set(input.serviceIds)];
+
+      // 4. Validar UUIDs e coletar erros (all-or-nothing)
+      const errors: Array<{ field: string; issue: string }> = [];
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      for (let i = 0; i < unique.length; i++) {
+        if (!uuidRegex.test(unique[i]!)) {
+          errors.push({
+            field: `serviceIds[${i}]`,
+            issue: "invalid_uuid",
+          });
+          continue;
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new HttpException(
+          {
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Invalid service IDs",
+              details: errors,
+            },
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+
+      // 5. Validar existência dos serviços em lote (all-or-nothing)
+      const validSet = await this.repo.validateServiceIds(
+        tx,
+        orgId,
+        unique,
+      );
+      for (let i = 0; i < unique.length; i++) {
+        if (!validSet.has(unique[i]!)) {
+          errors.push({
+            field: `serviceIds[${i}]`,
+            issue: "not_found",
+          });
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new HttpException(
+          {
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "One or more service IDs are not valid for this organization",
+              details: errors,
+            },
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+
+      // 6. Calcular delta
+      const current = await this.repo.getServiceIds(
+        tx,
+        orgId,
+        professionalId,
+      );
+      const currentSet = new Set(current);
+      const toAdd = unique.filter((id) => !currentSet.has(id));
+      const toRemove = current.filter((id) => !unique.includes(id));
+
+      // 7. Aplicar delta
+      await this.repo.replaceServiceLinks(
+        tx,
+        orgId,
+        professionalId,
+        toAdd,
+        toRemove,
+      );
+
+      // 8. Audit log
+      if (toAdd.length > 0 || toRemove.length > 0) {
+        await tx.insert(auditLogs).values({
+          organization_id: orgId,
+          actor_user_id: userId,
+          action: "PROFESSIONAL_SERVICES_UPDATED",
+          target_type: "professional",
+          target_id: professionalId,
+          metadata: {
+            professionalId,
+            added: toAdd,
+            removed: toRemove,
+          },
+        });
+      }
+
+      const finalServiceIds = await this.repo.getServiceIds(
+        tx,
+        orgId,
+        professionalId,
+      );
+
+      return { professionalId, serviceIds: finalServiceIds };
     });
   }
 }
