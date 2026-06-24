@@ -22,6 +22,7 @@ import {
   InvalidStatusTransitionException,
   OutsideWorkingHoursException,
   WithinBlockException,
+  ProfessionalServiceNotLinkedException,
 } from "../common/exceptions/domain.exception";
 import type { CreateAppointmentInput, RescheduleInput, AppointmentStatus } from "@nexos/shared";
 import type { AppointmentEventPublisher, PublishedEvent } from "../realtime/publisher.interface";
@@ -281,7 +282,7 @@ export class AppointmentsService {
           input.serviceId,
         );
         if (!junction) {
-          throw new NotFoundException("Service not found");
+          throw new ProfessionalServiceNotLinkedException();
         }
 
         const config = await this.repo.findOrgConfig(tx, orgId);

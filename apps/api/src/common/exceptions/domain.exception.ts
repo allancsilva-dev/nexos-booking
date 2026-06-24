@@ -195,3 +195,13 @@ export class CancelTokenGoneException extends DomainException {
     );
   }
 }
+
+export class ProfessionalServiceNotLinkedException extends DomainException {
+  constructor() {
+    super(
+      "PROFESSIONAL_SERVICE_NOT_LINKED",
+      "Professional does not offer this service",
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+  }
+}

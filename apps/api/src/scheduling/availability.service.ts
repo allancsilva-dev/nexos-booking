@@ -7,6 +7,7 @@ import {
 import { DbService } from "../db";
 import { withTenantContext } from "../db/tenant-context";
 import { AvailabilityRepository } from "./availability.repository";
+import { ProfessionalServiceNotLinkedException } from "../common/exceptions/domain.exception";
 import { alignToSlotGrid } from "@nexos/shared";
 import type { AvailabilityQuery, AvailabilityResponse, AvailabilityDay, AvailabilitySlot } from "@nexos/shared";
 
@@ -116,7 +117,7 @@ export class AvailabilityService {
         serviceId,
       );
       if (!junction) {
-        throw new NotFoundException("Service not found");
+        throw new ProfessionalServiceNotLinkedException();
       }
 
       const config = await this.repo.findOrgConfig(tx, orgId);

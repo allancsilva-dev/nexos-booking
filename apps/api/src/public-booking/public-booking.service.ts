@@ -11,6 +11,7 @@ import {
   CancelTokenInvalidException,
   CancelTokenExpiredException,
   CancelTokenGoneException,
+  ProfessionalServiceNotLinkedException,
 } from "../common/exceptions/domain.exception";
 import { PublicBookingRepository } from "./public-booking.repository";
 import { AvailabilityService } from "../scheduling/availability.service";
@@ -261,7 +262,7 @@ export class PublicBookingService {
         input.serviceId,
       );
       if (!junction) {
-        throw new NotFoundException("Service not found");
+        throw new ProfessionalServiceNotLinkedException();
       }
 
       const config = await this.repo.findOrgConfig(tx, orgId);

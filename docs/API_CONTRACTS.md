@@ -262,6 +262,7 @@ de convite de empresa onde já é membro).
 `INVALID_STATUS_TRANSITION` (ação sobre estado terminal / transição fora da matriz — ADR-018),
 `OUTSIDE_WORKING_HOURS`, `WITHIN_BLOCK`, `CANCEL_TOKEN_INVALID`, `CANCEL_TOKEN_EXPIRED`.
 **Jornada:** `WORKING_HOURS_CONFLICT` (turnos sobrepostos no mesmo dia — `no_shift_overlap`; ADR-015).
+**Profissional/serviço:** `PROFESSIONAL_SERVICE_NOT_LINKED` (`422`, profissional não presta o serviço informado).
 
 ---
 
@@ -468,7 +469,8 @@ e o `POST /appointments`, outro cliente (ou a equipe) pode ter ocupado o mesmo s
 > agregação futura.
 
 **Erros esperados:** `400 BAD_REQUEST` (data malformada/não-parseável), `422 VALIDATION_ERROR`
-(janela > 31 dias — regra semântica), `404 NOT_FOUND` (profissional/serviço inexistente ou de outro
+(janela > 31 dias — regra semântica), `422 PROFESSIONAL_SERVICE_NOT_LINKED` (profissional não
+presta o serviço informado), `404 NOT_FOUND` (profissional/serviço inexistente ou de outro
 tenant — não distinguir), `403 AUTHZ_DENIED` (PROFESSIONAL consultando agenda de outro profissional —
 escopo de papel, §10.6 do schema).
 
@@ -556,6 +558,11 @@ fase futura de aprovação (habilitar será aditivo: ação `confirm` + linha na
   volta). A validação vale no painel **e** no público (§17.2). **Âncora da grade = início da jornada do
   profissional no dia, no fuso da empresa (ADR-023)** — a mesma usada pelo slicing do availability, para
   que availability e POST nunca divirjam (inclusive em dia de DST).
+- **Vínculo profissional-serviço:** o backend valida que o profissional presta o serviço informado
+  consultando a junção `professional_services` (schema §6.3). Combinação sem vínculo →
+  `422 PROFESSIONAL_SERVICE_NOT_LINKED`. Profissional ou serviço inexistente/inativo/de outro tenant
+  continua `404 NOT_FOUND` (a validação de vínculo só ocorre após confirmar que ambos existem no
+  mesmo tenant).
 - **Gate de jornada (ADR-022) — `allowOutsideHours` (default `false`):** o backend revalida que o slot
   cai **dentro da jornada e fora de bloqueios** (o `no_overlap` do banco **não** cobre isso — é validação
   de service). **No painel**, fora da jornada com `allowOutsideHours` ausente/`false` →
@@ -619,6 +626,7 @@ Devolve o recurso direto (sem envelope `data` — seção 2), já com `version`:
 | Ação sobre estado terminal / fora da matriz | `409` | `INVALID_STATUS_TRANSITION` |
 | Fora da jornada de trabalho | `422` | `OUTSIDE_WORKING_HOURS` |
 | Dentro de um bloqueio datado | `422` | `WITHIN_BLOCK` |
+| Profissional não presta o serviço | `422` | `PROFESSIONAL_SERVICE_NOT_LINKED` |
 | `Idempotency-Key` em andamento | `409` | `IDEMPOTENCY_IN_PROGRESS` (+ `Retry-After`) |
 | `Idempotency-Key` reusada c/ payload diferente | `409` | `IDEMPOTENCY_KEY_REUSED` |
 
@@ -687,6 +695,11 @@ via `app_resolve_org_by_slug` (ADR-017), sujeitas ao `RateLimiter` (seção 19),
   - **`startsAt` na grade do `slot_interval_min`** (§16.1, âncora = início da jornada do dia — ADR-023) →
     senão `422 VALIDATION_ERROR`. A rota pública é a mais exposta a horário arbitrário; o alinhamento
     mantém a agenda fatiável.
+  - **Vínculo profissional-serviço:** o backend valida que o profissional presta o serviço informado
+    consultando a junção `professional_services`. Combinação sem vínculo →
+    `422 PROFESSIONAL_SERVICE_NOT_LINKED` (profissional e serviço existem no mesmo tenant, mas não
+    estão vinculados). Profissional ou serviço inexistente/inativo/de outro tenant continua
+    `404 NOT_FOUND`.
   - **Dentro da jornada e fora de bloqueios (ADR-022):** o público **sempre rejeita** fora do expediente
     → `422 OUTSIDE_WORKING_HOURS` (ou `422 WITHIN_BLOCK`). **Não há `allowOutsideHours` no público** — só
     o painel encaixa fora da jornada. Gate explícito porque o `no_overlap` do banco não cobre jornada e o
