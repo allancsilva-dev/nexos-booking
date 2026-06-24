@@ -105,11 +105,31 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       const code = codeFromHttpException(exception);
 
+      // Extrai details[] do corpo da resposta, se existir.
+      // Pode vir como array, objeto único (normalizado), ou aninhado em error.details.
+      let details: Array<{ field: string; issue: string }> | undefined;
+      if (typeof body === "object" && body !== null) {
+        const record = body as Record<string, unknown>;
+        const raw =
+          record.details ??
+          (record.error as Record<string, unknown> | undefined)?.details;
+        if (Array.isArray(raw)) {
+          details = raw as Array<{ field: string; issue: string }>;
+        } else if (
+          typeof raw === "object" &&
+          raw !== null &&
+          "field" in raw
+        ) {
+          details = [raw as { field: string; issue: string }];
+        }
+      }
+
       response.status(status).json(
         buildErrorEnvelope({
           code,
           message,
           requestId,
+          ...(details && { details }),
         }),
       );
       return;
