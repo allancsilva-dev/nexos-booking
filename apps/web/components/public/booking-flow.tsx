@@ -61,7 +61,6 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     cancelToken: string;
   } | null>(null);
 
-  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
   const availabilityAbortRef = useRef<AbortController | null>(null);
 
   const selectedService = vitrine.services.find((s) => s.id === selectedServiceId);
@@ -192,13 +191,14 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     };
 
     try {
+      const idempotencyKey = crypto.randomUUID();
       const result = await apiFetch<PublicBookingResponse>(
         `/api/v1/public/${orgSlug}/appointments`,
         {
           method: "POST",
           body: JSON.stringify(payload),
           headers: {
-            "Idempotency-Key": idempotencyKeyRef.current,
+            "Idempotency-Key": idempotencyKey,
           },
         }
       );
@@ -347,7 +347,6 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     setBookingResult(null);
     setError(null);
     setClientErrors({});
-    idempotencyKeyRef.current = crypto.randomUUID();
   }
 
   if (step === "done" && bookingResult) {
@@ -470,29 +469,44 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
             </Card>
           )}
 
-          <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
-            Escolha o profissional
-          </h2>
-          <ul className="grid gap-3" role="listbox" aria-label="Profissionais">
-            {vitrine.professionals.map((pro) => (
-              <li key={pro.slug} role="option" aria-selected={selectedProfessionalSlug === pro.slug}>
-                <button
-                  type="button"
-                  className={cn(
-                    "w-full text-left rounded-[var(--radius-card)] border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
-                    selectedProfessionalSlug === pro.slug
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
-                      : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-muted-foreground)]"
-                  )}
-                  onClick={() => handleSelectProfessional(pro.slug)}
-                >
-                  <span className="text-sm font-medium text-[var(--color-foreground)]">
-                    {pro.name}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          {selectedService && selectedService.professionalSlugs.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-[var(--color-muted-foreground)]">
+                Nenhum profissional disponível para este serviço.
+              </p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={handleBack}>
+                Escolher outro serviço
+              </Button>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
+                Escolha o profissional
+              </h2>
+              <ul className="grid gap-3" role="listbox" aria-label="Profissionais">
+                {vitrine.professionals
+                  .filter((pro) => selectedService?.professionalSlugs.includes(pro.slug))
+                  .map((pro) => (
+                    <li key={pro.slug} role="option" aria-selected={selectedProfessionalSlug === pro.slug}>
+                      <button
+                        type="button"
+                        className={cn(
+                          "w-full text-left rounded-[var(--radius-card)] border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
+                          selectedProfessionalSlug === pro.slug
+                            ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
+                            : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-muted-foreground)]"
+                        )}
+                        onClick={() => handleSelectProfessional(pro.slug)}
+                      >
+                        <span className="text-sm font-medium text-[var(--color-foreground)]">
+                          {pro.name}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
 
