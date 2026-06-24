@@ -66,7 +66,7 @@
 | ID | Data | PR/Fase | Severidade | Título | Status |
 |---|---|---|---|---|---|
 | BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | ABERTO |
-| PROP-E1 | a confirmar | Pré-PR backend (web) | ALTA | Snapshot de preço no agendamento | EM_ANÁLISE |
+| PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
 | PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
 | PROP-E2b | 2026-06-23 | Pré-WEB-7A | ALTA | Vitrine pública relacionar serviço ↔ profissional | ABERTO |
 | PROP-E2c | 2026-06-23 | Pré-WEB-3 · PR-PROP-E2C-PROFESSIONAL-SERVICES-MGMT-01 | ALTA | API de gerenciamento do vínculo `professional_services` | RATIFICADA |
@@ -140,7 +140,22 @@
   preço do serviço **não** muda agendamentos passados.
 - Branch/commit relacionado: `PR-BE-SNAPSHOT` (a abrir após ADR).
 - Prevenção de regressão: teste que altera `services.price_cents` e verifica imutabilidade do snapshot.
-- Status final: EM_ANÁLISE (proposta aberta, aguardando ADR/ratificação)
+- Decisão ratificada (2026-06-24 — PR-PROP-E1-SNAPSHOT-CONTRACT):
+  1. Adicionar 4 colunas de snapshot em `appointments`: `service_name_snapshot` (text NOT NULL),
+     `service_duration_min_snapshot` (int NOT NULL), `service_price_cents_snapshot` (int NOT NULL),
+     `service_currency_snapshot` (char(3) NOT NULL DEFAULT 'BRL').
+  2. Fonte: `services.name`, `services.duration_min`, `services.price_cents`, `services.currency`
+     no momento da criação do appointment.
+  3. Preenchido em `POST /appointments` (painel) e `POST /public/:orgSlug/appointments` (público).
+  4. Preservado em reagendamento, cancelamento, complete e no-show.
+  5. `service_id` continua como FK — snapshot complementa, não substitui.
+  6. Migration segura: adicionar colunas nullable → backfill via JOIN com services →
+     aplicar NOT NULL. `currency` com DEFAULT 'BRL'.
+  7. DTOs de appointment/list/public-booking devem expor snapshot.
+  8. `CreateAppointmentInput` não muda — snapshot é responsabilidade do backend.
+  9. PR-BE-SNAPSHOT-APPOINTMENT-SERVICE-01: migration 0007, Drizzle schema, shared DTOs,
+     appointments.service.ts, public-booking.service.ts, API_CONTRACTS.md. Sem frontend.
+- Status final: RATIFICADA (implementação pendente no `PR-BE-SNAPSHOT-APPOINTMENT-SERVICE-01`)
 
 ### PROP-E2 — Exigir vínculo `professional_services` na reserva e na disponibilidade (proposta — muda canônico)
 - Data: 2026-06-23
