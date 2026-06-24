@@ -11,7 +11,7 @@
 >   sensíveis. Telefone, se inevitável, vai mascarado. Referenciar por ID/`requestId`.
 > - Se o erro for uma **divergência entre documentos** descoberta na execução, registrar aqui e apontar
 >   qual documento prevalece (hierarquia no `MVP_EXECUTION_PLAN.md`) **antes** de avançar.
-> - Status possível: `ABERTO` · `EM_ANÁLISE` · `CORRIGIDO` · `VALIDADO` · `NÃO_REPRODUZ` · `ACEITO_COMO_PENDÊNCIA`.
+> - Status possível: `ABERTO` · `EM_ANÁLISE` · `RATIFICADA` · `PARCIALMENTE_IMPLEMENTADA` · `CORRIGIDO` · `VALIDADO` · `NÃO_REPRODUZ` · `ACEITO_COMO_PENDÊNCIA`.
 > - Severidade: `BLOQUEANTE` · `ALTA` · `MÉDIA` · `BAIXA`.
 >
 > **Nota de nomenclatura (extensão acordada do modelo):** além de `BUG-NNN`, este ledger registra
@@ -56,7 +56,7 @@
 - Teste/validação executado:
 - Branch/commit relacionado: (opcional)
 - Prevenção de regressão: (opcional — qual teste impede o retorno)
-- Status final: ABERTO | EM_ANÁLISE | CORRIGIDO | VALIDADO | NÃO_REPRODUZ | ACEITO_COMO_PENDÊNCIA
+- Status final: ABERTO | EM_ANÁLISE | RATIFICADA | PARCIALMENTE_IMPLEMENTADA | CORRIGIDO | VALIDADO | NÃO_REPRODUZ | ACEITO_COMO_PENDÊNCIA
 ```
 
 ---
@@ -67,7 +67,9 @@
 |---|---|---|---|---|---|
 | BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | ABERTO |
 | PROP-E1 | a confirmar | Pré-PR backend (web) | ALTA | Snapshot de preço no agendamento | EM_ANÁLISE |
-| PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | RATIFICADA |
+| PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
+| PROP-E2b | 2026-06-23 | Pré-WEB-7A | ALTA | Vitrine pública relacionar serviço ↔ profissional | ABERTO |
+| PROP-E2c | 2026-06-23 | Pré-WEB-3 | ALTA | API de gerenciamento do vínculo `professional_services` | ABERTO |
 | PROP-E4 | a confirmar | Transversal web | MÉDIA | Envelope de lista/paginação consistente | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-001 | 2026-06-23 | PR-DIAG-WEB | ALTA | Slug público inexistente retorna 500 | ABERTO |
 | INV-WEB-002 | 2026-06-23 | PR-DIAG-WEB | ALTA | Cancelamento público com token inválido retorna 500 | ABERTO |
@@ -168,7 +170,62 @@
 - Branch/commit relacionado: `PR-BE-PROF-SVC` (a abrir, implementação).
 - Prevenção de regressão: teste negativo de reserva com combinação inválida; teste de vitrine sem a
   combinação.
-- Status final: RATIFICADA (implementação pendente no PR-BE-PROF-SVC)
+- Desmembramento (2026-06-23): PROP-E2 foi dividida em três partes após implementação parcial:
+  * E2a (concluído): enforcement de `professional_services` em `POST /appointments`,
+    `POST /public/:orgSlug/appointments`, `GET .../availability` (painel + público).
+    Implementado pelo `PR-BE-PROF-SVC` (commit `744c077`). Adicionou `PROFESSIONAL_SERVICE_NOT_LINKED`
+    no `API_CONTRACTS.md` §7/§15/§16/§17 e no `packages/shared`.
+  * E2b (aberto — ver entrada PROP-E2b): vitrine pública (`GET /public/:orgSlug`) relacionar
+    serviço ↔ profissional. Bloqueia WEB-7A.
+  * E2c (aberto — ver entrada PROP-E2c): API/backend de gerenciamento do vínculo
+    `professional_services`. Bloqueia WEB-3.
+  WEB-5B e WEB-7B ficam desbloqueados apenas quanto à validação backend profissional-serviço (E2a),
+  ainda respeitando PROP-E1.
+- Status final: PARCIALMENTE_IMPLEMENTADA (E2a concluído; E2b e E2c pendentes — ver entradas próprias)
+
+### PROP-E2b — Vitrine pública relacionar serviço ↔ profissional (desmembramento de PROP-E2 §4)
+- Data: 2026-06-23
+- PR/Fase: Pré-WEB-7A
+- Severidade: ALTA
+- Erro encontrado: `GET /public/:orgSlug` (`API_CONTRACTS §17.1`) retorna listas planas de `services` e
+  `professionals`, sem expor a relação da junção `professional_services`. A vitrine pública não consegue
+  saber quais profissionais prestam cada serviço.
+- Sintoma: a vitrine pode exibir profissional para serviço que ele não presta; a informação de vínculo
+  existe no banco (tabela `professional_services`, `DATABASE_SCHEMA_V2 §6.3`) mas não chega à resposta
+  do endpoint.
+- Causa raiz: PROP-E2 foi desmembrada após E2a; a vitrine (§17.1) ficou como escopo separado (E2b).
+- Impacto: WEB-7A continua bloqueado até que a vitrine pública relacione serviço ↔ profissional.
+  Sem isso, o booking público (WEB-7B) exibe combinações inválidas ao visitante.
+- Arquivo(s) afetado(s): `apps/api/src/public-booking/` (controller + service de vitrine),
+  `packages/shared/src/dto/public-vitrine.dto.ts`, `docs/API_CONTRACTS.md` §17.1.
+- Correção aplicada: nenhuma — PR futuro.
+- Teste/validação executado: a definir no PR.
+- Gate: exige ratificação humana antes da implementação, pois altera `API_CONTRACTS.md` §17.1
+  e DTO público.
+- Status final: ABERTO
+
+### PROP-E2c — API de gerenciamento do vínculo `professional_services` (desmembramento de PROP-E2 §5)
+- Data: 2026-06-23
+- PR/Fase: Pré-WEB-3
+- Severidade: ALTA
+- Erro encontrado: não existe endpoint/API para criar ou remover vínculos em `professional_services`.
+  A tabela existe (`DATABASE_SCHEMA_V2 §6.3`) com FKs compostas tenant-safe, mas é apenas lida
+  (nunca escrita) pelos repositórios de `appointments`, `public-booking` e `scheduling`.
+- Sintoma: impossível vincular/desvincular serviços a profissionais via API. WEB-3 não tem superfície
+  para gerenciar quais serviços cada profissional presta.
+- Causa raiz: `API_CONTRACTS.md` §20.1/§20.2 não especificam endpoint de vínculo; o
+  `ProfessionalsController` (`apps/api/src/professionals/professionals.controller.ts`) não implementa
+  rota equivalente.
+- Impacto: WEB-3 continua bloqueado até existir endpoint de gerenciamento de vínculo. O enforcement
+  de E2a já rejeita combinações inválidas, mas sem a API de gestão o vínculo não pode ser criado
+  pela interface.
+- Arquivo(s) afetado(s): `apps/api/src/professionals/` (controller + service + repository),
+  `packages/shared/src/dto/` (schemas de vínculo), `docs/API_CONTRACTS.md` §20.
+- Correção aplicada: nenhuma — PR futuro.
+- Teste/validação executado: a definir no PR.
+- Gate: exige ratificação humana antes da implementação, pois altera `API_CONTRACTS.md` §20
+  e superfície operacional.
+- Status final: ABERTO
 
 ### PROP-E4 — Envelope de lista/paginação consistente (proposta — DEFERIDA)
 - Data: a confirmar na fonte
