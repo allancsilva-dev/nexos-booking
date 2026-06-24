@@ -143,6 +143,18 @@ export class PublicBookingService {
 
       const services = await this.repo.findActiveServices(tx, orgId);
       const professionals = await this.repo.findActiveProfessionals(tx, orgId);
+      const links = await this.repo.findServiceProfessionalSlugs(tx, orgId);
+
+      // Agrupa slugs por service_id — usa services[] ativos como base
+      const slugsByService = new Map<string, string[]>();
+      for (const link of links) {
+        const arr = slugsByService.get(link.service_id);
+        if (arr) {
+          arr.push(link.slug);
+        } else {
+          slugsByService.set(link.service_id, [link.slug]);
+        }
+      }
 
       return {
         name: orgRows[0].name,
@@ -154,6 +166,7 @@ export class PublicBookingService {
           durationMin: s.durationMin,
           priceCents: s.priceCents,
           currency: s.currency,
+          professionalSlugs: slugsByService.get(s.id) ?? [],
         })),
         professionals: professionals.map((p) => ({
           slug: p.slug,

@@ -80,6 +80,29 @@ export class PublicBookingRepository {
       );
   }
 
+  async findServiceProfessionalSlugs(
+    tx: DbTransaction,
+    orgId: string,
+  ): Promise<Array<{ service_id: string; slug: string }>> {
+    const rows = await tx
+      .select({
+        service_id: professionalServices.service_id,
+        slug: professionals.slug,
+      })
+      .from(professionalServices)
+      .innerJoin(
+        professionals,
+        and(
+          eq(professionals.organization_id, professionalServices.organization_id),
+          eq(professionals.id, professionalServices.professional_id),
+          eq(professionals.active, true),
+        ),
+      )
+      .where(eq(professionalServices.organization_id, orgId))
+      .orderBy(professionals.name, professionals.slug);
+    return rows;
+  }
+
   async findProfessionalBySlug(
     tx: DbTransaction,
     orgId: string,

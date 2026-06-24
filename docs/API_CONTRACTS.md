@@ -657,7 +657,14 @@ via `app_resolve_org_by_slug` (ADR-017), sujeitas ao `RateLimiter` (seção 19),
   "slug": "barbearia-do-ze",
   "timezone": "America/Sao_Paulo",
   "services": [
-    { "id": "uuid", "name": "Corte", "durationMin": 30, "priceCents": 5000, "currency": "BRL" }
+    {
+      "id": "uuid",
+      "name": "Corte",
+      "durationMin": 30,
+      "priceCents": 5000,
+      "currency": "BRL",
+      "professionalSlugs": ["ze", "maria"]
+    }
   ],
   "professionals": [
     { "slug": "ze", "name": "Zé" }

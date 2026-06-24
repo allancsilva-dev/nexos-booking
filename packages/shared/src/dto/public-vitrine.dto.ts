@@ -6,6 +6,7 @@ export const PublicServiceSummarySchema = z.object({
   durationMin: z.number().int().positive(),
   priceCents: z.number().int().min(0),
   currency: z.string().length(3),
+  professionalSlugs: z.array(z.string()),
 });
 
 export const PublicProfessionalSummarySchema = z.object({
