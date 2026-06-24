@@ -68,7 +68,7 @@
 | BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | ABERTO |
 | PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
 | PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
-| PROP-E2b | 2026-06-23 | Pré-WEB-7A | ALTA | Vitrine pública relacionar serviço ↔ profissional | ABERTO |
+| PROP-E2b | 2026-06-24 | Pré-WEB-7A · PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT | ALTA | Vitrine pública relacionar serviço ↔ profissional | RATIFICADA |
 | PROP-E2c | 2026-06-23 | Pré-WEB-3 · PR-PROP-E2C-PROFESSIONAL-SERVICES-MGMT-01 | ALTA | API de gerenciamento do vínculo `professional_services` | RATIFICADA |
 | PROP-E4 | a confirmar | Transversal web | MÉDIA | Envelope de lista/paginação consistente | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-001 | 2026-06-23 | PR-DIAG-WEB | ALTA | Slug público inexistente retorna 500 | ABERTO |
@@ -217,7 +217,18 @@
 - Teste/validação executado: a definir no PR.
 - Gate: exige ratificação humana antes da implementação, pois altera `API_CONTRACTS.md` §17.1
   e DTO público.
-- Status final: ABERTO
+- Decisão ratificada (2026-06-24 — PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT):
+  1. `GET /public/:orgSlug` mantém `services[]` e `professionals[]`.
+  2. Cada item de `services[]` ganha `professionalSlugs: string[]` — slugs dos profissionais
+     ativos que prestam aquele serviço (via `professional_services`).
+  3. Serviços ativos sem profissional vinculado → `professionalSlugs: []`.
+  4. Profissionais inativos não entram em `professionalSlugs`.
+  5. Serviços inativos não entram em `services[]`.
+  6. Mudança aditiva e backward-compatible. `POST /public/:orgSlug/appointments` não muda.
+  7. Ordenação estável de `professionalSlugs` (por nome ou slug).
+  8. PR-BE-PUBLIC-VITRINE-PROF-SVC-01: shared DTO, public-booking service, API_CONTRACTS §17.1.
+     Sem migration, sem frontend, sem alterar booking create.
+- Status final: RATIFICADA (implementação pendente no `PR-BE-PUBLIC-VITRINE-PROF-SVC-01`)
 
 ### PROP-E2c — API de gerenciamento do vínculo `professional_services` (desmembramento de PROP-E2 §5)
 - Data: 2026-06-23
