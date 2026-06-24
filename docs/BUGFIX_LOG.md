@@ -69,7 +69,7 @@
 | PROP-E1 | a confirmar | Pré-PR backend (web) | ALTA | Snapshot de preço no agendamento | EM_ANÁLISE |
 | PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
 | PROP-E2b | 2026-06-23 | Pré-WEB-7A | ALTA | Vitrine pública relacionar serviço ↔ profissional | ABERTO |
-| PROP-E2c | 2026-06-23 | Pré-WEB-3 | ALTA | API de gerenciamento do vínculo `professional_services` | ABERTO |
+| PROP-E2c | 2026-06-23 | Pré-WEB-3 · PR-PROP-E2C-PROFESSIONAL-SERVICES-MGMT-01 | ALTA | API de gerenciamento do vínculo `professional_services` | RATIFICADA |
 | PROP-E4 | a confirmar | Transversal web | MÉDIA | Envelope de lista/paginação consistente | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-001 | 2026-06-23 | PR-DIAG-WEB | ALTA | Slug público inexistente retorna 500 | ABERTO |
 | INV-WEB-002 | 2026-06-23 | PR-DIAG-WEB | ALTA | Cancelamento público com token inválido retorna 500 | ABERTO |
@@ -221,11 +221,26 @@
   pela interface.
 - Arquivo(s) afetado(s): `apps/api/src/professionals/` (controller + service + repository),
   `packages/shared/src/dto/` (schemas de vínculo), `docs/API_CONTRACTS.md` §20.
-- Correção aplicada: nenhuma — PR futuro.
-- Teste/validação executado: a definir no PR.
-- Gate: exige ratificação humana antes da implementação, pois altera `API_CONTRACTS.md` §20
-  e superfície operacional.
-- Status final: ABERTO
+- Correção aplicada: nenhuma — PR futuro (`PR-BE-PROF-SVC-MGMT`).
+- Teste/validação executado: a definir no PR de implementação.
+- Decisão ratificada (2026-06-23 — PR-PROP-E2C-PROFESSIONAL-SERVICES-MGMT-01):
+  1. `GET /professionals/:id/services` — leitura dos vínculos atuais. Retorna
+     `{ professionalId: uuid, serviceIds: uuid[] }`. `serviceIds: []` é válido.
+  2. `PUT /professionals/:id/services` com `{ serviceIds: uuid[] }` — substituição total da lista de
+     serviços vinculados ao profissional. Idempotente: replay com mesma lista = no-op. Duplicados no
+     payload são deduplicados pelo backend.
+  3. Concorrência: last-write-wins no MVP, sem `If-Match`/version.
+  4. Roles: OWNER e MANAGER.
+  5. Remoção de vínculo é permitida mesmo com agendamentos futuros existentes. Agendamentos existentes
+     não são alterados. A remoção afeta apenas novos agendamentos (`POST /appointments`) e
+     availability futura (`GET /availability`), ambos já protegidos pelo enforcement de E2a
+     (`422 PROFESSIONAL_SERVICE_NOT_LINKED`).
+  6. Nenhum `error.code` novo necessário. Erros: `404 NOT_FOUND` (profissional/serviço inexistente,
+     inativo ou outro tenant), `422 VALIDATION_ERROR` (payload inválido), `403 AUTHZ_DENIED` (role).
+  7. `organization_id` nunca no payload — vem do claim `org` (ADR-020). Queries dentro de
+     `withTenantContext`. FKs compostas existentes garantem tenant safety no banco.
+  8. Nenhuma migration/DDL necessária. Tabela `professional_services` já existe (schema §6.3).
+- Status final: RATIFICADA (implementação pendente no `PR-BE-PROF-SVC-MGMT`)
 
 ### PROP-E4 — Envelope de lista/paginação consistente (proposta — DEFERIDA)
 - Data: a confirmar na fonte
