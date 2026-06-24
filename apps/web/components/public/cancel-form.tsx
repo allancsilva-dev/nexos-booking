@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { CancelPreviewResponse } from "@nexos/shared";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,14 +20,30 @@ interface ErrorState {
   retryAfterSeconds?: number;
 }
 
-export function CancelForm({ className }: { className?: string }) {
-  const [token, setToken] = useState("");
-  const [step, setStep] = useState<Step>("input");
+export function CancelForm({
+  className,
+  initialToken,
+}: {
+  className?: string;
+  initialToken?: string;
+}) {
+  const [token, setToken] = useState(initialToken ?? "");
+  const [step, setStep] = useState<Step>(
+    initialToken ? "loading" : "input",
+  );
   const [preview, setPreview] = useState<CancelPreviewResponse | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
+  const autoFired = useRef(false);
 
-  async function handlePreview() {
-    if (!token.trim()) return;
+  // Auto-preview quando initialToken é fornecido (roda uma única vez)
+  useEffect(() => {
+    if (initialToken && !autoFired.current) {
+      autoFired.current = true;
+      handlePreviewWithToken(initialToken);
+    }
+  }, [initialToken]);
+
+  async function handlePreviewWithToken(t: string) {
     setStep("loading");
     setError(null);
 
@@ -36,8 +52,8 @@ export function CancelForm({ className }: { className?: string }) {
         "/api/v1/public/cancel/preview",
         {
           method: "POST",
-          body: JSON.stringify({ token: token.trim() }),
-        }
+          body: JSON.stringify({ token: t }),
+        },
       );
       setPreview(result);
       setStep("preview");
@@ -47,8 +63,7 @@ export function CancelForm({ className }: { className?: string }) {
           code: err.code,
           message: err.message,
           requestId: err.requestId,
-          retryAfterSeconds:
-            err.status === 429 ? 5 : undefined,
+          retryAfterSeconds: err.status === 429 ? 5 : undefined,
         });
       } else {
         setError({
@@ -59,6 +74,11 @@ export function CancelForm({ className }: { className?: string }) {
       }
       setStep("error");
     }
+  }
+
+  async function handlePreview() {
+    if (!token.trim()) return;
+    await handlePreviewWithToken(token.trim());
   }
 
   async function handleConfirm() {
