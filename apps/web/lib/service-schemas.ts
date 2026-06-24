@@ -18,7 +18,10 @@ export const CreateServiceSchema = z.object({
     .number({ invalid_type_error: "Preço inválido" })
     .int("Preço deve ser inteiro")
     .min(0, "Preço não pode ser negativo"),
-  currency: z.string().length(3, "Moeda deve ter 3 caracteres").optional(),
+  currency: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : val),
+    z.string().length(3, "Moeda deve ter 3 caracteres").optional(),
+  ),
 });
 
 export type CreateServiceInput = z.infer<typeof CreateServiceSchema>;
@@ -35,7 +38,10 @@ export const UpdateServiceSchema = z.object({
     .int("Preço deve ser inteiro")
     .min(0, "Preço não pode ser negativo")
     .optional(),
-  currency: z.string().length(3, "Moeda deve ter 3 caracteres").optional(),
+  currency: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : val),
+    z.string().length(3, "Moeda deve ter 3 caracteres").optional(),
+  ),
   active: z.boolean().optional(),
 });
 
