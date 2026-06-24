@@ -67,7 +67,7 @@
 |---|---|---|---|---|---|
 | BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | ABERTO |
 | PROP-E1 | a confirmar | Pré-PR backend (web) | ALTA | Snapshot de preço no agendamento | EM_ANÁLISE |
-| PROP-E2 | a confirmar | Pré-PR backend (web) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | EM_ANÁLISE |
+| PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | RATIFICADA |
 | PROP-E4 | a confirmar | Transversal web | MÉDIA | Envelope de lista/paginação consistente | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-001 | 2026-06-23 | PR-DIAG-WEB | ALTA | Slug público inexistente retorna 500 | ABERTO |
 | INV-WEB-002 | 2026-06-23 | PR-DIAG-WEB | ALTA | Cancelamento público com token inválido retorna 500 | ABERTO |
@@ -141,8 +141,8 @@
 - Status final: EM_ANÁLISE (proposta aberta, aguardando ADR/ratificação)
 
 ### PROP-E2 — Exigir vínculo `professional_services` na reserva e na disponibilidade (proposta — muda canônico)
-- Data: a confirmar na fonte
-- PR/Fase: pré-PR de backend da camada web (`PR-BE-PROF-SVC`), gate antes de WEB-3/WEB-5B/WEB-7A
+- Data: 2026-06-23
+- PR/Fase: PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 (ratificação) · implementação no `PR-BE-PROF-SVC`
 - Severidade: ALTA
 - Erro encontrado: a junção `professional_services` (`§6.3`) existe, mas **não é exigida** em §15/§16/§17.
   Vitrine e painel podem marcar um profissional para um serviço que ele não presta.
@@ -152,18 +152,23 @@
 - Causa raiz: regra de negócio "profissional oferece serviço" não é pré-condição nem filtro nas rotas de
   criação e disponibilidade.
 - Impacto: correção de agenda e da vitrine pública; **muda canônico** (clarificação de contrato em
-  §15/§16/§17 + código de erro dedicado).
+  §15/§16/§17 + código de erro dedicado `PROFESSIONAL_SERVICE_NOT_LINKED`).
 - Arquivo(s) afetado(s): validação de criação (painel + público); `GET /availability`; `GET /public/:orgSlug`
   (relacionar serviço↔profissional, não listas planas); `packages/shared`.
-- Correção aplicada: **nenhuma** — é **PROPOSTA**. ADR/clarificação ratificada antes de implementar.
-  Vínculo vira **pré-condição** (`422 VALIDATION_ERROR`/código dedicado) e **filtro**. Escopo proibido:
-  quebrar o formato agregável de slots de §15 ("qualquer profissional" futuro).
-- Teste/validação executado: a definir — aceite (−): reservar profissional que não presta o serviço →
-  `422`; vitrine não oferece a combinação.
-- Branch/commit relacionado: `PR-BE-PROF-SVC` (a abrir após ADR).
+- Correção aplicada: **nenhuma** — é **PROPOSTA RATIFICADA**. Implementação no `PR-BE-PROF-SVC`.
+- Decisão ratificada (2026-06-23):
+  1. `POST /appointments` (painel) rejeita profissional sem vínculo com o serviço → `422 PROFESSIONAL_SERVICE_NOT_LINKED`.
+  2. `POST /public/:orgSlug/appointments` aplica a mesma validação.
+  3. `GET /professionals/:id/availability` e `GET /public/:orgSlug/professionals/:slug/availability` rejeitam combinação inválida.
+  4. `GET /public/:orgSlug` (vitrine) relaciona serviço ↔ profissional, sem listas independentes ambíguas.
+  5. WEB-3 permite gerenciar o vínculo `professional_services`.
+  6. A solução não bloqueia a evolução futura "qualquer profissional" (PLANNING §10.2).
+- Teste/validação executado: a definir no `PR-BE-PROF-SVC`. Aceite (−): reservar profissional que não presta
+  o serviço → `422`; vitrine não oferece a combinação.
+- Branch/commit relacionado: `PR-BE-PROF-SVC` (a abrir, implementação).
 - Prevenção de regressão: teste negativo de reserva com combinação inválida; teste de vitrine sem a
   combinação.
-- Status final: EM_ANÁLISE (proposta aberta, aguardando ADR/ratificação)
+- Status final: RATIFICADA (implementação pendente no PR-BE-PROF-SVC)
 
 ### PROP-E4 — Envelope de lista/paginação consistente (proposta — DEFERIDA)
 - Data: a confirmar na fonte
