@@ -334,6 +334,10 @@
 - Prevenção de regressão: teste negativo futuro para slug inexistente em `GET /api/v1/public/:orgSlug` e
   `GET /api/v1/public/:orgSlug/professionals`, esperando `404 NOT_FOUND`.
 - Status final: ABERTO
+- Nota de diagnóstico (2026-06-24 — PR-BE-FIX-PUBLIC-ERRORS-01): inspeção de código indica que
+  `resolveOrgBySlug` retorna `null` para slug inexistente, e `getVitrine`/`getProfessionals` lançam
+  `NotFoundException` → `404 NOT_FOUND` via `HttpExceptionFilter`. Fluxo esperado 404 confirmado
+  por leitura de código. Runtime **não executado** — pendente de smoke final com API/web rodando.
 
 ### INV-WEB-002 — Cancelamento público com token inválido retorna 500
 - Data: 2026-06-23
@@ -354,6 +358,10 @@
 - Prevenção de regressão: teste negativo futuro para `POST /api/v1/public/cancel/preview` e
   `POST /api/v1/public/cancel` com token inválido, esperando `410 Gone`.
 - Status final: ABERTO
+- Nota de diagnóstico (2026-06-24 — PR-BE-FIX-PUBLIC-ERRORS-01): inspeção de código indica que
+  `resolveByCancelHash` retorna `null` para token inexistente, e `previewCancel`/`cancelByToken` lançam
+  `CancelTokenInvalidException` → `410 Gone` via `HttpExceptionFilter`. Fluxo esperado 410 confirmado
+  por leitura de código. Runtime **não executado** — pendente de smoke final com API/web rodando.
 
 ### INV-WEB-003 — Divergência de nomenclatura entre DTOs shared e contrato/roadmap
 - Data: 2026-06-23
