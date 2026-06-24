@@ -49,6 +49,12 @@ export function VitrineDisplay({
           <ul className="grid gap-3" role="list">
             {data.services.map((service) => {
               const isSelected = selectedServiceId === service.id;
+              const hasProfessionals = service.professionalSlugs.length > 0;
+              // Resolve slug → nome do catálogo data.professionals
+              const professionalNames = service.professionalSlugs
+                .map((slug) => data.professionals.find((p) => p.slug === slug)?.name)
+                .filter((n): n is string => n != null);
+
               return (
                 <li key={service.id}>
                   <button
@@ -59,8 +65,9 @@ export function VitrineDisplay({
                         ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
                         : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-muted-foreground)]"
                     )}
-                    onClick={() => onSelectService?.(service.id)}
+                    onClick={() => hasProfessionals && onSelectService?.(service.id)}
                     aria-pressed={isSelected}
+                    disabled={!hasProfessionals}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
@@ -75,6 +82,27 @@ export function VitrineDisplay({
                         {formatPrice(service.priceCents, service.currency)}
                       </span>
                     </div>
+                    {hasProfessionals ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {professionalNames.map((name) => (
+                          <span
+                            key={name}
+                            className="inline-flex items-center gap-1 rounded-[var(--radius-control)] bg-[var(--color-muted)] px-2 py-0.5 text-xs text-[var(--color-muted-foreground)]"
+                          >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: "var(--gradient-accent)" }}
+                              aria-hidden="true"
+                            />
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+                        Nenhum profissional disponível
+                      </p>
+                    )}
                   </button>
                 </li>
               );
