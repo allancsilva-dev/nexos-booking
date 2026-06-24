@@ -10,6 +10,7 @@ import { RegisterSchema, type RegisterInput } from "@/lib/auth-schemas";
 import { useRegisterMutation } from "@/hooks/use-auth";
 import { EMAIL_TAKEN } from "@/lib/error-codes";
 import { ApiError } from "@/lib/http-client";
+import { applyFormFieldErrors } from "@/lib/error-handler";
 import {
   Form,
   FormControl,
@@ -49,13 +50,31 @@ export function RegisterForm() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === EMAIL_TAKEN) {
-          toast.error("Este e-mail já está cadastrado.", {
-            description: "Tente fazer login ou use outro e-mail.",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          form.setError("email" as any, {
+            message: "Este e-mail já está cadastrado.",
           });
-        } else {
-          toast.error(err.message, {
-            description: `${err.code} — Ref: ${err.requestId || "N/A"}`,
+          return;
+        }
+        const { applied, unknownFields } = applyFormFieldErrors(
+          err,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          form.setError as any,
+          ["name", "email", "password", "organizationName"],
+        );
+        if (applied === 0) {
+          const msg =
+            unknownFields.length > 0
+              ? unknownFields.map((d) => `${d.field}: ${d.issue}`).join("; ")
+              : `${err.code}: ${err.message}`;
+          toast.error(msg, {
+            description: `Ref: ${err.requestId || "N/A"}`,
           });
+        } else if (unknownFields.length > 0) {
+          toast.error(
+            unknownFields.map((d) => `${d.field}: ${d.issue}`).join("; "),
+            { description: `Ref: ${err.requestId || "N/A"}` },
+          );
         }
       } else {
         toast.error("Erro ao conectar. Verifique sua rede.");

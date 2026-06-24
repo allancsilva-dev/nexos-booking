@@ -9,6 +9,7 @@ import { Loader2, LogIn } from "lucide-react";
 import { LoginSchema, type LoginInput } from "@/lib/auth-schemas";
 import { useLoginMutation } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/http-client";
+import { applyFormFieldErrors } from "@/lib/error-handler";
 import {
   Form,
   FormControl,
@@ -42,9 +43,26 @@ export function LoginForm() {
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.message, {
-          description: `${err.code} — Ref: ${err.requestId || "N/A"}`,
-        });
+        const { applied, unknownFields } = applyFormFieldErrors(
+          err,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          form.setError as any,
+          ["email", "password"],
+        );
+        if (applied === 0) {
+          const msg =
+            unknownFields.length > 0
+              ? unknownFields.map((d) => `${d.field}: ${d.issue}`).join("; ")
+              : `${err.code}: ${err.message}`;
+          toast.error(msg, {
+            description: `Ref: ${err.requestId || "N/A"}`,
+          });
+        } else if (unknownFields.length > 0) {
+          toast.error(
+            unknownFields.map((d) => `${d.field}: ${d.issue}`).join("; "),
+            { description: `Ref: ${err.requestId || "N/A"}` },
+          );
+        }
       } else {
         toast.error("Erro ao conectar. Verifique sua rede.");
       }

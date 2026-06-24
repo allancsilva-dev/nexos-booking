@@ -28,6 +28,18 @@ export function ErrorDisplay({ error, onRetry, className }: ErrorDisplayProps) {
           </p>
         )}
       </div>
+      {error.details && error.details.length > 0 && (
+        <ul className="space-y-1 text-xs text-left max-w-xs">
+          {error.details.map((d, i) => (
+            <li key={i} className="flex gap-1">
+              <span className="font-mono text-[var(--color-muted-foreground)] shrink-0">
+                {d.field}:
+              </span>
+              <span className="text-[var(--color-foreground)]">{d.issue}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
           <RefreshCw className="h-4 w-4" />
