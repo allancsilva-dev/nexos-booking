@@ -240,6 +240,35 @@
   7. `organization_id` nunca no payload — vem do claim `org` (ADR-020). Queries dentro de
      `withTenantContext`. FKs compostas existentes garantem tenant safety no banco.
   8. Nenhuma migration/DDL necessária. Tabela `professional_services` já existe (schema §6.3).
+- Emenda de validação (2026-06-23 — PR-DOC-PROP-E2C-AMEND-VALIDATION-01):
+  1. `PUT /professionals/:id/services` é all-or-nothing. O backend deve validar todos os
+     `serviceIds` antes de aplicar qualquer `DELETE`/`INSERT`. Se qualquer item for inválido,
+     nenhum vínculo é alterado.
+  2. Erros do `professionalId` no path: profissional inexistente, inativo ou de outro tenant →
+     `404 NOT_FOUND`. O recurso-alvo da rota é o profissional; `404` no path é a convenção
+     correta (§4).
+  3. Erros de `serviceIds` no body (validados ANTES de qualquer mutação):
+     * `serviceIds` ausente ou não-array → `422 VALIDATION_ERROR` com `details`.
+     * Item que não é UUID → `422 VALIDATION_ERROR` com `details[{ field: "serviceIds[i]",
+       issue: "invalid_uuid" }]`.
+     * `serviceId` que não existe no escopo da organização atual ou não pode ser resolvido com
+       segurança → `422 VALIDATION_ERROR` com `details[{ field: "serviceIds[i]", issue:
+       "not_found" }]`. A mensagem/`details` NÃO deve revelar se o `serviceId` existe em outro
+       tenant.
+     * Motivo: `422` com `details[]` é a convenção do contrato para validação semântica de
+       payload (§4). `404` fica reservado para o recurso do path. O envelope `VALIDATION_ERROR`
+       não vaza existência cross-tenant.
+  4. Serviço `inactive`: é permitido manter ou criar vínculo `professional_services` com serviço
+     `active=false`. `active` controla exposição pública (vitrine), disponibilidade (availability)
+     e novos bookings — não a existência do vínculo de configuração. O vínculo
+     `professional_services` representa capacidade/configuração do profissional, não
+     disponibilidade atual. Agendamentos e availability continuam protegidos pelas regras
+     existentes: E2a já rejeita novas reservas para combinações sem vínculo; serviço `inactive`
+     já não é oferecido em availability/booking independentemente do vínculo.
+  5. Remoção de vínculo: `serviceIds` omitidos no `PUT` são removidos por delta. Remoção continua
+     permitida mesmo com agendamentos existentes (item 5 da decisão original mantido).
+  6. O `PR-BE-PROF-SVC-MGMT` deve materializar estas regras no `API_CONTRACTS.md`, DTOs/shared e
+     backend.
 - Status final: RATIFICADA (implementação pendente no `PR-BE-PROF-SVC-MGMT`)
 
 ### PROP-E4 — Envelope de lista/paginação consistente (proposta — DEFERIDA)
