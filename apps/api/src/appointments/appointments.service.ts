@@ -417,6 +417,10 @@ export class AppointmentsService {
             version: 1,
             public_cancel_token_hash: null,
             public_cancel_token_expires_at: null,
+            service_name_snapshot: service.name,
+            service_duration_min_snapshot: service.duration_min,
+            service_price_cents_snapshot: service.price_cents,
+            service_currency_snapshot: service.currency,
           });
 
           const eventRow = await this.repo.insertAppointmentEvent(tx, {

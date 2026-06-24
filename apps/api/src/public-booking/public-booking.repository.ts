@@ -251,6 +251,10 @@ export class PublicBookingRepository {
       version: number;
       public_cancel_token_hash: string | null;
       public_cancel_token_expires_at: Date | null;
+      service_name_snapshot: string;
+      service_duration_min_snapshot: number;
+      service_price_cents_snapshot: number;
+      service_currency_snapshot: string;
     },
   ) {
     const result = await tx

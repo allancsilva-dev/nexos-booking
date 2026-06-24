@@ -587,6 +587,10 @@ Devolve o recurso direto (sem envelope `data` — seção 2), já com `version`:
   "status": "CONFIRMED",
   "source": "PANEL",
   "version": 1,
+  "serviceNameSnapshot": "Corte",
+  "serviceDurationMinSnapshot": 30,
+  "servicePriceCentsSnapshot": 5000,
+  "serviceCurrencySnapshot": "BRL",
   "client": { "name": "Maria", "phone": "(11) 99999-9999" },
   "note": "Cliente novo",
   "createdAt": "2026-05-31T14:30:00-03:00"
@@ -714,7 +718,12 @@ via `app_resolve_org_by_slug` (ADR-017), sujeitas ao `RateLimiter` (seção 19),
   "endsAt": "2026-06-10T09:50:00-03:00",
   "status": "CONFIRMED",
   "professional": { "name": "Zé" },
-  "service": { "name": "Corte", "durationMin": 30 },
+  "service": {
+    "name": "Corte",
+    "durationMin": 30,
+    "serviceNameSnapshot": "Corte",
+    "serviceDurationMinSnapshot": 30
+  },
   "cancelUrl": "https://app.exemplo.com/cancelar/<token-cru>"
 }
 ```

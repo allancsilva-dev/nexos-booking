@@ -11,6 +11,10 @@ export const AppointmentListItemSchema = z.object({
   clientPhone: z.string().nullable(),
   version: z.number().int(),
   source: z.enum(["PANEL", "PUBLIC"]),
+  serviceNameSnapshot: z.string(),
+  serviceDurationMinSnapshot: z.number().int().positive(),
+  servicePriceCentsSnapshot: z.number().int().min(0),
+  serviceCurrencySnapshot: z.string().length(3),
 });
 export type AppointmentListItemDTO = z.infer<typeof AppointmentListItemSchema>;
 

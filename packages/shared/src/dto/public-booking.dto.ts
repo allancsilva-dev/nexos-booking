@@ -22,7 +22,12 @@ export const PublicBookingResponseSchema = z.object({
   endsAt: z.string(),
   status: z.string(),
   professional: z.object({ name: z.string() }),
-  service: z.object({ name: z.string(), durationMin: z.number().int().positive() }),
+  service: z.object({
+    name: z.string(),
+    durationMin: z.number().int().positive(),
+    serviceNameSnapshot: z.string(),
+    serviceDurationMinSnapshot: z.number().int().positive(),
+  }),
   cancelUrl: z.string(),
 });
 

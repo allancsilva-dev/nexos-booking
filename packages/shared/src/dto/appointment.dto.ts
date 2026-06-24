@@ -46,6 +46,10 @@ export const AppointmentSchema = z.object({
   source: z.enum(["PANEL", "PUBLIC"]),
   note: z.string().nullable(),
   version: z.number().int(),
+  serviceNameSnapshot: z.string(),
+  serviceDurationMinSnapshot: z.number().int().positive(),
+  servicePriceCentsSnapshot: z.number().int().min(0),
+  serviceCurrencySnapshot: z.string().length(3),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

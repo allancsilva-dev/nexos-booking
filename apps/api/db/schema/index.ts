@@ -198,6 +198,11 @@ export const appointments = pgTable("appointments", {
   source: text("source").notNull(),
   note: text("note"),
   version: integer("version").notNull().default(1),
+  // PROP-E1: snapshot do serviço no momento da reserva
+  service_name_snapshot: text("service_name_snapshot").notNull(),
+  service_duration_min_snapshot: integer("service_duration_min_snapshot").notNull(),
+  service_price_cents_snapshot: integer("service_price_cents_snapshot").notNull(),
+  service_currency_snapshot: char("service_currency_snapshot", { length: 3 }).notNull().default("BRL"),
   public_cancel_token_hash: text("public_cancel_token_hash"),
   public_cancel_token_expires_at: timestamp("public_cancel_token_expires_at", { withTimezone: true }),
   cancelled_by_type: text("cancelled_by_type"),

@@ -410,6 +410,10 @@ export class PublicBookingService {
           version: 1,
           public_cancel_token_hash: tokenHash,
           public_cancel_token_expires_at: startsAt,
+          service_name_snapshot: service.name,
+          service_duration_min_snapshot: service.duration_min,
+          service_price_cents_snapshot: service.price_cents,
+          service_currency_snapshot: service.currency,
         });
 
         await this.repo.insertAppointmentEvent(tx, {
@@ -438,6 +442,8 @@ export class PublicBookingService {
           service: {
             name: service.name,
             durationMin: service.duration_min,
+            serviceNameSnapshot: service.name,
+            serviceDurationMinSnapshot: service.duration_min,
           },
           cancelUrl: `${cancelBaseUrl}/${rawToken}`,
         };
