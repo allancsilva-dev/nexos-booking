@@ -1,8 +1,11 @@
-import { spawn, execSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
 import { strict as assert } from "node:assert";
+import * as jose from "jose";
+import { hash } from "@node-rs/argon2";
 const BASE = "http://localhost:3005";
 let passed = 0;
 let failed = 0;
@@ -108,8 +111,8 @@ function startApi(enableHarness, opts = {}) {
     const apiDir = new URL("..", import.meta.url).pathname;
     const repoRoot = path.resolve(apiDir, "../..");
     const dotEnv = loadDotEnv(repoRoot);
-    const dbPort = envOverrides.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? "5432";
-    const dbHost = envOverrides.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? "127.0.0.1";
+    const dbPort = envOverrides.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? "5432";
+    const dbHost = envOverrides.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? "127.0.0.1";
 
     const env = {
       ...process.env,
@@ -123,10 +126,29 @@ function startApi(enableHarness, opts = {}) {
       PGPASSWORD: undefined,
       PGDATABASE: undefined,
       PGPORT: undefined,
+      POSTGRES_HOST: dbHost,
+      POSTGRES_PORT: dbPort,
+      POSTGRES_DB:
+        envOverrides.POSTGRES_DB ??
+        process.env.POSTGRES_DB ??
+        dotEnv.POSTGRES_DB ??
+        "nexos_booking",
+      APP_RUNTIME_USER:
+        envOverrides.APP_RUNTIME_USER ??
+        process.env.APP_RUNTIME_USER ??
+        dotEnv.APP_RUNTIME_USER ??
+        "app_runtime",
+      APP_RUNTIME_PASSWORD:
+        envOverrides.APP_RUNTIME_PASSWORD ??
+        process.env.APP_RUNTIME_PASSWORD ??
+        dotEnv.APP_RUNTIME_PASSWORD ??
+        dotEnv.POSTGRES_PASSWORD ??
+        process.env.POSTGRES_PASSWORD ??
+        "nexos_booking_local_password",
       DATABASE_URL:
-        dotEnv.DATABASE_URL ??
         process.env.DATABASE_URL ??
-        `postgres://${dotEnv.POSTGRES_USER ?? process.env.POSTGRES_USER ?? "nexos_booking"}:${dotEnv.POSTGRES_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${dotEnv.POSTGRES_DB ?? process.env.POSTGRES_DB ?? "nexos_booking"}`,
+        dotEnv.DATABASE_URL ??
+        `postgres://${process.env.POSTGRES_USER ?? dotEnv.POSTGRES_USER ?? "nexos_booking"}:${process.env.POSTGRES_PASSWORD ?? dotEnv.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${process.env.POSTGRES_DB ?? dotEnv.POSTGRES_DB ?? "nexos_booking"}`,
     };
 
     const tsxBin = path.resolve(apiDir, "node_modules/.bin/tsx");
@@ -155,18 +177,48 @@ function repoRoot() {
 function resolveDbEnv() {
   const dotEnv = loadDotEnv(repoRoot());
   return {
-    user: dotEnv.POSTGRES_USER ?? process.env.POSTGRES_USER ?? "nexos_booking",
-    pass: dotEnv.POSTGRES_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? "nexos_booking_local_password",
-    db: dotEnv.POSTGRES_DB ?? process.env.POSTGRES_DB ?? "nexos_booking",
+    user: process.env.POSTGRES_USER ?? dotEnv.POSTGRES_USER ?? "nexos_booking",
+    pass: process.env.POSTGRES_PASSWORD ?? dotEnv.POSTGRES_PASSWORD ?? "nexos_booking_local_password",
+    db: process.env.POSTGRES_DB ?? dotEnv.POSTGRES_DB ?? "nexos_booking",
   };
 }
 
 function execPsql(sql) {
   const { user, pass, db } = resolveDbEnv();
-  return execSync(
-    `docker compose exec -T -e PGPASSWORD="${pass}" postgres psql -t -U "${user}" -d "${db}" -c "${sql.replace(/"/g, '\\"')}"`,
-    { cwd: repoRoot(), encoding: "utf8" },
-  ).trim();
+  const result = spawnSync(
+    "docker",
+    [
+      "compose",
+      "exec",
+      "-T",
+      "-e",
+      `PGPASSWORD=${pass}`,
+      "postgres",
+      "psql",
+      "-t",
+      "-U",
+      user,
+      "-d",
+      db,
+    ],
+    {
+      cwd: repoRoot(),
+      encoding: "utf8",
+      input: sql,
+      env: {
+        ...process.env,
+        APP_RUNTIME_USER: process.env.APP_RUNTIME_USER ?? "",
+        APP_RUNTIME_PASSWORD: process.env.APP_RUNTIME_PASSWORD ?? "",
+        DATABASE_RUNTIME_URL: process.env.DATABASE_RUNTIME_URL ?? "",
+      },
+    },
+  );
+
+  if (result.status !== 0) {
+    throw new Error((result.stderr || result.stdout || "psql failed").trim());
+  }
+
+  return (result.stdout ?? "").trim();
 }
 
 function daysFromNow(offset) {
@@ -180,6 +232,28 @@ function idempotencyKey() {
   const ts = Date.now();
   const rand = Math.random().toString(36).slice(2, 10);
   return `test-appt-${ts}-${rand}`;
+}
+
+async function signAccessToken(userId, orgId) {
+  const dotEnv = loadDotEnv(repoRoot());
+  const secret = process.env.JWT_SECRET ?? dotEnv.JWT_SECRET;
+  assert.ok(secret, "JWT_SECRET must be available for appointment harness");
+
+  const issuer = process.env.JWT_ISSUER ?? dotEnv.JWT_ISSUER ?? "nexos-booking";
+  const audience = process.env.JWT_AUDIENCE ?? dotEnv.JWT_AUDIENCE ?? "nexos-api";
+  const now = Math.floor(Date.now() / 1000);
+
+  return new jose.SignJWT({
+    sub: userId,
+    sid: randomUUID(),
+    org: orgId,
+    iat: now,
+    exp: now + 900,
+    iss: issuer,
+    aud: audience,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(new TextEncoder().encode(secret));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -202,47 +276,84 @@ try {
   // Setup: Register users
   // ═══════════════════════════════════════════════════════════════
 
+  const passwordHash = await hash(testPassword, {
+    algorithm: 2,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  });
+
+  const ownerUserId = randomUUID();
+  const ownerOrgId = randomUUID();
   const ownerEmail = `test-appt-owner-${ts}@example.com`;
-  const ownerReg = await fetchJson("/api/v1/auth/register", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: "Owner User", email: ownerEmail, password: testPassword, organizationName: "Appt Test Org" }),
-  });
-  const ownerOrgId = ownerReg.json.organization.id;
-  let ownerAccessToken = ownerReg.json.accessToken;
+  execPsql(`
+    INSERT INTO users (id, name, email, password_hash, email_verified_at)
+    VALUES ('${ownerUserId}', 'Owner User', '${ownerEmail}', '${passwordHash}', now());
+    INSERT INTO organizations (id, name, slug)
+    VALUES ('${ownerOrgId}', 'Appt Test Org', 'appt-test-org-${ts}');
+    INSERT INTO organization_users (organization_id, user_id, role, status)
+    VALUES ('${ownerOrgId}', '${ownerUserId}', 'OWNER', 'ACTIVE');
+  `);
 
-  const ownerLogin = await fetchJson("/api/v1/auth/login", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: ownerEmail, password: testPassword }),
-  });
-  ownerAccessToken = ownerLogin.json.accessToken;
+  const [persistedOwnerUserId, persistedOwnerOrgId] = execPsql(`
+    SELECT user_id, organization_id
+    FROM organization_users
+    WHERE user_id = '${ownerUserId}'
+      AND organization_id = '${ownerOrgId}'
+    LIMIT 1;
+  `).split("|").map((value) => value.trim());
 
+  let ownerAccessToken = await signAccessToken(
+    persistedOwnerUserId,
+    persistedOwnerOrgId,
+  );
+
+  const profUserId = randomUUID();
   const profEmail = `test-appt-prof-${ts}@example.com`;
-  const profReg = await fetchJson("/api/v1/auth/register", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: "Prof User", email: profEmail, password: testPassword, organizationName: "Prof Org" }),
-  });
-  const profUserId = profReg.json.user.id;
-  let profAccessToken = profReg.json.accessToken;
+  execPsql(`
+    INSERT INTO users (id, name, email, password_hash, email_verified_at)
+    VALUES ('${profUserId}', 'Prof User', '${profEmail}', '${passwordHash}', now());
+    INSERT INTO organization_users (organization_id, user_id, role, status)
+    VALUES ('${ownerOrgId}', '${profUserId}', 'PROFESSIONAL', 'ACTIVE');
+  `);
 
-  execPsql(`INSERT INTO organization_users (organization_id, user_id, role, status) VALUES ('${ownerOrgId}', '${profUserId}', 'PROFESSIONAL', 'ACTIVE');`);
+  const [persistedProfUserId, persistedProfOrgId] = execPsql(`
+    SELECT user_id, organization_id
+    FROM organization_users
+    WHERE user_id = '${profUserId}'
+      AND organization_id = '${ownerOrgId}'
+    LIMIT 1;
+  `).split("|").map((value) => value.trim());
 
-  const profLogin = await fetchJson("/api/v1/auth/login", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: profEmail, password: testPassword }),
-  });
-  profAccessToken = profLogin.json.accessToken;
+  let profAccessToken = await signAccessToken(
+    persistedProfUserId,
+    persistedProfOrgId,
+  );
 
+  const otherUserId = randomUUID();
+  const otherOrgId = randomUUID();
   const otherEmail = `test-appt-other-${ts}@example.com`;
-  const otherReg = await fetchJson("/api/v1/auth/register", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: "Other User", email: otherEmail, password: testPassword, organizationName: "Other Org" }),
-  });
-  const otherAccessToken = otherReg.json.accessToken;
+  execPsql(`
+    INSERT INTO users (id, name, email, password_hash, email_verified_at)
+    VALUES ('${otherUserId}', 'Other User', '${otherEmail}', '${passwordHash}', now());
+    INSERT INTO organizations (id, name, slug)
+    VALUES ('${otherOrgId}', 'Other Org', 'other-org-${ts}');
+    INSERT INTO organization_users (organization_id, user_id, role, status)
+    VALUES ('${otherOrgId}', '${otherUserId}', 'OWNER', 'ACTIVE');
+  `);
+
+  const [persistedOtherUserId, persistedOtherOrgId] = execPsql(`
+    SELECT user_id, organization_id
+    FROM organization_users
+    WHERE user_id = '${otherUserId}'
+      AND organization_id = '${otherOrgId}'
+    LIMIT 1;
+  `).split("|").map((value) => value.trim());
+
+  const otherAccessToken = await signAccessToken(
+    persistedOtherUserId,
+    persistedOtherOrgId,
+  );
 
   // Setup org config
   execPsql(`UPDATE organizations SET timezone = 'America/Sao_Paulo', slot_interval_min = 30 WHERE id = '${ownerOrgId}'`);
@@ -250,6 +361,17 @@ try {
   // ═══════════════════════════════════════════════════════════════
   // Create professionals
   // ═══════════════════════════════════════════════════════════════
+
+  const tenantReadyRes = await fetchJson("/__test/tenant-required", {
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+    },
+  });
+  assert.equal(
+    tenantReadyRes.status,
+    200,
+    `Expected 200, got ${tenantReadyRes.status} for tenant preflight: ${tenantReadyRes.body}`,
+  );
 
   const createProfRes = await fetchJson("/api/v1/professionals", {
     method: "POST",
@@ -259,6 +381,11 @@ try {
     },
     body: JSON.stringify({ name: "Dr. Smith", slug: "dr-smith" }),
   });
+  assert.equal(
+    createProfRes.status,
+    201,
+    `Expected 201, got ${createProfRes.status} for professional create: ${createProfRes.body}`,
+  );
   const profId = createProfRes.json.id;
   execPsql(`UPDATE professionals SET user_id = '${profUserId}' WHERE id = '${profId}'`);
 
@@ -271,6 +398,7 @@ try {
     },
     body: JSON.stringify({ name: "Dr. Jones", slug: "dr-jones" }),
   });
+  assert.equal(createProf2Res.status, 201, `Expected 201, got ${createProf2Res.status} for second professional create`);
   const otherProfId = createProf2Res.json.id;
 
   // ═══════════════════════════════════════════════════════════════
@@ -285,6 +413,7 @@ try {
     },
     body: JSON.stringify({ name: "Consultation 30min", durationMin: 30, priceCents: 5000 }),
   });
+  assert.equal(createServiceRes.status, 201, `Expected 201, got ${createServiceRes.status} for service create`);
   const serviceId = createServiceRes.json.id;
 
   const createLongServiceRes = await fetchJson("/api/v1/services", {
@@ -295,6 +424,7 @@ try {
     },
     body: JSON.stringify({ name: "Long Session 1h", durationMin: 60, priceCents: 10000 }),
   });
+  assert.equal(createLongServiceRes.status, 201, `Expected 201, got ${createLongServiceRes.status} for long service create`);
   const longServiceId = createLongServiceRes.json.id;
 
   // Create inactive service
@@ -306,6 +436,7 @@ try {
     },
     body: JSON.stringify({ name: "Inactive Service", durationMin: 30, priceCents: 1000 }),
   });
+  assert.equal(createInactiveServiceRes.status, 201, `Expected 201, got ${createInactiveServiceRes.status} for inactive service create`);
   const inactiveServiceId = createInactiveServiceRes.json.id;
   execPsql(`UPDATE services SET active = false WHERE id = '${inactiveServiceId}'`);
 
@@ -407,8 +538,21 @@ try {
     assert.equal(res.json.version, 1);
     assert.equal(res.json.clientName, "Maria Silva");
     assert.ok(res.json.clientPhone, "should have phone");
+    assert.equal(res.json.serviceNameSnapshot, "Consultation 30min");
+    assert.equal(res.json.serviceDurationMinSnapshot, 30);
+    assert.equal(res.json.servicePriceCentsSnapshot, 5000);
+    assert.equal(res.json.serviceCurrencySnapshot, "BRL");
     assert.ok(res.json.startsAt, "should have startsAt");
     assert.ok(res.json.endsAt, "should have endsAt");
+
+    const persisted = execPsql(
+      `SELECT organization_id, service_name_snapshot, service_duration_min_snapshot, service_price_cents_snapshot, service_currency_snapshot FROM appointments WHERE id = '${res.json.id}'`,
+    ).split("|").map((value) => value.trim());
+    assert.equal(persisted[0], ownerOrgId);
+    assert.equal(persisted[1], "Consultation 30min");
+    assert.equal(persisted[2], "30");
+    assert.equal(persisted[3], "5000");
+    assert.equal(persisted[4], "BRL");
   });
 
   // ═══════════════════════════════════════════════════════════════
@@ -615,6 +759,12 @@ try {
       }),
     });
     assert.equal(res2.status, 409, `Expected 409, got ${res2.status}`);
+    assert.equal(res2.json?.error?.code, "APPOINTMENT_CONFLICT");
+
+    const overlapCount = execPsql(
+      `SELECT count(*) FROM appointments WHERE organization_id = '${ownerOrgId}' AND professional_id = '${profId}' AND starts_at = '${firstSlotForConflict.startsAt}'`,
+    );
+    assert.equal(overlapCount.trim(), "1");
   });
 
   // ═══════════════════════════════════════════════════════════════
@@ -1347,20 +1497,26 @@ try {
   // ═══════════════════════════════════════════════════════════════
 
   const managerEmail = `test-appt-manager-${ts}@example.com`;
-  const managerReg = await fetchJson("/api/v1/auth/register", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: "Manager User", email: managerEmail, password: testPassword, organizationName: "Mgr Org" }),
-  });
-  const managerUserId = managerReg.json.user.id;
-  execPsql(`INSERT INTO organization_users (organization_id, user_id, role, status) VALUES ('${ownerOrgId}', '${managerUserId}', 'MANAGER', 'ACTIVE');`);
+  const managerUserId = randomUUID();
+  execPsql(`
+    INSERT INTO users (id, name, email, password_hash, email_verified_at)
+    VALUES ('${managerUserId}', 'Manager User', '${managerEmail}', '${passwordHash}', now());
+    INSERT INTO organization_users (organization_id, user_id, role, status)
+    VALUES ('${ownerOrgId}', '${managerUserId}', 'MANAGER', 'ACTIVE');
+  `);
 
-  const managerLogin = await fetchJson("/api/v1/auth/login", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: managerEmail, password: testPassword }),
-  });
-  const managerAccessToken = managerLogin.json.accessToken;
+  const [persistedManagerUserId, persistedManagerOrgId] = execPsql(`
+    SELECT user_id, organization_id
+    FROM organization_users
+    WHERE user_id = '${managerUserId}'
+      AND organization_id = '${ownerOrgId}'
+    LIMIT 1;
+  `).split("|").map((value) => value.trim());
+
+  const managerAccessToken = await signAccessToken(
+    persistedManagerUserId,
+    persistedManagerOrgId,
+  );
 
   await testAsync("MANAGER creates appointment → 201", async () => {
     const slot = await findSlot(profId, serviceId, 14);

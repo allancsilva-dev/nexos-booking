@@ -18,8 +18,11 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
-    await validateRuntimeRole(this.pool);
-    Logger.log("Runtime role validated for RLS compliance", "DbService");
+    const info = await validateRuntimeRole(this.pool);
+    Logger.log(
+      `Runtime role validated for RLS compliance (current_user=${info.currentUser}, rolsuper=${info.rolsuper}, rolbypassrls=${info.rolbypassrls})`,
+      "DbService",
+    );
   }
 
   async onModuleDestroy(): Promise<void> {

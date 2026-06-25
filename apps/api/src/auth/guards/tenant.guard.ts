@@ -5,7 +5,7 @@ import {
   ExecutionContext,
 } from "@nestjs/common";
 import type { Request } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 import { organizationUsers } from "../../../db/schema";
 import { DbService } from "../../db";
@@ -42,28 +42,38 @@ export class TenantGuard implements CanActivate {
     if (!payload.org) {
       throw new NoActiveOrgException();
     }
+    const activeOrg = payload.org;
 
-    const rows = await this.db.client
-      .select({
-        id: organizationUsers.id,
-        role: organizationUsers.role,
-      })
-      .from(organizationUsers)
-      .where(
-        and(
-          eq(organizationUsers.organization_id, payload.org),
-          eq(organizationUsers.user_id, payload.sub),
-          eq(organizationUsers.status, "ACTIVE"),
-        ),
-      )
-      .limit(1);
+    const rows = await this.db.client.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT set_config('app.current_organization_id', ${activeOrg}, true)`,
+      );
+      await tx.execute(
+        sql`SELECT set_config('app.current_user_id', ${payload.sub}, true)`,
+      );
+
+      return tx
+        .select({
+          id: organizationUsers.id,
+          role: organizationUsers.role,
+        })
+        .from(organizationUsers)
+        .where(
+          and(
+            eq(organizationUsers.organization_id, activeOrg),
+            eq(organizationUsers.user_id, payload.sub),
+            eq(organizationUsers.status, "ACTIVE"),
+          ),
+        )
+        .limit(1);
+    });
 
     if (rows.length === 0) {
       throw new NoActiveOrgException();
     }
 
     (req as unknown as { tenant: TenantContext }).tenant = {
-      orgId: payload.org,
+      orgId: activeOrg,
       userId: payload.sub,
       role: rows[0]!.role,
     };

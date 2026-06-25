@@ -192,8 +192,34 @@ async function main() {
     INSERT INTO clients (id, organization_id, name) VALUES
       (${quotedLiteral(CLIENT_A)}, ${quotedLiteral(ORG_A)}, 'Cliente A');
 
-    INSERT INTO appointments (id, organization_id, professional_id, service_id, client_id, starts_at, ends_at, source) VALUES
-      ('a110aaa1-1111-1111-1111-111111111111', ${quotedLiteral(ORG_A)}, ${quotedLiteral(PROF_A)}, ${quotedLiteral(SVC_A)}, ${quotedLiteral(CLIENT_A)}, '2026-06-10 09:00-03', '2026-06-10 09:30-03', 'PANEL');
+    INSERT INTO appointments (
+      id,
+      organization_id,
+      professional_id,
+      service_id,
+      client_id,
+      starts_at,
+      ends_at,
+      source,
+      service_name_snapshot,
+      service_duration_min_snapshot,
+      service_price_cents_snapshot,
+      service_currency_snapshot
+    ) VALUES
+      (
+        'a110aaa1-1111-1111-1111-111111111111',
+        ${quotedLiteral(ORG_A)},
+        ${quotedLiteral(PROF_A)},
+        ${quotedLiteral(SVC_A)},
+        ${quotedLiteral(CLIENT_A)},
+        '2026-06-10 09:00-03',
+        '2026-06-10 09:30-03',
+        'PANEL',
+        'Corte A',
+        30,
+        5000,
+        'BRL'
+      );
 
     INSERT INTO appointment_events (id, organization_id, appointment_id, event_type, actor_type, actor_user_id, metadata) VALUES
       ('e110aaa1-1111-1111-1111-111111111111', ${quotedLiteral(ORG_A)}, 'a110aaa1-1111-1111-1111-111111111111', 'CREATED', 'STAFF', ${quotedLiteral(USER_A)}, '{}');
@@ -235,8 +261,34 @@ async function main() {
     INSERT INTO clients (id, organization_id, name) VALUES
       (${quotedLiteral(CLIENT_B)}, ${quotedLiteral(ORG_B)}, 'Cliente B');
 
-    INSERT INTO appointments (id, organization_id, professional_id, service_id, client_id, starts_at, ends_at, source) VALUES
-      ('a110bbb2-2222-2222-2222-222222222222', ${quotedLiteral(ORG_B)}, ${quotedLiteral(PROF_B)}, ${quotedLiteral(SVC_B)}, ${quotedLiteral(CLIENT_B)}, '2026-06-10 09:00-03', '2026-06-10 09:30-03', 'PANEL');
+    INSERT INTO appointments (
+      id,
+      organization_id,
+      professional_id,
+      service_id,
+      client_id,
+      starts_at,
+      ends_at,
+      source,
+      service_name_snapshot,
+      service_duration_min_snapshot,
+      service_price_cents_snapshot,
+      service_currency_snapshot
+    ) VALUES
+      (
+        'a110bbb2-2222-2222-2222-222222222222',
+        ${quotedLiteral(ORG_B)},
+        ${quotedLiteral(PROF_B)},
+        ${quotedLiteral(SVC_B)},
+        ${quotedLiteral(CLIENT_B)},
+        '2026-06-10 09:00-03',
+        '2026-06-10 09:30-03',
+        'PANEL',
+        'Corte B',
+        30,
+        5000,
+        'BRL'
+      );
 
     INSERT INTO appointment_events (id, organization_id, appointment_id, event_type, actor_type, actor_user_id, metadata) VALUES
       ('e110bbb2-2222-2222-2222-222222222222', ${quotedLiteral(ORG_B)}, 'a110bbb2-2222-2222-2222-222222222222', 'CREATED', 'STAFF', ${quotedLiteral(USER_B)}, '{}');

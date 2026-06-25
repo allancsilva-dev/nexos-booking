@@ -5,13 +5,20 @@
 -- antes da sequência de migrations, em banco descartável, com credencial de owner.
 -- NÃO contém senha real nem grants de produção.
 
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_runtime') THEN
-    CREATE ROLE app_runtime LOGIN;
-  END IF;
-END
-$$;
+SELECT format(
+  'CREATE ROLE app_runtime LOGIN PASSWORD %L',
+  :'app_runtime_password'
+)
+WHERE NOT EXISTS (
+  SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_runtime'
+)
+\gexec
+
+SELECT format(
+  'ALTER ROLE app_runtime WITH LOGIN PASSWORD %L',
+  :'app_runtime_password'
+)
+\gexec
 
 -- Grants mínimos para que a role possa executar DML nas tabelas que as migrations criam.
 -- O escopo é o banco descartável do gate. Em produção, grants são gerenciados por IaC.

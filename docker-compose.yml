@@ -39,6 +39,12 @@ services:
         condition: service_healthy
     environment:
       PORT: 3001
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      APP_RUNTIME_USER: ${APP_RUNTIME_USER}
+      APP_RUNTIME_PASSWORD: ${APP_RUNTIME_PASSWORD}
+      DATABASE_RUNTIME_URL: ${DATABASE_RUNTIME_URL}
     ports:
       - "${API_PORT}:3001"
 

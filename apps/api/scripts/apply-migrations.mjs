@@ -83,7 +83,12 @@ function loadEnv() {
   return {
     POSTGRES_DB: process.env.POSTGRES_DB ?? fileValues.POSTGRES_DB,
     POSTGRES_USER: process.env.POSTGRES_USER ?? fileValues.POSTGRES_USER,
-    POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD ?? fileValues.POSTGRES_PASSWORD
+    POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD ?? fileValues.POSTGRES_PASSWORD,
+    APP_RUNTIME_PASSWORD:
+      process.env.APP_RUNTIME_PASSWORD ??
+      fileValues.APP_RUNTIME_PASSWORD ??
+      process.env.POSTGRES_PASSWORD ??
+      fileValues.POSTGRES_PASSWORD,
   };
 }
 
@@ -189,13 +194,17 @@ async function main() {
   }
 
   if (gateSetup) {
+    if (!env.APP_RUNTIME_PASSWORD) {
+      fail("Missing APP_RUNTIME_PASSWORD (or POSTGRES_PASSWORD fallback) for gate setup.");
+    }
+
     const setupPath = path.resolve(__dirname, "gate-setup.sql");
     const setupSql = readFileSync(setupPath, "utf8");
     console.log("Running gate setup (provisioning app_runtime for test gate)");
     runComposeCommand(
       [
         'export PGPASSWORD="$POSTGRES_PASSWORD"',
-        `psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d ${quotedLiteral(targetDatabase)}`
+        `psql -v ON_ERROR_STOP=1 -v app_runtime_password=${quotedLiteral(env.APP_RUNTIME_PASSWORD)} -U "$POSTGRES_USER" -d ${quotedLiteral(targetDatabase)}`
       ].join("\n"),
       { input: setupSql }
     );

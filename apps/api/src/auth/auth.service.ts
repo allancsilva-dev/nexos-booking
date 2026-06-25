@@ -7,7 +7,7 @@ import {
 } from "@nestjs/common";
 import { RateLimitException } from "../common/exceptions/rate-limit.exception";
 import { randomUUID, randomBytes, createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { DbService } from "../db";
 import type { DbTransaction } from "../db/db.types";
@@ -40,6 +40,15 @@ const RESERVED_SLUGS = new Set([
   "www", "mail", "ftp", "cdn", "docs", "help", "suporte",
   "support", "status", "api-docs",
 ]);
+
+async function setCurrentUserContext(
+  tx: DbTransaction,
+  userId: string,
+): Promise<void> {
+  await tx.execute(
+    sql`SELECT set_config('app.current_user_id', ${userId}, true)`,
+  );
+}
 
 @Injectable()
 export class AuthService {
@@ -187,6 +196,7 @@ export class AuthService {
         throw new InvalidCredentialsException();
       }
 
+      await setCurrentUserContext(tx, user.id);
       const memberships = await this.repo.findMemberships(tx, user.id);
 
       if (memberships.length === 0) {
@@ -289,6 +299,7 @@ export class AuthService {
         throw new TokenExpiredException();
       }
 
+      await setCurrentUserContext(tx, user.id);
       const memberships = await this.repo.findMemberships(tx, user.id);
 
       let org: string | undefined;
@@ -324,6 +335,7 @@ export class AuthService {
         throw new InvalidCredentialsException();
       }
 
+      await setCurrentUserContext(tx, userId);
       const memberships = await this.repo.findOrganizationsForUser(
         tx,
         userId,
@@ -361,6 +373,7 @@ export class AuthService {
     input: SwitchOrgInput,
   ): Promise<{ accessToken: string }> {
     return this.db.client.transaction(async (tx) => {
+      await setCurrentUserContext(tx, userId);
       const membership = await this.repo.findMembership(
         tx,
         userId,

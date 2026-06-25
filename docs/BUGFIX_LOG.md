@@ -65,7 +65,12 @@
 
 | ID | Data | PR/Fase | Severidade | Título | Status |
 |---|---|---|---|---|---|
-| BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | ABERTO |
+| BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | CORRIGIDO |
+| BUG-013 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | `POST /appointments` retorna 500 por `ON CONFLICT` incompatível com índice parcial de clients | CORRIGIDO |
+| BUG-014 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller | ABERTO |
+| BUG-015 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard` | ABERTO |
+| BUG-016 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP | ABERTO |
+| BUG-017 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Testes existentes de RLS/idempotência não acompanham o schema atual | PARCIALMENTE_CORRIGIDO |
 | PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
 | PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
 | PROP-E2b | 2026-06-24 | Pré-WEB-7A · PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT | ALTA | Vitrine pública relacionar serviço ↔ profissional | RATIFICADA |
@@ -116,9 +121,161 @@
 - Branch/commit relacionado: PR-FIX-3 (a abrir) · run de CI (a registrar quando PEND-001 destravar a CI).
 - Prevenção de regressão: teste cross-tenant negativo no banco como gate de CI; asserção de catálogo
   (`rolbypassrls=false`) no boot/health-check do ambiente.
-- Status final: ABERTO
+- Status final: CORRIGIDO
 - **PEND-001 (faceta de pendência ligada, mesmo root/fix):** desde PR-1.4, a role least-privilege não tem
   paridade no ambiente de CI → a CI não roda. Mesmo `PR-FIX-3` resolve as duas facetas (runtime + CI).
+- Nota de diagnóstico (2026-06-24 — PR-DIAG-MVP-STABILIZATION-01): runtime confirmado novamente como
+  inseguro no banco descartável `nexos_diag_mvp_20260624`. Evidência: boot da API registrou
+  `Runtime role (current_user) has SUPERUSER and BYPASSRLS`; consulta a `pg_stat_activity` mostrou
+  conexão da API como `nexos_booking` com `usesuper=t`; catálogo mostrou `app_runtime` existente com
+  `rolsuper=false`/`rolbypassrls=false`, mas não usado pela API. Resultado do gate RLS runtime:
+  **VERMELHO / bloqueio de confiança**.
+- Nota de correção (2026-06-24 — PR-FIX-MVP-BLOCKERS-RUNTIME-AND-APPOINTMENTS-01): runtime separado de
+  admin/migration em `apps/api/src/db/db.config.ts`, `apps/api/src/db/db.service.ts`,
+  `apps/api/scripts/apply-migrations.mjs`, `apps/api/scripts/gate-setup.sql`, `.env.example` e
+  `docker-compose.yml`. Prova no pool real da API via `apps/api/scripts/test-runtime-role.ts` e boot real:
+  `current_user=app_runtime`, `rolbypassrls=false`, `rolsuper=false`. Prova mínima de isolamento:
+  consulta sem tenant context retornou `0`, tenant correto retornou `1`, cross-tenant retornou `0`.
+  Prova negativa obrigatória do guard de boot: iniciar a API com a role administrativa falhou no boot com
+  erro explícito `Unsafe runtime database configuration...` e exit code diferente de zero.
+
+### BUG-013 — `POST /appointments` retorna 500 por `ON CONFLICT` incompatível com índice parcial de clients
+- Data: 2026-06-24
+- PR/Fase: PR-DIAG-MVP-STABILIZATION-01
+- Severidade: BLOQUEANTE
+- Erro encontrado: criação de appointment pelo painel retorna `500 INTERNAL_ERROR` em banco migrado do zero.
+- Sintoma: `POST /api/v1/appointments` com dados válidos retornou `500`; logs locais correlacionados por
+  `requestId` mostraram erro Postgres `42P10`: `there is no unique or exclusion constraint matching the
+  ON CONFLICT specification`.
+- Causa raiz: `AppointmentsRepository.upsertClientByPhone` usa `ON CONFLICT (organization_id,
+  phone_normalized) DO NOTHING`, mas o índice canônico de `clients` é parcial:
+  `(organization_id, phone_normalized) WHERE phone_normalized IS NOT NULL`. O predicado parcial não é
+  repetido no `ON CONFLICT`, divergindo de `DATABASE_SCHEMA_V2 §7`.
+- Impacto: bloqueia o fluxo principal de agenda: criação de appointment, snapshot de serviço,
+  concorrência/no_overlap via API, idempotência de sucesso, booking público e validações dependentes.
+- Arquivo(s) afetado(s): `apps/api/src/appointments/appointments.repository.ts`.
+- Correção aplicada: `AppointmentsRepository.upsertClientByPhone` passou a usar `ON CONFLICT
+  (organization_id, phone_normalized) WHERE phone_normalized IS NOT NULL`, alinhado ao índice parcial
+  canônico. No caminho de `POST /appointments`, `client.phone` continua obrigatório por contrato; o caso
+  `phone_normalized = NULL` ficou apenas como inserção defensiva sem deduplicação. No mesmo PR, o módulo
+  de auth passou a setar `app.current_user_id` antes dos lookups de membership sob RLS e
+  `appointment_events.actor_type` foi alinhado para `STAFF`, destravando o fluxo runtime completo.
+- Teste/validação executado: smoke HTTP runtime `apps/api/scripts/smoke-appointments-runtime.mjs` no banco
+  descartável `nexos_appointments_guard_20260624`:
+  `POST /api/v1/appointments` válido → `201`;
+  response com `serviceNameSnapshot`, `serviceDurationMinSnapshot`,
+  `servicePriceCentsSnapshot`, `serviceCurrencySnapshot`;
+  segundo POST sequencial sobreposto → `409 APPOINTMENT_CONFLICT`;
+  query no banco confirmou `count(*) = 1` no slot;
+  mesma `Idempotency-Key` + mesmo payload → replay `201`;
+  mesma `Idempotency-Key` + payload diferente → `409 IDEMPOTENCY_KEY_REUSED`.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: teste de criação de appointment em banco pós-migration 0008; teste de upsert de
+  cliente com telefone usando o índice parcial; teste de concorrência esperando primeiro sucesso e segundo
+  `409 APPOINTMENT_CONFLICT`.
+- Status final: CORRIGIDO
+
+### BUG-014 — Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller
+- Data: 2026-06-24
+- PR/Fase: PR-DIAG-MVP-STABILIZATION-01
+- Severidade: BLOQUEANTE
+- Erro encontrado: rotas públicas de vitrine, availability, booking e cancelamento por token retornam
+  `500 INTERNAL_ERROR`.
+- Sintoma: `GET /api/v1/public/:orgSlug`, `GET /api/v1/public/:orgSlug/professionals/:professionalSlug/availability`,
+  `POST /api/v1/public/:orgSlug/appointments` e `POST /api/v1/public/cancel/preview` retornaram `500`.
+  Logs locais mostraram `TypeError: Cannot read properties of undefined (reading 'getVitrine')`,
+  `getAvailability`, `bookAppointment` e `previewCancel` em `PublicBookingController`.
+- Causa raiz: `PublicBookingController` é instanciado com `service` indefinido, apesar de o módulo listar
+  `PublicBookingService` em `providers`. Causa DI exata a investigar no PR de correção.
+- Impacto: bloqueia a página pública inteira: vitrine, professionalSlugs, availability pública, booking,
+  geração/uso de `cancelUrl` e validação de token inválido/terminal. Mantém `INV-WEB-001` e
+  `INV-WEB-002` vermelhos em runtime.
+- Arquivo(s) afetado(s): `apps/api/src/public-booking/public-booking.controller.ts`,
+  `apps/api/src/public-booking/public-booking.module.ts`.
+- Correção aplicada: nenhuma neste diagnóstico.
+- Teste/validação executado: smoke runtime no banco descartável `nexos_diag_mvp_20260624`; slug público
+  inexistente retornou `500 INTERNAL_ERROR` em vez de `404`; token inválido em preview retornou `500`
+  em vez de `410`.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: teste de boot/DI do `PublicBookingModule`; teste negativo de slug inexistente
+  esperando `404 NOT_FOUND`; teste negativo de cancel token inválido esperando `410 Gone`; teste positivo
+  de vitrine com `professionalSlugs`.
+- Status final: ABERTO
+
+### BUG-015 — Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard`
+- Data: 2026-06-24
+- PR/Fase: PR-DIAG-MVP-STABILIZATION-01
+- Severidade: ALTA
+- Erro encontrado: rotas de ação/remarcação protegidas por optimistic locking retornam `500`.
+- Sintoma: `POST /api/v1/appointments/:id/cancel` e `POST /api/v1/appointments/:id/complete` retornaram
+  `500 INTERNAL_ERROR`; logs locais mostraram `TypeError: Cannot read properties of undefined (reading
+  'get')` em `IfMatchGuard.canActivate`.
+- Causa raiz: `Reflector` está indefinido dentro do guard em runtime. Causa DI exata a investigar no PR
+  de correção.
+- Impacto: bloqueia cancelamento/remarcação/desfechos do painel, impede provar `If-Match`, lost update e
+  máquina de estados. Sem esse gate, ausência de `If-Match` também vira `500` em vez de erro contratual.
+- Arquivo(s) afetado(s): `apps/api/src/appointments/guards/if-match.guard.ts`,
+  `apps/api/src/appointments/appointments.module.ts`.
+- Correção aplicada: nenhuma neste diagnóstico.
+- Teste/validação executado: smoke runtime no banco descartável `nexos_diag_mvp_20260624`; chamadas com e
+  sem `If-Match` falharam por `500` antes da regra de domínio.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: teste sem `If-Match` esperando erro contratual; teste com versão antiga
+  esperando `409 APPOINTMENT_VERSION_CONFLICT`; teste com versão correta executando a ação e incrementando
+  `version`.
+- Status final: ABERTO
+
+### BUG-016 — Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP
+- Data: 2026-06-24
+- PR/Fase: PR-DIAG-MVP-STABILIZATION-01
+- Severidade: ALTA
+- Erro encontrado: endpoint de availability autenticado rejeita datas civis no formato canônico do contrato.
+- Sintoma: `GET /api/v1/professionals/:id/availability?from=2026-06-26&to=2026-06-27&serviceId=...`
+  retornou `422 VALIDATION_ERROR` com `details[]` indicando `from`/`to` como `Invalid datetime`.
+- Causa raiz: `AvailabilityQuerySchema` exige `datetime({ offset: true })`, enquanto
+  `API_CONTRACTS §15.1` define `date` ou `from`/`to` como `YYYY-MM-DD`, interpretados no timezone da
+  empresa.
+- Impacto: availability painel/pública não segue o contrato; bloqueia validação de timezone, DST e
+  coerência POST ↔ availability.
+- Arquivo(s) afetado(s): `packages/shared/src/dto/availability.dto.ts`,
+  `apps/api/src/scheduling/availability.controller.ts`.
+- Correção aplicada: nenhuma neste diagnóstico.
+- Teste/validação executado: smoke runtime no banco descartável `nexos_diag_mvp_20260624`; request com
+  datas civis retornou `422`.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: teste de availability com `YYYY-MM-DD`; fixture de timezone e DST garantindo
+  que todo slot emitido pelo availability passa na validação de POST.
+- Status final: ABERTO
+
+### BUG-017 — Testes existentes de RLS/idempotência não acompanham o schema atual
+- Data: 2026-06-24
+- PR/Fase: PR-DIAG-MVP-STABILIZATION-01
+- Severidade: ALTA
+- Erro encontrado: scripts de teste existentes falham contra banco descartável migrado até 0008.
+- Sintoma: `POSTGRES_DB=nexos_diag_mvp_20260624 pnpm --filter @nexos/api test:db` falhou ao inserir
+  appointment sem snapshots (`service_name_snapshot` NOT NULL). `POSTGRES_DB=nexos_diag_mvp_20260624
+  pnpm --filter @nexos/api test:idempotency` falhou em T18b e depois em FK de `idempotency_keys` para
+  organização inexistente.
+- Causa raiz: seeds/asserções dos scripts ficaram defasados após a migration 0008 de snapshot e após a
+  evolução do interceptor/fluxo de idempotência.
+- Impacto: testes locais/CI não servem como evidência de fechamento do MVP; gates de RLS e idempotência
+  permanecem sem prova automatizada confiável.
+- Arquivo(s) afetado(s): `apps/api/scripts/test-rls.mjs`, `apps/api/scripts/test-idempotency.mjs`.
+- Correção aplicada: seed de `apps/api/scripts/test-rls.mjs` atualizado para preencher snapshots exigidos
+  pela migration 0008; adicionado `apps/api/scripts/smoke-appointments-runtime.mjs` para prova HTTP real
+  de criação de appointment, conflito sequencial e idempotência divergente; `apps/api/package.json`
+  ganhou `test:runtime-role` para a prova isolada de role runtime.
+- Teste/validação executado:
+  `APP_RUNTIME_USER=app_runtime APP_RUNTIME_PASSWORD=*** POSTGRES_DB=nexos_appointments_guard_20260624 pnpm --filter @nexos/api test:db` → `PASS`;
+  `POSTGRES_DB=nexos_appointments_guard_20260624 node ./apps/api/scripts/smoke-appointments-runtime.mjs`
+  → `PASS`;
+  `pnpm --filter @nexos/api test` continua sem script agregado dedicado neste pacote, então a evidência
+  deste PR permanece nos smokes/harnesses isolados acima.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: atualizar os seeds para preencher snapshots ou criar appointment via API já
+  corrigida; criar organização antes de inserir `idempotency_keys`; transformar asserções de idempotência
+  em prova server-side runtime de replay fiel, divergência `409` e `IN_PROGRESS`.
+- Status final: PARCIALMENTE_CORRIGIDO
 
 ### PROP-E1 — Snapshot de preço no agendamento (proposta — muda canônico)
 - Data: a confirmar na fonte

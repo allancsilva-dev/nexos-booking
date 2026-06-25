@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { eq, and, lt, gt, gte, or, asc } from "drizzle-orm";
+import { eq, and, lt, gt, gte, or, asc, sql } from "drizzle-orm";
 import type { DbTransaction } from "../db/db.types";
 import {
   professionals,
@@ -138,46 +138,40 @@ export class AppointmentsRepository {
     phone: string | null,
     phoneNormalized: string | null,
   ) {
-    const insertResult = await tx
-      .insert(clients)
-      .values({
-        organization_id: orgId,
-        name,
-        phone,
-        phone_normalized: phoneNormalized,
-      })
-      .onConflictDoNothing({
-        target: [
-          clients.organization_id,
-          clients.phone_normalized,
-        ],
-      });
-
-    if ((insertResult as unknown as { rowCount: number }).rowCount === 0) {
+    if (phoneNormalized === null) {
       const rows = await tx
-        .select()
-        .from(clients)
-        .where(
-          and(
-            eq(clients.organization_id, orgId),
-            eq(clients.phone_normalized, phoneNormalized ?? ""),
-          ),
-        )
-        .limit(1);
+        .insert(clients)
+        .values({
+          organization_id: orgId,
+          name,
+          phone,
+          phone_normalized: null,
+        })
+        .returning();
       return rows[0] ?? null;
     }
 
-    const rows = await tx
-      .select()
-      .from(clients)
-      .where(
-        and(
-          eq(clients.organization_id, orgId),
-          eq(clients.phone_normalized, phoneNormalized ?? ""),
-        ),
-      )
-      .limit(1);
-    return rows[0] ?? null;
+    const result = await tx.execute(sql`
+      INSERT INTO clients (organization_id, name, phone, phone_normalized)
+      VALUES (${orgId}, ${name}, ${phone}, ${phoneNormalized})
+      ON CONFLICT (organization_id, phone_normalized)
+      WHERE phone_normalized IS NOT NULL
+      DO UPDATE
+      SET
+        name = EXCLUDED.name,
+        phone = EXCLUDED.phone,
+        updated_at = now()
+      RETURNING
+        id,
+        organization_id,
+        name,
+        phone,
+        phone_normalized,
+        created_at,
+        updated_at
+    `);
+
+    return (result.rows[0] as typeof clients.$inferSelect | undefined) ?? null;
   }
 
   async findClientById(tx: DbTransaction, orgId: string, clientId: string) {

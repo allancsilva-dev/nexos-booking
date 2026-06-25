@@ -9,6 +9,7 @@
     "migrate:fresh": "node ./scripts/apply-migrations.mjs --fresh --gate-setup",
     "start": "node dist/main.js",
     "test:db": "node ./scripts/test-rls.mjs",
+    "test:runtime-role": "pnpm exec tsx ./scripts/test-runtime-role.ts",
     "test:http": "node ./scripts/test-http.mjs",
     "test:auth": "node ./scripts/test-auth.mjs",
     "test:auth-email": "node ./scripts/test-auth-email.mjs",

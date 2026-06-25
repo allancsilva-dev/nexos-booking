@@ -31,6 +31,7 @@ import { appointmentEvents } from "../../db/schema";
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
 };
+const STAFF_ACTOR_TYPE = "STAFF";
 
 function getDateKey(instant: Date, timezone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(instant);
@@ -98,6 +99,10 @@ function mapAppointment(
     source: string;
     note: string | null;
     version: number;
+    service_name_snapshot: string;
+    service_duration_min_snapshot: number;
+    service_price_cents_snapshot: number;
+    service_currency_snapshot: string;
     created_at: Date;
     updated_at: Date;
   },
@@ -127,6 +132,10 @@ function mapAppointment(
     source: row.source,
     note: row.note,
     version: row.version,
+    serviceNameSnapshot: row.service_name_snapshot,
+    serviceDurationMinSnapshot: row.service_duration_min_snapshot,
+    servicePriceCentsSnapshot: row.service_price_cents_snapshot,
+    serviceCurrencySnapshot: row.service_currency_snapshot,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -427,7 +436,7 @@ export class AppointmentsService {
             organization_id: orgId,
             appointment_id: appointment.id,
             event_type: "CREATED",
-            actor_type: role,
+            actor_type: STAFF_ACTOR_TYPE,
             actor_user_id: userId,
             metadata: {
               appointmentId: appointment.id,
@@ -688,7 +697,7 @@ export class AppointmentsService {
           organization_id: orgId,
           appointment_id: id,
           event_type: "RESCHEDULED",
-          actor_type: role,
+          actor_type: STAFF_ACTOR_TYPE,
           actor_user_id: userId,
           metadata,
         });
@@ -862,7 +871,7 @@ export class AppointmentsService {
           organization_id: orgId,
           appointment_id: id,
           event_type: eventType,
-          actor_type: role,
+          actor_type: STAFF_ACTOR_TYPE,
           actor_user_id: userId,
           metadata: {
             appointmentId: id,
