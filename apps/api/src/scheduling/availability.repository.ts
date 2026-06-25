@@ -91,8 +91,8 @@ export class AvailabilityRepository {
     tx: DbTransaction,
     orgId: string,
     professionalId: string,
-    from: string,
-    to: string,
+    from: Date,
+    to: Date,
   ) {
     return tx
       .select()
@@ -101,8 +101,8 @@ export class AvailabilityRepository {
         and(
           eq(availabilityBlocks.organization_id, orgId),
           eq(availabilityBlocks.professional_id, professionalId),
-          lt(availabilityBlocks.starts_at, new Date(to)),
-          gt(availabilityBlocks.ends_at, new Date(from)),
+          lt(availabilityBlocks.starts_at, to),
+          gt(availabilityBlocks.ends_at, from),
         ),
       );
   }
@@ -111,8 +111,8 @@ export class AvailabilityRepository {
     tx: DbTransaction,
     orgId: string,
     professionalId: string,
-    from: string,
-    to: string,
+    from: Date,
+    to: Date,
   ) {
     return tx
       .select()
@@ -122,8 +122,8 @@ export class AvailabilityRepository {
           eq(appointments.organization_id, orgId),
           eq(appointments.professional_id, professionalId),
           inArray(appointments.status, ["SCHEDULED", "CONFIRMED"]),
-          lt(appointments.starts_at, new Date(to)),
-          gt(appointments.ends_at, new Date(from)),
+          lt(appointments.starts_at, to),
+          gt(appointments.ends_at, from),
         ),
       );
   }

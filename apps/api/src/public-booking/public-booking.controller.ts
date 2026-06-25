@@ -16,7 +16,7 @@ import type { Request } from "express";
 import { PublicBookingService } from "./public-booking.service";
 import { PublicTenantGuard } from "./guards/public-tenant.guard";
 import { Idempotent } from "../common/decorators/idempotent.decorator";
-import { PublicBookingInputSchema } from "@nexos/shared";
+import { AvailabilityQuerySchema, PublicBookingInputSchema } from "@nexos/shared";
 import type { PublicBookingInput } from "@nexos/shared";
 
 function getClientIp(req: Request): string {
@@ -58,24 +58,27 @@ export class PublicBookingController {
     @Req() req: Request,
     @Param("orgSlug") orgSlug: string,
     @Param("professionalSlug") professionalSlug: string,
-    @Query("from") from: string,
-    @Query("to") to: string,
-    @Query("serviceId") serviceId: string,
+    @Query() query: { date?: string; from?: string; to?: string; serviceId?: string },
   ) {
-    if (!serviceId) {
+    if (!query.serviceId) {
       validationError([{ field: "serviceId", issue: "required" }]);
     }
-    if (!from || !to) {
-      const missing: { field: string; issue: string }[] = [];
-      if (!from) missing.push({ field: "from", issue: "required" });
-      if (!to) missing.push({ field: "to", issue: "required" });
-      validationError(missing);
+
+    const parsed = AvailabilityQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      validationError(
+        parsed.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          issue: issue.message,
+        })),
+      );
     }
+
     return this.service.getAvailability(
       getClientIp(req),
       orgSlug,
       professionalSlug,
-      { from, to, serviceId },
+      parsed.data,
     );
   }
 

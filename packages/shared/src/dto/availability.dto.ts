@@ -1,10 +1,54 @@
 import { z } from "zod";
+import { isCivilDate } from "../civil-date.js";
 
-export const AvailabilityQuerySchema = z.object({
-  from: z.string().datetime({ offset: true }),
-  to: z.string().datetime({ offset: true }),
-  serviceId: z.string().uuid(),
-}).refine(d => d.from < d.to, { message: "from must be before to", path: ["from"] });
+const civilDateString = z.string().refine(isCivilDate, {
+  message: "Expected YYYY-MM-DD",
+});
+
+export const AvailabilityQuerySchema = z
+  .object({
+    date: civilDateString.optional(),
+    from: civilDateString.optional(),
+    to: civilDateString.optional(),
+    serviceId: z.string().uuid(),
+  })
+  .superRefine((value, ctx) => {
+    const hasDate = value.date !== undefined;
+    const hasFrom = value.from !== undefined;
+    const hasTo = value.to !== undefined;
+
+    if (hasDate && (hasFrom || hasTo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "date is mutually exclusive with from/to",
+        path: ["date"],
+      });
+    }
+
+    if (!hasDate && !hasFrom && !hasTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "date or from/to is required",
+        path: ["date"],
+      });
+    }
+
+    if (hasFrom !== hasTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "from and to must be provided together",
+        path: [hasFrom ? "to" : "from"],
+      });
+    }
+
+    if (hasFrom && hasTo && value.from! >= value.to!) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "from must be before to",
+        path: ["from"],
+      });
+    }
+  });
 
 export const AvailabilitySlotSchema = z.object({
   startsAt: z.string().datetime({ offset: true }),
@@ -12,7 +56,7 @@ export const AvailabilitySlotSchema = z.object({
 });
 
 export const AvailabilityDaySchema = z.object({
-  date: z.string(), // YYYY-MM-DD
+  date: civilDateString,
   slots: z.array(AvailabilitySlotSchema),
 });
 

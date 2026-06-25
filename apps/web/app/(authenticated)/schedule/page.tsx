@@ -24,11 +24,9 @@ import type { CreateAppointmentInput } from "@nexos/shared";
 import type { AvailabilitySlot } from "@nexos/shared";
 
 function dateRange(date: string) {
-  const from = `${date}T00:00:00`;
   const [y, m, d] = date.split("-").map(Number);
   const next = new Date(Date.UTC(y!, m! - 1, d! + 1));
-  const to = next.toISOString().slice(0, 10) + "T00:00:00";
-  return { from, to };
+  return { from: date, to: next.toISOString().slice(0, 10) };
 }
 
 export default function SchedulePage() {

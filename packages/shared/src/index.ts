@@ -8,6 +8,7 @@
 export * from "./error-code.js";
 export * from "./error-envelope.js";
 export * from "./datetime.js";
+export * from "./civil-date.js";
 export * from "./money.js";
 export {
   OrganizationSchema,

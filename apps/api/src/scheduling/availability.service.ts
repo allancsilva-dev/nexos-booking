@@ -8,16 +8,19 @@ import { DbService } from "../db";
 import { withTenantContext } from "../db/tenant-context";
 import { AvailabilityRepository } from "./availability.repository";
 import { ProfessionalServiceNotLinkedException } from "../common/exceptions/domain.exception";
-import { alignToSlotGrid } from "@nexos/shared";
+import {
+  addCivilDays,
+  alignToSlotGrid,
+  civilDateStartToInstant,
+  formatInstantWithOffset,
+  instantToCivilDate,
+  zonedDateTimeToInstant,
+} from "@nexos/shared";
 import type { AvailabilityQuery, AvailabilityResponse, AvailabilityDay, AvailabilitySlot } from "@nexos/shared";
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
 };
-
-function getDateKey(instant: Date, timezone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(instant);
-}
 
 function getWeekdayForDate(dateStr: string, timezone: string): number {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -28,40 +31,6 @@ function getWeekdayForDate(dateStr: string, timezone: string): number {
   }).formatToParts(utcNoon);
   const name = parts.find((p) => p.type === "weekday")?.value;
   return WEEKDAY_MAP[name ?? ""] ?? -1;
-}
-
-function wallTimeToInstant(
-  dateStr: string,
-  timeStr: string,
-  timezone: string,
-): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const parts = timeStr.split(":").map(Number);
-  const h = parts[0]!;
-  const mi = parts[1]!;
-  const sec = parts[2] ?? 0;
-
-  const probe = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0));
-  const fmtParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    timeZoneName: "longOffset",
-  }).formatToParts(probe);
-
-  const tzPart = fmtParts.find((p) => p.type === "timeZoneName");
-  let offsetMin = 0;
-  if (tzPart) {
-    const match = tzPart.value.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
-    if (match) {
-      const sign = match[1] === "+" ? 1 : -1;
-      const oh = parseInt(match[2], 10);
-      const om = parseInt(match[3] || "0", 10);
-      offsetMin = sign * (oh * 60 + om);
-    }
-  }
-
-  const wallMs = (h * 3600 + mi * 60 + sec) * 1000;
-  const utcMs = Date.UTC(y!, m! - 1, d!) + wallMs - offsetMin * 60 * 1000;
-  return new Date(utcMs);
 }
 
 @Injectable()
@@ -79,7 +48,7 @@ export class AvailabilityService {
     professionalId: string,
     query: AvailabilityQuery,
   ): Promise<AvailabilityResponse> {
-    const { from, to, serviceId } = query;
+    const serviceId = query.serviceId;
 
     return withTenantContext(this.db, orgId, userId, async (tx) => {
       if (userId && role === "PROFESSIONAL") {
@@ -135,6 +104,13 @@ export class AvailabilityService {
         };
       }
 
+      const fromCivilDate = query.date ?? query.from!;
+      const toCivilDateExclusive = query.date
+        ? addCivilDays(query.date, 1)
+        : query.to!;
+      const rangeStart = civilDateStartToInstant(fromCivilDate, config.timezone);
+      const rangeEnd = civilDateStartToInstant(toCivilDateExclusive, config.timezone);
+
       const whRows = await this.repo.findWorkingHours(
         tx,
         orgId,
@@ -145,37 +121,25 @@ export class AvailabilityService {
         tx,
         orgId,
         professionalId,
-        from,
-        to,
+        rangeStart,
+        rangeEnd,
       );
 
       const appointmentRows = await this.repo.findActiveAppointments(
         tx,
         orgId,
         professionalId,
-        from,
-        to,
+        rangeStart,
+        rangeEnd,
       );
 
       const now = new Date();
       const durationMs = service.duration_min * 60 * 1000;
       const stepMs = config.slotIntervalMin * 60 * 1000;
       const days: AvailabilityDay[] = [];
+      let dateStr = fromCivilDate;
 
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
-      let probe = new Date(fromDate.getTime());
-
-      while (true) {
-        const dateStr = getDateKey(probe, config.timezone);
-        const [y, m, d] = dateStr.split("-").map(Number);
-
-        const dayStartUtc = wallTimeToInstant(
-          dateStr,
-          "00:00:00",
-          config.timezone,
-        );
-        if (dayStartUtc.getTime() >= toDate.getTime()) break;
+      while (dateStr < toCivilDateExclusive) {
 
         const weekday = getWeekdayForDate(dateStr, config.timezone);
         const shifts = whRows.filter((wh) => wh.weekday === weekday);
@@ -183,12 +147,12 @@ export class AvailabilityService {
         const slots: AvailabilitySlot[] = [];
 
         for (const shift of shifts) {
-          const shiftStart = wallTimeToInstant(
+          const shiftStart = zonedDateTimeToInstant(
             dateStr,
             shift.start_time,
             config.timezone,
           );
-          const shiftEnd = wallTimeToInstant(
+          const shiftEnd = zonedDateTimeToInstant(
             dateStr,
             shift.end_time,
             config.timezone,
@@ -221,8 +185,8 @@ export class AvailabilityService {
 
               if (!blocked && !hasAppointment) {
                 slots.push({
-                  startsAt: slotStart.toISOString(),
-                  endsAt: slotEnd.toISOString(),
+                  startsAt: formatInstantWithOffset(slotStart, config.timezone),
+                  endsAt: formatInstantWithOffset(slotEnd, config.timezone),
                 });
               }
             }
@@ -233,8 +197,7 @@ export class AvailabilityService {
 
         slots.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
         days.push({ date: dateStr, slots });
-
-        probe = new Date(Date.UTC(y!, m! - 1, d! + 1));
+        dateStr = addCivilDays(dateStr, 1);
       }
 
       return {

@@ -69,7 +69,7 @@
 | BUG-013 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | `POST /appointments` retorna 500 por `ON CONFLICT` incompatível com índice parcial de clients | CORRIGIDO |
 | BUG-014 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller | VALIDADO |
 | BUG-015 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard` | VALIDADO |
-| BUG-016 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP | ABERTO |
+| BUG-016 | 2026-06-24 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | ALTA | Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP | VALIDADO |
 | BUG-017 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Testes existentes de RLS/idempotência não acompanham o schema atual | PARCIALMENTE_CORRIGIDO |
 | PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
 | PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
@@ -82,6 +82,7 @@
 | INV-WEB-004 | 2026-06-23 | PR-DIAG-WEB | BAIXA | `PasswordChangeInput` citado no contrato não exportado no shared | ABERTO |
 | INV-WEB-005 | 2026-06-23 | PR-DIAG-WEB | BAIXA | Claims do access token não exportadas como schema no shared | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-006 | 2026-06-23 | PR-DIAG-WEB | ALTA | Web pública já existe parcialmente; roadmap/conductor partiam de premissa greenfield | ABERTO |
+| INV-WEB2-002 | 2026-06-25 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | MÉDIA | `details[]` existe na API, mas o binding visual do campo no formulário real segue sem prova runtime | ACEITO_COMO_PENDÊNCIA |
 | INV-RLS-001 | 2026-06-23 | PR-FIX-RLS-RUNTIME-ROLE-01 · PR-REVERIFY-RLS-RUNTIME-01 | ALTA | GRANT genérico de setup regrediu hardening append-only de audit_logs | CORRIGIDO |
 | DIV-PR-4.3 | a confirmar | PR-4.3 / Fase 4 | BAIXA | Design-spec primária ausente | ACEITO_COMO_PENDÊNCIA |
 
@@ -255,25 +256,55 @@
 
 ### BUG-016 — Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP
 - Data: 2026-06-24
-- PR/Fase: PR-DIAG-MVP-STABILIZATION-01
+- PR/Fase: PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01
 - Severidade: ALTA
-- Erro encontrado: endpoint de availability autenticado rejeita datas civis no formato canônico do contrato.
+- Erro encontrado: endpoints de availability painel/público divergiam do contrato e da resolução civil
+  por timezone da organização.
 - Sintoma: `GET /api/v1/professionals/:id/availability?from=2026-06-26&to=2026-06-27&serviceId=...`
-  retornou `422 VALIDATION_ERROR` com `details[]` indicando `from`/`to` como `Invalid datetime`.
-- Causa raiz: `AvailabilityQuerySchema` exige `datetime({ offset: true })`, enquanto
-  `API_CONTRACTS §15.1` define `date` ou `from`/`to` como `YYYY-MM-DD`, interpretados no timezone da
-  empresa.
+  retornava `422 VALIDATION_ERROR` com `details[]` indicando `from`/`to` como `Invalid datetime`; além
+  disso, o backend ainda misturava `new Date(YYYY-MM-DD)` com `toISOString()`, arriscando prender o
+  cálculo em UTC/Z em vez do fuso da empresa.
+- Causa raiz: `AvailabilityQuerySchema` exigia `datetime({ offset: true })`, enquanto
+  `API_CONTRACTS §15.1` define `date` ou `from`/`to` como `YYYY-MM-DD`; o service/repository tratavam a
+  janela como datetime absoluto da máquina (`new Date(...)`) e serializavam slots com `toISOString()`,
+  perdendo o offset contratual da organização.
 - Impacto: availability painel/pública não segue o contrato; bloqueia validação de timezone, DST e
   coerência POST ↔ availability.
-- Arquivo(s) afetado(s): `packages/shared/src/dto/availability.dto.ts`,
-  `apps/api/src/scheduling/availability.controller.ts`.
-- Correção aplicada: nenhuma neste diagnóstico.
-- Teste/validação executado: smoke runtime no banco descartável `nexos_diag_mvp_20260624`; request com
-  datas civis retornou `422`.
+- Arquivo(s) afetado(s): `packages/shared/src/civil-date.ts`,
+  `packages/shared/src/dto/availability.dto.ts`, `packages/shared/src/index.ts`,
+  `apps/api/src/scheduling/availability.controller.ts`,
+  `apps/api/src/scheduling/availability.service.ts`,
+  `apps/api/src/scheduling/availability.repository.ts`,
+  `apps/api/src/public-booking/public-booking.controller.ts`,
+  `apps/api/src/public-booking/public-booking.service.ts`,
+  `apps/api/scripts/smoke-availability-contract-runtime.mjs`,
+  `apps/web/components/public/booking-flow.tsx`,
+  `apps/web/app/(authenticated)/schedule/page.tsx`,
+  `apps/web/hooks/use-schedule.ts`.
+- Correção aplicada:
+  1. `AvailabilityQuerySchema` passou a aceitar apenas `date=YYYY-MM-DD` ou `from=YYYY-MM-DD&to=YYYY-MM-DD`,
+     rejeitando `DD/MM/YYYY`, datetime completo, `date` misturado com `from/to` e janelas incompletas.
+  2. O backend passou a resolver a data civil no timezone da organização, não no timezone da máquina.
+  3. Os slots de availability passaram a sair como ISO com offset da organização
+     (ex.: `2026-06-26T09:00:00-03:00`), sem vazar `Z` como formato final.
+  4. Os três chamadores web que ainda enviavam datetime para availability foram ajustados para enviar
+     somente `YYYY-MM-DD` na query da API.
+- Teste/validação executado:
+  `pnpm --filter @nexos/shared build` → `PASS`;
+  `pnpm --filter @nexos/api build` → `PASS`;
+  `POSTGRES_DB=nexos_availability_contract_20260625 APP_RUNTIME_USER=app_runtime APP_RUNTIME_PASSWORD=*** pnpm --filter @nexos/api test:runtime-role` → `PASS`;
+  `TZ=UTC POSTGRES_DB=nexos_availability_contract_20260625 APP_RUNTIME_USER=app_runtime APP_RUNTIME_PASSWORD=*** node apps/api/scripts/smoke-availability-contract-runtime.mjs` → `PASS`, com as seguintes provas:
+  * Marco A: painel `date=YYYY-MM-DD` → `200`; painel `from/to=YYYY-MM-DD` → `200`; público `date` → `200`; público `from/to` → `200`; `24/06/2026` → `422`; datetime completo na query → `422`; `date` junto com `from/to` → `422`; ausência de `date` e `from/to` → `422`; `from` sem `to` → `422`; `to` sem `from` → `422`.
+  * Marco B: slot emitido por availability (`2026-06-26T09:00:00-03:00`) foi aceito por `POST /api/v1/appointments` → `201`; após criar o appointment, o slot saiu da availability.
+  * Marco C: dia com jornada configurada retornou slots; bloqueio datado removeu `09:30`; booking público fora da jornada alinhado à grade (`17:00`) retornou `422 OUTSIDE_WORKING_HOURS`.
+  * Marco D1 obrigatório: smoke rodado com `TZ=UTC` e organização `America/Sao_Paulo`; o slot das 09:00 saiu como `2026-06-26T09:00:00-03:00` e não como `+00:00`.
+- Pendências de validação:
+  * D2/DST: **NÃO EXECUTADO** neste PR. A prova obrigatória de timezone sem DST (D1) foi concluída; a
+    prova de transição DST permanece pendente em fuso com DST ativo.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: teste de availability com `YYYY-MM-DD`; fixture de timezone e DST garantindo
   que todo slot emitido pelo availability passa na validação de POST.
-- Status final: ABERTO
+- Status final: VALIDADO
 
 ### BUG-017 — Testes existentes de RLS/idempotência não acompanham o schema atual
 - Data: 2026-06-24
@@ -292,17 +323,24 @@
 - Correção aplicada: seed de `apps/api/scripts/test-rls.mjs` atualizado para preencher snapshots exigidos
   pela migration 0008; adicionado `apps/api/scripts/smoke-appointments-runtime.mjs` para prova HTTP real
   de criação de appointment, conflito sequencial e idempotência divergente; `apps/api/package.json`
-  ganhou `test:runtime-role` para a prova isolada de role runtime.
+  ganhou `test:runtime-role` para a prova isolada de role runtime. No
+  `PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01`, foi adicionado ainda
+  `apps/api/scripts/smoke-availability-contract-runtime.mjs` para cobrir o bloco defasado de
+  availability civil-date/timezone/coerência com POST e gate de jornada do escopo deste PR.
 - Teste/validação executado:
   `APP_RUNTIME_USER=app_runtime APP_RUNTIME_PASSWORD=*** POSTGRES_DB=nexos_appointments_guard_20260624 pnpm --filter @nexos/api test:db` → `PASS`;
   `POSTGRES_DB=nexos_appointments_guard_20260624 node ./apps/api/scripts/smoke-appointments-runtime.mjs`
   → `PASS`;
+  `POSTGRES_DB=nexos_availability_contract_20260625 APP_RUNTIME_USER=app_runtime APP_RUNTIME_PASSWORD=*** pnpm --filter @nexos/api test:runtime-role` → `PASS`;
+  `TZ=UTC POSTGRES_DB=nexos_availability_contract_20260625 APP_RUNTIME_USER=app_runtime APP_RUNTIME_PASSWORD=*** node ./apps/api/scripts/smoke-availability-contract-runtime.mjs` → `PASS`;
   `pnpm --filter @nexos/api test` continua sem script agregado dedicado neste pacote, então a evidência
-  deste PR permanece nos smokes/harnesses isolados acima.
+  permanece nos smokes/harnesses isolados acima, e ainda resta pendência de suite agregada/coerência
+  para áreas fora do escopo deste PR.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: atualizar os seeds para preencher snapshots ou criar appointment via API já
   corrigida; criar organização antes de inserir `idempotency_keys`; transformar asserções de idempotência
-  em prova server-side runtime de replay fiel, divergência `409` e `IN_PROGRESS`.
+  em prova server-side runtime de replay fiel, divergência `409` e `IN_PROGRESS`; manter smoke dedicado
+  de availability civil-date/timezone para não regredir BUG-016.
 - Status final: PARCIALMENTE_CORRIGIDO
 
 ### PROP-E1 — Snapshot de preço no agendamento (proposta — muda canônico)
@@ -633,6 +671,30 @@
 - Prevenção de regressão: novos handoffs WEB-7A/7B/7C devem partir de inventário/reconciliação, não de
   criação do zero.
 - Status final: ABERTO
+
+### INV-WEB2-002 — `details[]` existe na API, mas o binding visual do campo no formulário real segue sem prova runtime
+- Data: 2026-06-25
+- PR/Fase: PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01
+- Severidade: MÉDIA
+- Erro encontrado: havia evidência de que a API já devolve `details[]`, mas faltava prova runtime de que
+  o formulário real aplica o erro no campo correto em DOM/browser/componente observável.
+- Sintoma: o código web já usa `applyFormFieldErrors(...)` em formulários reais, porém o repositório não
+  oferece harness configurado de browser/DOM/teste de componente para observar o binding do erro no
+  campo durante este PR.
+- Causa raiz: lacuna de harness de prova, não ausência confirmada do handler.
+- Impacto: a API está pronta para emitir `details[]`, mas o binding visual do campo ainda não pode ser
+  marcado como validado por evidência runtime.
+- Arquivo(s) afetado(s): nenhum arquivo funcional alterado para este item; auditoria em
+  `apps/web/lib/error-handler.ts`, `apps/web/components/services/service-form.tsx` e formulários
+  correlatos.
+- Correção aplicada: nenhuma. Item mantido fora de alteração funcional por falta de prova de DOM/browser.
+- Teste/validação executado: **NÃO EXECUTADO**. O PR confirmou apenas por inspeção de código que a API
+  emite `details[]` e que o frontend possui um mapper para `react-hook-form`, mas isso não substitui
+  prova runtime de campo.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: adicionar harness real de DOM/browser/componente para observar `setError(...)`
+  no formulário alvo antes de marcar este item como validado.
+- Status final: ACEITO_COMO_PENDÊNCIA
 
 ### DIV-PR-4.3 — Design-spec primária ausente (divergência documental)
 - Data: a confirmar na fonte

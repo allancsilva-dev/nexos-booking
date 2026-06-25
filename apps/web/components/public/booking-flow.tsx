@@ -39,6 +39,21 @@ interface BookingFlowProps {
   className?: string;
 }
 
+function getCivilDateInTimeZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function addCivilDays(dateStr: string, amount: number): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const next = new Date(Date.UTC(year!, month! - 1, day! + amount));
+  return next.toISOString().slice(0, 10);
+}
+
 export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
   const [step, setStep] = useState<Step>("service");
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -74,11 +89,8 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
       setAvailabilityLoading(true);
       setError(null);
 
-      const now = new Date();
-      const from = now.toISOString();
-      const to = new Date(
-        now.getTime() + 7 * 24 * 60 * 60 * 1000
-      ).toISOString();
+      const from = getCivilDateInTimeZone(new Date(), vitrine.timezone);
+      const to = addCivilDays(from, 7);
 
       try {
         const result = await apiFetch<AvailabilityResponse>(

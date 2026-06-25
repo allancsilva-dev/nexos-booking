@@ -66,36 +66,19 @@ export class AvailabilityController {
   async getAvailability(
     @Req() req: Request,
     @Param("professionalId") professionalId: string,
-    @Query() query: { from?: string; to?: string; serviceId?: string },
+    @Query() query: { date?: string; from?: string; to?: string; serviceId?: string },
   ) {
     const tenant = getTenant(req);
 
     const serviceId = query.serviceId;
-    const from = query.from;
-    const to = query.to;
-
     if (!serviceId) {
-      validationError([
-        { field: "serviceId", issue: "required" },
-      ]);
+      validationError([{ field: "serviceId", issue: "required" }]);
     }
     if (!isUUID(serviceId)) {
-      validationError([
-        { field: "serviceId", issue: "invalid_uuid" },
-      ]);
-    }
-    if (!from || !to) {
-      const missing: { field: string; issue: string }[] = [];
-      if (!from) missing.push({ field: "from", issue: "required" });
-      if (!to) missing.push({ field: "to", issue: "required" });
-      validationError(missing);
+      validationError([{ field: "serviceId", issue: "invalid_uuid" }]);
     }
 
-    const parsed = AvailabilityQuerySchema.safeParse({
-      from,
-      to,
-      serviceId,
-    });
+    const parsed = AvailabilityQuerySchema.safeParse(query);
     if (!parsed.success) {
       const details = parsed.error.issues.map((e) => ({
         field: e.path.join("."),

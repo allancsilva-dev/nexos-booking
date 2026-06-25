@@ -19,7 +19,9 @@ import type { RateLimiter } from "../auth/rate-limit/rate-limiter.interface";
 import type { AvailabilityQuery } from "@nexos/shared";
 import {
   alignToSlotGrid,
+  instantToCivilDate,
   normalizePhone,
+  zonedDateTimeToInstant,
   isAllowedTransition,
   isTerminal,
   MAX_BOOKING_HORIZON_DAYS,
@@ -33,18 +35,15 @@ import type {
 import type { AppointmentStatus } from "@nexos/shared";
 
 interface AvailabilityRouteQuery {
-  from: string;
-  to: string;
+  date?: string;
+  from?: string;
+  to?: string;
   serviceId: string;
 }
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
 };
-
-function getDateKey(instant: Date, timezone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(instant);
-}
 
 function getWeekdayForDate(dateStr: string, timezone: string): number {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -55,40 +54,6 @@ function getWeekdayForDate(dateStr: string, timezone: string): number {
   }).formatToParts(utcNoon);
   const name = parts.find((p) => p.type === "weekday")?.value;
   return WEEKDAY_MAP[name ?? ""] ?? -1;
-}
-
-function wallTimeToInstant(
-  dateStr: string,
-  timeStr: string,
-  timezone: string,
-): Date {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const parts = timeStr.split(":").map(Number);
-  const h = parts[0]!;
-  const mi = parts[1]!;
-  const sec = parts[2] ?? 0;
-
-  const probe = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0));
-  const fmtParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    timeZoneName: "longOffset",
-  }).formatToParts(probe);
-
-  const tzPart = fmtParts.find((p) => p.type === "timeZoneName");
-  let offsetMin = 0;
-  if (tzPart) {
-    const match = tzPart.value.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
-    if (match) {
-      const sign = match[1] === "+" ? 1 : -1;
-      const oh = parseInt(match[2], 10);
-      const om = parseInt(match[3] || "0", 10);
-      offsetMin = sign * (oh * 60 + om);
-    }
-  }
-
-  const wallMs = (h * 3600 + mi * 60 + sec) * 1000;
-  const utcMs = Date.UTC(y!, m! - 1, d!) + wallMs - offsetMin * 60 * 1000;
-  return new Date(utcMs);
 }
 
 function generateCancelToken(): { raw: string; hash: string } {
@@ -217,8 +182,9 @@ export class PublicBookingService {
       }
 
       const parsed: AvailabilityQuery = {
-        from: query.from,
-        to: query.to,
+        ...(query.date ? { date: query.date } : {}),
+        ...(query.from ? { from: query.from } : {}),
+        ...(query.to ? { to: query.to } : {}),
         serviceId: query.serviceId,
       };
 
@@ -319,7 +285,7 @@ export class PublicBookingService {
         );
       }
 
-      const dateStr = getDateKey(startsAt, config.timezone);
+      const dateStr = instantToCivilDate(startsAt, config.timezone);
       const weekday = getWeekdayForDate(dateStr, config.timezone);
 
       const shifts = await this.repo.findWorkingHoursForWeekday(
@@ -334,7 +300,7 @@ export class PublicBookingService {
       }
 
       const firstShift = shifts[0]!;
-      const anchor = wallTimeToInstant(
+      const anchor = zonedDateTimeToInstant(
         dateStr,
         firstShift.start_time,
         config.timezone,
@@ -354,12 +320,12 @@ export class PublicBookingService {
 
       let withinWorkingHours = false;
       for (const shift of shifts) {
-        const shiftStart = wallTimeToInstant(
+        const shiftStart = zonedDateTimeToInstant(
           dateStr,
           shift.start_time,
           config.timezone,
         );
-        const shiftEnd = wallTimeToInstant(
+        const shiftEnd = zonedDateTimeToInstant(
           dateStr,
           shift.end_time,
           config.timezone,
