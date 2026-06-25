@@ -43,11 +43,12 @@ export class AuthRepository {
 
   async createOrganization(
     tx: DbTransaction,
-    params: { name: string; slug: string },
+    params: { id: string; name: string; slug: string },
   ) {
     const [row] = await tx
       .insert(organizations)
       .values({
+        id: params.id,
         name: params.name,
         slug: params.slug,
       })

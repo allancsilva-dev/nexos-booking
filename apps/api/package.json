@@ -12,6 +12,7 @@
     "test:runtime-role": "pnpm exec tsx ./scripts/test-runtime-role.ts",
     "test:http": "node ./scripts/test-http.mjs",
     "test:auth": "node ./scripts/test-auth.mjs",
+    "smoke:auth-register-runtime": "node ./scripts/smoke-auth-register-runtime.mjs",
     "test:auth-email": "node ./scripts/test-auth-email.mjs",
     "test:maintenance": "node scripts/test-maintenance.mjs",
     "test:idempotency": "node scripts/test-idempotency.mjs"

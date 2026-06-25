@@ -9,9 +9,9 @@ import { RateLimitException } from "../common/exceptions/rate-limit.exception";
 import { randomUUID, randomBytes, createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 
-import { DbService } from "../db";
+import { applyTenantContext, DbService } from "../db";
 import type { DbTransaction } from "../db/db.types";
-import { organizations, refreshSessions, auditLogs } from "../../db/schema";
+import { refreshSessions, auditLogs } from "../../db/schema";
 import { PasswordService } from "./password/password.service";
 import { JwtService } from "./jwt/jwt.service";
 import { SessionService } from "./sessions/session.service";
@@ -29,17 +29,14 @@ import {
   InvalidCredentialsException,
   NoActiveOrgException,
   RefreshReusedException,
+  SlugTakenException,
   TokenExpiredException,
 } from "../common/exceptions/domain.exception";
 import { ValidationException } from "../common/exceptions/validation.exception";
+import { generateSlugCandidates } from "../organizations/slug-generator";
 
 const SLUG_MAX_RETRIES = 10;
-const RESERVED_SLUGS = new Set([
-  "admin", "api", "app", "login", "auth", "public",
-  "barbearia", "barbeiro", "static", "assets", "root",
-  "www", "mail", "ftp", "cdn", "docs", "help", "suporte",
-  "support", "status", "api-docs",
-]);
+const REGISTER_ORG_INSERT_SAVEPOINT = "register_org_insert";
 
 async function setCurrentUserContext(
   tx: DbTransaction,
@@ -70,6 +67,7 @@ export class AuthService {
   async register(
     input: RegisterInput,
     ip: string,
+    options?: { failAfterUser?: boolean },
   ): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -110,12 +108,17 @@ export class AuthService {
         passwordHash,
       });
 
-      const orgName = input.organizationName || `${input.name}'s Organization`;
-      const slug = await this.generateSlug(tx, orgName);
+      if (options?.failAfterUser) {
+        throw new Error("Test register failure after user creation");
+      }
 
-      const org = await this.repo.createOrganization(tx, {
+      const orgName = input.organizationName || `${input.name}'s Organization`;
+      const organizationId = randomUUID();
+      await applyTenantContext(tx, organizationId, user.id);
+
+      const org = await this.createBootstrapOrganization(tx, {
+        id: organizationId,
         name: orgName,
-        slug,
       });
 
       await this.repo.createMembership(tx, {
@@ -727,38 +730,48 @@ export class AuthService {
   }
 
   private async generateSlug(
-    tx: DbTransaction,
+    _tx: DbTransaction,
     name: string,
-  ): Promise<string> {
-    let base = name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .replace(/-+/g, "-");
+  ): Promise<string[]> {
+    return generateSlugCandidates(name).slice(0, SLUG_MAX_RETRIES);
+  }
 
-    if (!base || base.length < 2) {
-      base = `org-${randomUUID().slice(0, 8)}`;
-    }
+  private async createBootstrapOrganization(
+    tx: DbTransaction,
+    params: { id: string; name: string },
+  ) {
+    const candidates = await this.generateSlug(tx, params.name);
 
-    if (RESERVED_SLUGS.has(base)) {
-      base = `${base}-org`;
-    }
+    for (const candidate of candidates) {
+      await tx.execute(sql.raw(`SAVEPOINT ${REGISTER_ORG_INSERT_SAVEPOINT}`));
 
-    for (let attempt = 0; attempt < SLUG_MAX_RETRIES; attempt++) {
-      const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
-      const existing = await tx
-        .select({ id: organizations.id })
-        .from(organizations)
-        .where(eq(organizations.slug, candidate))
-        .limit(1);
+      try {
+        const org = await this.repo.createOrganization(tx, {
+          id: params.id,
+          name: params.name,
+          slug: candidate,
+        });
+        await tx.execute(sql.raw(`RELEASE SAVEPOINT ${REGISTER_ORG_INSERT_SAVEPOINT}`));
+        return org;
+      } catch (error) {
+        await tx.execute(
+          sql.raw(`ROLLBACK TO SAVEPOINT ${REGISTER_ORG_INSERT_SAVEPOINT}`),
+        );
 
-      if (existing.length === 0) {
-        return candidate;
+        if (!this.isUniqueViolation(error)) {
+          throw error;
+        }
       }
     }
 
-    return `${base}-${randomUUID().slice(0, 8)}`;
+    throw new SlugTakenException();
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    const pgError = error as { code?: string; cause?: { code?: string } };
+    return (
+      pgError.code === "23505" ||
+      (typeof pgError.cause === "object" && pgError.cause?.code === "23505")
+    );
   }
 }

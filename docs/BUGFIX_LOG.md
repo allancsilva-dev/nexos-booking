@@ -746,6 +746,55 @@
   de grants manuais.
 - Status final: CORRIGIDO
 
+### BUG-AUTH-REGISTER-RLS-01 — `POST /auth/register` viola RLS de `organizations` no bootstrap de tenant
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-AUTH-REGISTER-RLS-01 (revelado pelo PR-1 `e974d52`) / Fase auth-bootstrap
+- Severidade: BLOQUEANTE
+- Erro encontrado: `POST /api/v1/auth/register` retornava `500 INTERNAL_ERROR` sob a role segura
+  `app_runtime` (`rolsuper=false`, `rolbypassrls=false`).
+- Sintoma: erro de runtime `new row violates row-level security policy for table "organizations"`;
+  onboarding inicial (criação de conta/organização) bloqueado.
+- Causa raiz: a policy `tenant_or_member` de `organizations` é `FOR ALL` sem `WITH CHECK` explícito —
+  a expressão `USING (id = current_setting('app.current_organization_id') OR app_is_member(id))`
+  vira o `WITH CHECK` do INSERT. No register a organização **nasce sem membership** (logo
+  `app_is_member(id)` = false) e a transação **não setava** `app.current_organization_id`, então o
+  ramo `id = current_org_id` também falhava → INSERT negado. **Não foi introduzido pelo PR-1:** o
+  fluxo nunca teve contexto canônico no bootstrap; antes a API rodava com role `BYPASSRLS`
+  (`POSTGRES_USER`) que mascarava a falha. O PR-1 apenas tornou a RLS efetiva e **revelou** o bug.
+- Impacto: bootstrap de tenant impossível sob runtime seguro; MVP travado em onboarding real.
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.service.ts`, `apps/api/src/auth/auth.repository.ts`,
+  `apps/api/src/db/tenant-context.ts`, `apps/api/src/db/index.ts`,
+  `apps/api/src/auth/auth.controller.ts` (hook de teste env-gated),
+  `apps/api/scripts/smoke-auth-register-runtime.mjs` (novo),
+  `apps/api/package.json` (entrada de script smoke). Reusa, sem alterar,
+  `apps/api/src/organizations/slug-generator.ts` (já versionado no PR-1.6).
+- Correção aplicada: o `organizationId` é gerado no app (UUID) e, **dentro da mesma transação** do
+  register, `applyTenantContext(tx, organizationId, user.id)` seta os GUCs canônicos
+  (`app.current_organization_id`/`app.current_user_id`) **antes** do INSERT da org. O `WITH CHECK
+  id = current_org_id` passa naturalmente; o vínculo `organization_users` OWNER nasce no mesmo `tx`
+  (`organization_id = current_org_id`). Colisão de slug tratada por SAVEPOINT + retry de `23505`,
+  com `SlugTakenException` ao esgotar candidatos. Toda a operação permanece em uma única transação
+  → rollback atômico (falha após criar user não deixa user/org/membership/sessão órfãos).
+- Padrão de contexto usado: **reuso do GUC canônico de tenant**. `applyTenantContext` é o corpo de
+  `withTenantContext` extraído (mesmos `set_config`), **não** um terceiro padrão de GUC. Não usa
+  `withSystemContext` (restrito a relay/jobs e a policy de `organizations` nem checa `app.is_system`)
+  nem SECURITY DEFINER de escrita (ADR-017 reserva DEFINER a lookups de leitura).
+- Aderência ao ADR-017: o bootstrap é uma escrita tenant-scoped cujo tenant é a própria org nascendo;
+  consistente com o modelo de ameaça do ADR-017 (RLS protege contra `WHERE` esquecido / cross-tenant,
+  não contra app comprometido — o app controla os GUCs). Nenhum bypass de RLS, nenhuma role
+  privilegiada, nenhum enfraquecimento de policy.
+- Teste/validação executado: `pnpm --filter @nexos/api build` (OK); `test:runtime-role`
+  (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`); banco descartável
+  `nexos_auth_register_rls_20260625` via `migrate:fresh`; `smoke:auth-register-runtime` PASS —
+  register 201 (user+org+OWNER+refresh), login→`activeOrg`, `/auth/me` `activeOrg`, refresh 200 com
+  `X-CSRF: 1` / 403 sem, negativos (payload inválido→422 `VALIDATION_ERROR`, e-mail duplicado→409
+  `EMAIL_TAKEN`, colisão de slug→slug distinto sem 500), rollback atômico (falha pós-user → 0 user
+  órfão), RLS (sem contexto = 0 linhas, tenant errado = 0 linhas, outsider HTTP 404).
+- Branch/commit relacionado: PR-BE-FIX-AUTH-REGISTER-RLS-01 (sem commit no momento do registro).
+- Prevenção de regressão: `smoke-auth-register-runtime.mjs` cobre o caminho ponta-a-ponta sob
+  `app_runtime`, incluindo isolamento cross-tenant e rollback atômico.
+- Status final: CORRIGIDO
+
 ---
 
 ## Áreas de atenção recorrentes (onde os bugs tendem a aparecer — checar primeiro)

@@ -96,7 +96,11 @@ export class AuthController {
     }
 
     const ip = getClientIp(req);
-    const result = await this.auth.register(parsed.data, ip);
+    const result = await this.auth.register(parsed.data, ip, {
+      failAfterUser:
+        process.env.ENABLE_HTTP_TEST_HARNESS === "1" &&
+        req.headers["x-test-register-fail-after-user"] === "1",
+    });
 
     setRefreshCookie(res, result.refreshToken);
 
