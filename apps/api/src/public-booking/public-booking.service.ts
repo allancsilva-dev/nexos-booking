@@ -247,7 +247,10 @@ export class PublicBookingService {
     }
     await this.checkPhoneRateLimit(normalized!);
 
-    const orgId = (await this.repo.resolveOrgBySlug(orgSlug))!;
+    const orgId = await this.repo.resolveOrgBySlug(orgSlug);
+    if (!orgId) {
+      throw new NotFoundException("Organization not found");
+    }
 
     return withTenantContext(this.db, orgId, null, async (tx) => {
       const professional = await this.repo.findProfessionalBySlug(

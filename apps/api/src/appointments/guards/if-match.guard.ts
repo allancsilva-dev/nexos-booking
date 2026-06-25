@@ -2,6 +2,7 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
+  Inject,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
@@ -11,7 +12,9 @@ import { REQUIRE_IF_MATCH_KEY } from "../decorators/require-if-match.decorator";
 
 @Injectable()
 export class IfMatchGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    @Inject(Reflector) private readonly reflector: Reflector,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const requiresIfMatch = this.reflector.get<boolean>(

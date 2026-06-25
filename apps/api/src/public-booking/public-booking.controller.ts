@@ -2,10 +2,12 @@ import {
   Controller,
   Get,
   Post,
+  HttpCode,
   Param,
   Query,
   Body,
   Req,
+  Inject,
   HttpException,
   HttpStatus,
   UseGuards,
@@ -36,7 +38,10 @@ function validationError(details: { field: string; issue: string }[]): never {
 
 @Controller("public")
 export class PublicBookingController {
-  constructor(private readonly service: PublicBookingService) {}
+  constructor(
+    @Inject(PublicBookingService)
+    private readonly service: PublicBookingService,
+  ) {}
 
   @Get(":orgSlug")
   async vitrine(@Req() req: Request, @Param("orgSlug") slug: string) {
@@ -98,6 +103,7 @@ export class PublicBookingController {
     return result;
   }
 
+  @HttpCode(HttpStatus.OK)
   @Post("cancel/preview")
   async previewCancel(@Req() req: Request, @Body() body: unknown) {
     const token: string | undefined =
@@ -110,6 +116,7 @@ export class PublicBookingController {
     return this.service.previewCancel(getClientIp(req), token);
   }
 
+  @HttpCode(HttpStatus.OK)
   @Post("cancel")
   async cancelByToken(@Req() req: Request, @Body() body: unknown) {
     const token: string | undefined =

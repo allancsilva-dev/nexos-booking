@@ -67,8 +67,8 @@
 |---|---|---|---|---|---|
 | BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | CORRIGIDO |
 | BUG-013 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | `POST /appointments` retorna 500 por `ON CONFLICT` incompatível com índice parcial de clients | CORRIGIDO |
-| BUG-014 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller | ABERTO |
-| BUG-015 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard` | ABERTO |
+| BUG-014 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller | VALIDADO |
+| BUG-015 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard` | VALIDADO |
 | BUG-016 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP | ABERTO |
 | BUG-017 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Testes existentes de RLS/idempotência não acompanham o schema atual | PARCIALMENTE_CORRIGIDO |
 | PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
@@ -76,8 +76,8 @@
 | PROP-E2b | 2026-06-24 | Pré-WEB-7A · PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT | ALTA | Vitrine pública relacionar serviço ↔ profissional | RATIFICADA |
 | PROP-E2c | 2026-06-23 | Pré-WEB-3 · PR-PROP-E2C-PROFESSIONAL-SERVICES-MGMT-01 | ALTA | API de gerenciamento do vínculo `professional_services` | RATIFICADA |
 | PROP-E4 | a confirmar | Transversal web | MÉDIA | Envelope de lista/paginação consistente | ACEITO_COMO_PENDÊNCIA |
-| INV-WEB-001 | 2026-06-23 | PR-DIAG-WEB | ALTA | Slug público inexistente retorna 500 | ABERTO |
-| INV-WEB-002 | 2026-06-23 | PR-DIAG-WEB | ALTA | Cancelamento público com token inválido retorna 500 | ABERTO |
+| INV-WEB-001 | 2026-06-23 | PR-DIAG-WEB | ALTA | Slug público inexistente retorna 500 | VALIDADO |
+| INV-WEB-002 | 2026-06-23 | PR-DIAG-WEB | ALTA | Cancelamento público com token inválido retorna 500 | VALIDADO |
 | INV-WEB-003 | 2026-06-23 | PR-DIAG-WEB | BAIXA | Divergência de nomenclatura entre DTOs shared e contrato/roadmap | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-004 | 2026-06-23 | PR-DIAG-WEB | BAIXA | `PasswordChangeInput` citado no contrato não exportado no shared | ABERTO |
 | INV-WEB-005 | 2026-06-23 | PR-DIAG-WEB | BAIXA | Claims do access token não exportadas como schema no shared | ACEITO_COMO_PENDÊNCIA |
@@ -185,22 +185,37 @@
   `POST /api/v1/public/:orgSlug/appointments` e `POST /api/v1/public/cancel/preview` retornaram `500`.
   Logs locais mostraram `TypeError: Cannot read properties of undefined (reading 'getVitrine')`,
   `getAvailability`, `bookAppointment` e `previewCancel` em `PublicBookingController`.
-- Causa raiz: `PublicBookingController` é instanciado com `service` indefinido, apesar de o módulo listar
-  `PublicBookingService` em `providers`. Causa DI exata a investigar no PR de correção.
+- Causa raiz: `PublicBookingController` dependia de DI implícita no constructor
+  (`constructor(private readonly service: PublicBookingService)`), e no runtime atual da API sob `tsx`
+  a metadata implícita não foi resolvida de forma confiável; o Nest instanciou o controller com
+  `service = undefined`. Depois de destravar a DI, o fluxo público revelou um segundo defeito do mesmo
+  caminho: `PublicBookingRepository.upsertClientByPhone` repetia o `ON CONFLICT` incompatível com o índice
+  parcial de `clients`, reproduzindo o `42P10` já visto no BUG-013, mas agora restrito ao booking público.
 - Impacto: bloqueia a página pública inteira: vitrine, professionalSlugs, availability pública, booking,
   geração/uso de `cancelUrl` e validação de token inválido/terminal. Mantém `INV-WEB-001` e
   `INV-WEB-002` vermelhos em runtime.
 - Arquivo(s) afetado(s): `apps/api/src/public-booking/public-booking.controller.ts`,
-  `apps/api/src/public-booking/public-booking.module.ts`.
-- Correção aplicada: nenhuma neste diagnóstico.
-- Teste/validação executado: smoke runtime no banco descartável `nexos_diag_mvp_20260624`; slug público
-  inexistente retornou `500 INTERNAL_ERROR` em vez de `404`; token inválido em preview retornou `500`
-  em vez de `410`.
+  `apps/api/src/public-booking/public-booking.service.ts`,
+  `apps/api/src/public-booking/public-booking.repository.ts`,
+  `apps/api/scripts/smoke-public-booking-runtime.mjs`.
+- Correção aplicada: `PublicBookingController` passou a injetar `PublicBookingService` com `@Inject(...)`
+  explícito. No mesmo fluxo, `bookAppointment` passou a tratar `orgSlug` inexistente com
+  `NotFoundException` real, e `PublicBookingRepository.upsertClientByPhone` foi alinhado ao índice parcial
+  canônico de `clients` com SQL explícito:
+  `ON CONFLICT (organization_id, phone_normalized) WHERE phone_normalized IS NOT NULL`.
+- Teste/validação executado: `POSTGRES_DB=nexos_pr_fix_public_locking_20260624 APP_RUNTIME_USER=app_runtime
+  APP_RUNTIME_PASSWORD=*** node apps/api/scripts/smoke-public-booking-runtime.mjs` no banco temporário
+  migrado do zero:
+  `GET /api/v1/public/:orgSlug` válido → `200` com `professionalSlugs`;
+  slug inexistente → `404 NOT_FOUND`;
+  combinação profissional-serviço inválida → `422 PROFESSIONAL_SERVICE_NOT_LINKED`;
+  `POST /api/v1/public/:orgSlug/appointments` válido → `201` com `cancelUrl`;
+  query no banco confirmou evento `CREATED|CLIENT|NULL`.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: teste de boot/DI do `PublicBookingModule`; teste negativo de slug inexistente
   esperando `404 NOT_FOUND`; teste negativo de cancel token inválido esperando `410 Gone`; teste positivo
   de vitrine com `professionalSlugs`.
-- Status final: ABERTO
+- Status final: VALIDADO
 
 ### BUG-015 — Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard`
 - Data: 2026-06-24
@@ -210,20 +225,33 @@
 - Sintoma: `POST /api/v1/appointments/:id/cancel` e `POST /api/v1/appointments/:id/complete` retornaram
   `500 INTERNAL_ERROR`; logs locais mostraram `TypeError: Cannot read properties of undefined (reading
   'get')` em `IfMatchGuard.canActivate`.
-- Causa raiz: `Reflector` está indefinido dentro do guard em runtime. Causa DI exata a investigar no PR
-  de correção.
+- Causa raiz: `IfMatchGuard` dependia de DI implícita no constructor
+  (`constructor(private readonly reflector: Reflector)`), e no runtime atual da API sob `tsx` a metadata
+  implícita não foi resolvida de forma confiável; o Nest instanciou o guard com `reflector = undefined`.
+  Depois de destravar a DI, a ação `cancel` ainda revelou um segundo 500 no mesmo caminho de prova:
+  `AppointmentsService.cancel` passava `cancelledByType` em camelCase para o update, deixando
+  `cancelled_by_type` ausente e violando a constraint `chk_cancelled_by`.
 - Impacto: bloqueia cancelamento/remarcação/desfechos do painel, impede provar `If-Match`, lost update e
   máquina de estados. Sem esse gate, ausência de `If-Match` também vira `500` em vez de erro contratual.
 - Arquivo(s) afetado(s): `apps/api/src/appointments/guards/if-match.guard.ts`,
-  `apps/api/src/appointments/appointments.module.ts`.
-- Correção aplicada: nenhuma neste diagnóstico.
-- Teste/validação executado: smoke runtime no banco descartável `nexos_diag_mvp_20260624`; chamadas com e
-  sem `If-Match` falharam por `500` antes da regra de domínio.
+  `apps/api/src/appointments/appointments.service.ts`,
+  `apps/api/scripts/smoke-if-match-runtime.mjs`.
+- Correção aplicada: `IfMatchGuard` passou a injetar `Reflector` com `@Inject(Reflector)` explícito.
+  No mesmo caminho de runtime, `AppointmentsService.cancel` passou a propagar `cancelled_by_type` no
+  formato esperado pelo schema, eliminando o `500` por `chk_cancelled_by` na ação correta.
+- Teste/validação executado:
+  `POSTGRES_DB=nexos_pr_fix_public_locking_20260624 APP_RUNTIME_USER=app_runtime
+  APP_RUNTIME_PASSWORD=*** node apps/api/scripts/smoke-if-match-runtime.mjs` no banco temporário
+  migrado do zero:
+  ausência de `If-Match` → `400 BAD_REQUEST`;
+  versão antiga → `409 APPOINTMENT_VERSION_CONFLICT`;
+  versão correta → remarcação `200` e cancelamento bem-sucedido, sem `500`;
+  query no banco confirmou estado final `CANCELLED|3|STAFF`.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: teste sem `If-Match` esperando erro contratual; teste com versão antiga
   esperando `409 APPOINTMENT_VERSION_CONFLICT`; teste com versão correta executando a ação e incrementando
   `version`.
-- Status final: ABERTO
+- Status final: VALIDADO
 
 ### BUG-016 — Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP
 - Data: 2026-06-24
@@ -480,21 +508,25 @@
 - Erro encontrado: `GET /api/v1/public/:orgSlug` e `GET /api/v1/public/:orgSlug/professionals` retornam
   `500 INTERNAL_ERROR` para slug inexistente.
 - Sintoma: ao consultar slug público inexistente, a API responde erro interno em vez de erro controlado.
-- Causa raiz: a ser investigada em PR posterior; o PR-DIAG-WEB registrou o comportamento runtime, sem fix.
+- Causa raiz: mesmo root do BUG-014. O `PublicBookingController` estava sendo instanciado com
+  `PublicBookingService` indefinido por DI implícita não resolvida em runtime; além disso,
+  `bookAppointment` tratava `resolveOrgBySlug(...)!` com non-null assertion, arriscando novo `500`
+  no `POST` público para slug inexistente.
 - Impacto: impacta WEB-7A. A vitrine pública precisa tratar slug inexistente como `404 NOT_FOUND`, não como
   falha genérica de servidor.
-- Arquivo(s) afetado(s): nenhum neste PR documental. Correção futura deve ocorrer fora deste PR.
-- Correção aplicada: nenhuma. Este PR apenas registra o achado.
-- Teste/validação executado: PR-DIAG-WEB observou o retorno runtime `500 INTERNAL_ERROR`. Correção ainda
-  **NÃO EXECUTADA**.
+- Arquivo(s) afetado(s): `apps/api/src/public-booking/public-booking.controller.ts`,
+  `apps/api/src/public-booking/public-booking.service.ts`,
+  `apps/api/scripts/smoke-public-booking-runtime.mjs`.
+- Correção aplicada: DI explícita no `PublicBookingController` e tratamento explícito de slug inexistente
+  em `PublicBookingService.bookAppointment` com `NotFoundException`.
+- Teste/validação executado:
+  `POSTGRES_DB=nexos_pr_fix_public_locking_20260624 APP_RUNTIME_USER=app_runtime
+  APP_RUNTIME_PASSWORD=*** node apps/api/scripts/smoke-public-booking-runtime.mjs` confirmou
+  `GET /api/v1/public/org-inexistente-xyz` → `404 NOT_FOUND` com envelope e `error.requestId`.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: teste negativo futuro para slug inexistente em `GET /api/v1/public/:orgSlug` e
   `GET /api/v1/public/:orgSlug/professionals`, esperando `404 NOT_FOUND`.
-- Status final: ABERTO
-- Nota de diagnóstico (2026-06-24 — PR-BE-FIX-PUBLIC-ERRORS-01): inspeção de código indica que
-  `resolveOrgBySlug` retorna `null` para slug inexistente, e `getVitrine`/`getProfessionals` lançam
-  `NotFoundException` → `404 NOT_FOUND` via `HttpExceptionFilter`. Fluxo esperado 404 confirmado
-  por leitura de código. Runtime **não executado** — pendente de smoke final com API/web rodando.
+- Status final: VALIDADO
 
 ### INV-WEB-002 — Cancelamento público com token inválido retorna 500
 - Data: 2026-06-23
@@ -504,21 +536,27 @@
   `500 INTERNAL_ERROR` para token inválido.
 - Sintoma: ao enviar token inválido, a API responde erro interno em vez de `410 Gone` com código de
   cancelamento inválido/expirado.
-- Causa raiz: a ser investigada em PR posterior; o PR-DIAG-WEB registrou o comportamento runtime, sem fix.
+- Causa raiz: mesmo root do BUG-014. O `PublicBookingController` estava sendo instanciado com
+  `PublicBookingService` indefinido por DI implícita não resolvida em runtime, então `previewCancel` e
+  `cancelByToken` quebravam antes de alcançar a tradução contratual para `410`.
 - Impacto: impacta WEB-7C. A superfície pública de cancelamento deve ocultar estado interno e responder
   `410 Gone` para token inválido/expirado/já usado, conforme contrato.
-- Arquivo(s) afetado(s): nenhum neste PR documental. Correção futura deve ocorrer fora deste PR.
-- Correção aplicada: nenhuma. Este PR apenas registra o achado.
-- Teste/validação executado: PR-DIAG-WEB observou o retorno runtime `500 INTERNAL_ERROR`. Correção ainda
-  **NÃO EXECUTADA**.
+- Arquivo(s) afetado(s): `apps/api/src/public-booking/public-booking.controller.ts`,
+  `apps/api/scripts/smoke-public-booking-runtime.mjs`.
+- Correção aplicada: DI explícita no `PublicBookingController`; adicionalmente, `preview` e `cancel`
+  públicos foram fixados em `200` no caminho feliz com `@HttpCode(HttpStatus.OK)`, preservando `410` nos
+  caminhos inválidos do contrato.
+- Teste/validação executado:
+  `POSTGRES_DB=nexos_pr_fix_public_locking_20260624 APP_RUNTIME_USER=app_runtime
+  APP_RUNTIME_PASSWORD=*** node apps/api/scripts/smoke-public-booking-runtime.mjs` confirmou:
+  `POST /api/v1/public/cancel/preview` com token inválido → `410 CANCEL_TOKEN_INVALID`;
+  `POST /api/v1/public/cancel` com token inválido → `410 CANCEL_TOKEN_INVALID`;
+  `POST /api/v1/public/cancel/preview` com token válido → `200`;
+  `POST /api/v1/public/cancel` com token válido → sucesso, sem `500`.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: teste negativo futuro para `POST /api/v1/public/cancel/preview` e
   `POST /api/v1/public/cancel` com token inválido, esperando `410 Gone`.
-- Status final: ABERTO
-- Nota de diagnóstico (2026-06-24 — PR-BE-FIX-PUBLIC-ERRORS-01): inspeção de código indica que
-  `resolveByCancelHash` retorna `null` para token inexistente, e `previewCancel`/`cancelByToken` lançam
-  `CancelTokenInvalidException` → `410 Gone` via `HttpExceptionFilter`. Fluxo esperado 410 confirmado
-  por leitura de código. Runtime **não executado** — pendente de smoke final com API/web rodando.
+- Status final: VALIDADO
 
 ### INV-WEB-003 — Divergência de nomenclatura entre DTOs shared e contrato/roadmap
 - Data: 2026-06-23

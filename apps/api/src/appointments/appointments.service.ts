@@ -757,7 +757,7 @@ export class AppointmentsService {
       version,
       "CANCELLED",
       "CANCELLED",
-      { cancelledByType: "STAFF" },
+      { cancelled_by_type: "STAFF" },
     );
   }
 
