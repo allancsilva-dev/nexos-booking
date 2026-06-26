@@ -154,6 +154,11 @@ function mapAppointmentListItem(
     client_name: string;
     client_phone: string | null;
     professional_user_id: string | null;
+    // snapshot histórico — NOT NULL na tabela, jamais será null aqui
+    service_name_snapshot: string;
+    service_duration_min_snapshot: number;
+    service_price_cents_snapshot: number;
+    service_currency_snapshot: string;
   },
   callerRole: string,
   callerUserId: string,
@@ -176,6 +181,11 @@ function mapAppointmentListItem(
     status: row.status,
     source: row.source,
     version: row.version,
+    // campos de snapshot exigidos pelo DTO (AppointmentListItemSchema l.14-17)
+    serviceNameSnapshot: row.service_name_snapshot,
+    serviceDurationMinSnapshot: row.service_duration_min_snapshot,
+    servicePriceCentsSnapshot: row.service_price_cents_snapshot,
+    serviceCurrencySnapshot: row.service_currency_snapshot,
   };
 }
 

@@ -323,6 +323,11 @@ export class AppointmentsRepository {
         client_name: clients.name,
         client_phone: clients.phone,
         professional_user_id: professionals.user_id,
+        // snapshot columns: valor histórico persistido na própria linha — sem JOIN com services
+        service_name_snapshot: appointments.service_name_snapshot,
+        service_duration_min_snapshot: appointments.service_duration_min_snapshot,
+        service_price_cents_snapshot: appointments.service_price_cents_snapshot,
+        service_currency_snapshot: appointments.service_currency_snapshot,
       })
       .from(appointments)
       .innerJoin(clients, eq(appointments.client_id, clients.id))

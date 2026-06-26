@@ -71,6 +71,7 @@
 | BUG-015 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard` | VALIDADO |
 | BUG-016 | 2026-06-24 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | ALTA | Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP | VALIDADO |
 | BUG-017 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Testes existentes de RLS/idempotência não acompanham o schema atual | PARCIALMENTE_CORRIGIDO |
+| BUG-018 | 2026-06-25 | PR-WEB-FIX-MVP-OPERABILITY-01 | ALTA | Web do MVP mantinha rotas operacionais sem navegação útil e submissões com `Idempotency-Key` instável | EM_PROGRESSO |
 | PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
 | PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
 | PROP-E2b | 2026-06-24 | Pré-WEB-7A · PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT | ALTA | Vitrine pública relacionar serviço ↔ profissional | RATIFICADA |
@@ -85,6 +86,8 @@
 | INV-WEB2-002 | 2026-06-25 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | MÉDIA | `details[]` existe na API, mas o binding visual do campo no formulário real segue sem prova runtime | ACEITO_COMO_PENDÊNCIA |
 | INV-RLS-001 | 2026-06-23 | PR-FIX-RLS-RUNTIME-ROLE-01 · PR-REVERIFY-RLS-RUNTIME-01 | ALTA | GRANT genérico de setup regrediu hardening append-only de audit_logs | CORRIGIDO |
 | DIV-PR-4.3 | a confirmar | PR-4.3 / Fase 4 | BAIXA | Design-spec primária ausente | ACEITO_COMO_PENDÊNCIA |
+| BUG-019 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | ALTA | `GET /appointments` (lista) retorna items sem os 4 campos de snapshot do serviço | CORRIGIDO |
+| DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | MÉDIA | `DATABASE_SCHEMA_V2 §8.1` não lista colunas de snapshot que já existem (doc-lag) | PROPOSTA |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -342,6 +345,21 @@
   em prova server-side runtime de replay fiel, divergência `409` e `IN_PROGRESS`; manter smoke dedicado
   de availability civil-date/timezone para não regredir BUG-016.
 - Status final: PARCIALMENTE_CORRIGIDO
+
+### BUG-018 — Web do MVP mantinha rotas operacionais sem navegação útil e submissões com `Idempotency-Key` instável
+- Data: 2026-06-25
+- PR/Fase: PR-WEB-FIX-MVP-OPERABILITY-01
+- Severidade: ALTA
+- Erro encontrado: a Web expunha páginas operacionais existentes, mas a sidebar mantinha links críticos desabilitados, o dashboard tinha CTA sem ação, jornada/bloqueios não era acessível por clique, e os fluxos de criação no painel/público geravam nova `Idempotency-Key` por tentativa técnica em vez de mantê-la estável por submissão lógica.
+- Sintoma: o usuário autenticado não conseguia navegar por clique para agenda/serviços/equipe/configurações; a rota de jornada dependia de URL manual; retries de criação podiam sair com chave diferente; a confirmação pública copiava apenas o token de cancelamento, não uma URL útil; a confirmação também fixava `America/Sao_Paulo` em vez da timezone da org.
+- Causa raiz: drifts locais no frontend: navegação marcada como `disabled`, CTA placeholder, ausência de link para jornada dentro da listagem de profissionais, injeção automática/efêmera de `Idempotency-Key` no client e form handlers sem ciclo explícito de rotação por submissão lógica; action de confirmação pública derivada de token em vez de `cancelUrl`.
+- Impacto: bloqueava a operabilidade real do MVP Web por clique, especialmente nos marcos A/B/C/D do roadmap, e enfraquecia o contrato de idempotência exigido para agenda e booking público.
+- Arquivo(s) afetado(s): `apps/web/components/shell/sidebar.tsx`, `apps/web/app/(authenticated)/dashboard/page.tsx`, `apps/web/app/(authenticated)/professionals/page.tsx`, `apps/web/app/(authenticated)/schedule/page.tsx`, `apps/web/components/schedule/create-appointment-form.tsx`, `apps/web/components/public/booking-flow.tsx`, `apps/web/components/public/confirmation-screen.tsx`, `apps/web/components/public/confirmation-actions.tsx`, `apps/web/lib/http-client.ts`, `apps/web/hooks/use-stable-idempotency-key.ts`.
+- Correção aplicada: habilitados links reais da sidebar para rotas já existentes; CTA `Começar` passou a navegar para configurações; jornada/bloqueios ficou acessível por clique a partir de profissionais; a geração automática de `Idempotency-Key` foi removida do client e substituída por um hook estável por submissão lógica, com rotação explícita após sucesso/erro terminal/nova intenção; agenda passou a refazer availability em conflito e a expor erros de carregamento de availability/agendamentos; confirmação pública passou a usar a timezone da org e a copiar/abrir a `cancelUrl` completa.
+- Teste/validação executado: `pnpm --filter @nexos/web build` (PASS, fora do sandbox por limitação do Turbopack); `pnpm --filter @nexos/api build` (PASS); `pnpm --filter @nexos/api test:runtime-role` (PASS, `current_user=app_runtime`); smoke HTTP em runtime local com tenant descartável: register `201`, `/auth/me` `200`, services `201`, professionals `201`, working-hours `200`, professional-services `200`, availability painel `200`, appointment painel `201`, cancel painel `201`, vitrine pública `200`, availability pública `200`, booking público `201`, cancel preview `200`, cancel público `200`. Prova de navegador ficou parcial: páginas reais abriram no Safari em `http://localhost:3000/login` e `http://localhost:3000/register`, mas a automação de clique foi bloqueada pelo ambiente (`Allow JavaScript from Apple Events` desabilitado e `System Events` sem permissão para teclas), então os cliques reais ficaram `NÃO EXECUTADO` nesta sessão.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: manter `Idempotency-Key` sob controle explícito do fluxo de submissão; preservar links reais para rotas já implementadas; repetir a validação browser com harness ou permissões de automação antes do commit final.
+- Status final: EM_PROGRESSO — implementação no disco; prova de clique NÃO EXECUTADA; sem commit; PR-WEB-FIX-MVP-OPERABILITY-01 PAUSADO por decisão do dono (2026-06-25). Reenquadramento: a agenda será retomada como reconciliação do aceite WEB-5A (visão diária/semanal), após o fix de backend de snapshots na lista (PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01).
 
 ### PROP-E1 — Snapshot de preço no agendamento (proposta — muda canônico)
 - Data: a confirmar na fonte
@@ -794,6 +812,49 @@
 - Prevenção de regressão: `smoke-auth-register-runtime.mjs` cobre o caminho ponta-a-ponta sob
   `app_runtime`, incluindo isolamento cross-tenant e rollback atômico.
 - Status final: CORRIGIDO
+
+### BUG-019 — `GET /appointments` (lista) retorna items sem os 4 campos de snapshot do serviço
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01
+- Severidade: ALTA
+- Erro encontrado: o endpoint `GET /api/v1/appointments` retornava listagem de agendamentos sem preencher os 4 campos de snapshot do serviço (`serviceNameSnapshot`, `serviceDurationMinSnapshot`, `servicePriceCentsSnapshot`, `serviceCurrencySnapshot`), apesar de serem obrigatórios no DTO (`packages/shared/src/dto/appointment-list.dto.ts:14-17`).
+- Sintoma: a Web caía no fallback "Snapshot do serviço indisponível" (`apps/web/components/schedule/appointment-list.tsx:L~42`), impedindo a agenda operacional de renderizar serviço/duração/preço de forma confiável. Mensagens de erro ou tela branca, conforme o fallback. O caminho single (`GET /api/v1/appointments/:id`) e a criação (`POST /api/v1/appointments`) já retornavam os snapshots corretamente, deixando o bug isolado à listagem.
+- Causa raiz: **dois pontos no backend:** (1) `apps/api/src/appointments/appointments.repository.ts` — o método `findAppointments` (~linhas 313-332) usava `.select({...})` que **não incluía nenhuma das 4 colunas** `service_*_snapshot`; (2) `apps/api/src/appointments/appointments.service.ts` — o método `mapAppointmentListItem` (~linhas 144-180) **não declarava os 4 campos camelCase no tipo** retornado, nem os emitia do resultado do repository. Resultado: lista vazia para snapshots. O `mapAppointment` (single) e `mapAppointmentFromCreate` (POST) já estavam corretos, revelando negligência isolada ao refatorar findAppointments.
+- Impacto: bloqueava a operação da agenda Web (WEB-5B) — marcos de renderização de serviço/preço/duração perdidos; fallback de "indisponível" afetava confiabilidade e UX. O snapshot é crítico por ser imutável (PROP-E1, ratificada): alterações futuros de preço/nome não devem retroceder o histórico de agendamentos.
+- Arquivo(s) afetado(s): `apps/api/src/appointments/appointments.repository.ts` (select das 4 colunas), `apps/api/src/appointments/appointments.service.ts` (mapper dos 4 campos), `docs/BUGFIX_LOG.md` (esta entrada).
+- Correção aplicada: (1) adicionadas as 4 colunas `service_name_snapshot`, `service_duration_min_snapshot`, `service_price_cents_snapshot`, `service_currency_snapshot` ao `.select({...})` de `findAppointments`; (2) adicionados os 4 campos camelCase no tipo de retorno e na declaração de atributos de `mapAppointmentListItem`. Nenhuma mudança de schema, migration, RLS, policy, DTO ou contrato — as colunas já existiam (PROP-E1/migration 0008); o DTO já declarava obrigatoriedade (§14-17 já estava correto no shared). Apenas foram ligados os pontos do repository + service.
+- Teste/validação executado:
+  * `pnpm --filter @nexos/api build` → PASS (tsc exit 0).
+  * `pnpm --filter @nexos/api test:runtime-role` → PASS (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`).
+  * Smoke focado na listagem (banco descartável `nexos_appointments_list_snapshot_20260625`, migrado 0001→0008):
+    - `GET /api/v1/appointments` com tenant correto → `200` com 4 snapshots preenchidos para cada item (`serviceNameSnapshot="Servico Original"`, `serviceDurationMinSnapshot=30`, `servicePriceCentsSnapshot=9900`, `serviceCurrencySnapshot="BRL"`).
+    - Prova de snapshot **imutável (histórico):** após criar appointment com serviço de preço X, editar o serviço para preço Y+nome diferente, `GET /appointments` continuou retornando o snapshot original. Imutabilidade confirmada.
+    - Prova de RLS Marco C: tenant cruzado → `items: []` vazio; sem auth → `401`; tenant correto e autenticado → vê seus appointments com snapshots preenchidos.
+  * Ressalva: smoke amplo `test-appointments-list.mjs` falha em `findSlot` (etapa PRÉ-EXISTENTE e **FORA DO ESCOPO** deste PR) — availability agora exige civil date `YYYY-MM-DD` conforme BUG-016, não datetime. Não corrigido aqui (pertence ao escopo de availability, não de snapshot).
+- Branch/commit relacionado: não se aplica (PR sem commit no momento do registro).
+- Prevenção de regressão: teste automatizado de `GET /appointments` incluindo asserção de presença e imutabilidade dos 4 snapshots; teste de mutação de preço do serviço confirmando que appointments passados preservam snapshot original.
+- Status final: CORRIGIDO
+
+### DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 — Schema canônico não lista colunas de snapshot que já existem (doc-lag)
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 (documentação)
+- Severidade: MÉDIA
+- Erro encontrado: **não é contradição de intenção, é documentação defasada.** `docs/DATABASE_SCHEMA_V2.md §8.1` (CREATE TABLE `appointments`) **NÃO lista as 4 colunas de snapshot** (`service_name_snapshot`, `service_duration_min_snapshot`, `service_price_cents_snapshot`, `service_currency_snapshot`), apesar de:
+  - Existirem no schema executável (`apps/api/db/schema/index.ts:202-205`).
+  - Estarem na migration 0008 (ratificada por PROP-E1).
+  - Serem DTO-obrigatórias em appointment/list (`packages/shared/src/dto/appointment-list.dto.ts:14-17`).
+- Sintoma: leitor do `DATABASE_SCHEMA_V2.md` §8.1 **não vê as colunas** documentadas, mas o schema executável/migration e o DTO as declaram. Divergência apenas de documentação, não de intenção/schema.
+- **Também constatado:** `docs/API_CONTRACTS.md §16` não tem bloco JSON explícito do response de `GET /appointments` (listagem) descrevendo os snapshots. `§16.2` (POST response) e o DTO shared já os declaram, deixando a leitura fragmentada.
+- Causa raiz: após PROP-E1 ser ratificada (2026-06-24) e a migration 0008 + DTO serem implementados, a documentação canônica do schema e do contrato **não foram sincronizadas**. É doc-lag, não contradição de decisão.
+- Impacto: **NENHUM impacto funcional** — a implementação está correta (BUG-019 prova). Impacto documental: leitor novo do projeto não encontra os 4 campos no §8.1 e pode questionar/reivindicar ou executar com DTO desatualizado. Hierarquia de autoridade resolve: **ADR/decisão ratificada + schema executável + DTO ratificado prevalecem sobre documentação desatualizada.** PROP-E1 foi ratificada, migration 0008 existe, DTO obriga; §8.1 é o documento que deve acompanhar, não o inverso.
+- Arquivo(s) afetado(s): **NÃO ALTERADOS NESTE PR.** Apenas registrado para rastreabilidade:
+  - `docs/DATABASE_SCHEMA_V2.md §8.1` (candidato a update).
+  - `docs/API_CONTRACTS.md §16` (candidato a update).
+- Correção aplicada: **NENHUMA NESTE PR.** Esta é uma **PROPOSTA** de sincronização documental, não uma correção aplicada. Os canônicos (schema/contrato) permanecem inalterados conforme disciplina de docs-reporter. Recomendação: atualizar §8.1 para listar as 4 colunas com tipo/default; atualizar §16 response para incluir o bloco JSON dos snapshots (similar ao §16.2 POST).
+- Teste/validação executado: **NÃO EXECUTADO**. Inspeção manual de: `apps/api/db/schema/index.ts` confirmando colunas; `apps/api/db/migrations/0008.sql` confirmando criação; `packages/shared/src/dto/appointment-list.dto.ts` confirmando DTO obrigatórios; `docs/DATABASE_SCHEMA_V2.md` confirmando que **não lista as colunas**; `docs/API_CONTRACTS.md §16` confirmando que **não descreve snapshots na listagem**.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: ao próximo update de `DATABASE_SCHEMA_V2.md` ou `API_CONTRACTS.md`, validador deve cruzar contra schema executável/DTO e asserir presença de todos os campos obrigatórios.
+- Status final: PROPOSTA / PENDENTE de aprovação do dono documental. **Justificativa de bloqueio:** NÃO BLOQUEOU a correção (BUG-019) porque a hierarquia de autoridade (ADR + decisão ratificada + schema executável > documentação) é clara no `MVP_EXECUTION_PLAN.md`. O fix foi validado contra o que é executável, não contra o que está escrito em §8.1 desatualizado. Aberto como proposta para que a documentação canônica siga a realidade ratificada.
 
 ---
 
