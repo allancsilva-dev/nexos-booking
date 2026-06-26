@@ -33,6 +33,7 @@ import type {
   CancelPreviewResponse,
 } from "@nexos/shared";
 import type { AppointmentStatus } from "@nexos/shared";
+import { resolveEffectiveSlotStepMin } from "../scheduling/slot-step.util";
 
 interface AvailabilityRouteQuery {
   date?: string;
@@ -252,6 +253,12 @@ export class PublicBookingService {
         throw new NotFoundException("Organization not found");
       }
 
+      const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+        professionalServiceSlotStepMin: junction.slot_step_min,
+        serviceDurationMin: service.duration_min,
+        organizationSlotIntervalMin: config.slotIntervalMin,
+      });
+
       const startsAt = new Date(input.startsAt);
       const endsAt = new Date(
         startsAt.getTime() + service.duration_min * 60 * 1000,
@@ -309,7 +316,7 @@ export class PublicBookingService {
       const aligned = alignToSlotGrid(
         new Date(startsAt.getTime()),
         anchor,
-        config.slotIntervalMin,
+        effectiveSlotStepMin,
       );
       if (aligned.getTime() !== startsAt.getTime()) {
         throw new ValidationException(

@@ -17,6 +17,7 @@ import {
   zonedDateTimeToInstant,
 } from "@nexos/shared";
 import type { AvailabilityQuery, AvailabilityResponse, AvailabilityDay, AvailabilitySlot } from "@nexos/shared";
+import { resolveEffectiveSlotStepMin } from "./slot-step.util";
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -94,12 +95,18 @@ export class AvailabilityService {
         throw new NotFoundException("Organization not found");
       }
 
+      const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+        professionalServiceSlotStepMin: junction.slot_step_min,
+        serviceDurationMin: service.duration_min,
+        organizationSlotIntervalMin: config.slotIntervalMin,
+      });
+
       if (!prof.active) {
         return {
           professionalId,
           serviceId,
           timezone: config.timezone,
-          slotIntervalMin: config.slotIntervalMin,
+          slotIntervalMin: effectiveSlotStepMin,
           days: [],
         };
       }
@@ -135,7 +142,7 @@ export class AvailabilityService {
 
       const now = new Date();
       const durationMs = service.duration_min * 60 * 1000;
-      const stepMs = config.slotIntervalMin * 60 * 1000;
+      const stepMs = effectiveSlotStepMin * 60 * 1000;
       const days: AvailabilityDay[] = [];
       let dateStr = fromCivilDate;
 
@@ -165,7 +172,7 @@ export class AvailabilityService {
             const slotStart = alignToSlotGrid(
               candidate,
               anchor,
-              config.slotIntervalMin,
+              effectiveSlotStepMin,
             );
             const slotEnd = new Date(slotStart.getTime() + durationMs);
 
@@ -204,7 +211,7 @@ export class AvailabilityService {
         professionalId,
         serviceId,
         timezone: config.timezone,
-        slotIntervalMin: config.slotIntervalMin,
+        slotIntervalMin: effectiveSlotStepMin,
         days,
       };
     });

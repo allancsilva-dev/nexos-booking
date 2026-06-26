@@ -65,6 +65,7 @@ export const AvailabilityResponseSchema = z.object({
   professionalId: z.string().uuid(),
   serviceId: z.string().uuid(),
   timezone: z.string(),
+  // Effective slot step used for this query. May differ from organizations.slotIntervalMin.
   slotIntervalMin: z.number().int().min(1),
   days: z.array(AvailabilityDaySchema),
 });

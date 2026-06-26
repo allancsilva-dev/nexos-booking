@@ -90,6 +90,7 @@
 | BUG-019 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | ALTA | `GET /appointments` (lista) retorna items sem os 4 campos de snapshot do serviço | CORRIGIDO |
 | BUG-020 | 2026-06-25 | PR-BE-FIX-ORG-SETTINGS-ROUTE-01 | ALTA | `GET /organizations/:id` falha com `404` na tela de Configurações; `PATCH` não persistia `slotIntervalMin` | CORRIGIDO |
 | DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | MÉDIA | `DATABASE_SCHEMA_V2 §8.1` não lista colunas de snapshot que já existem (doc-lag) | PROPOSTA |
+| PROP-SLOT-STEP-PER-SERVICE-01 | 2026-06-26 | Emenda a ADR-023 (a confirmar) | ALTA | Passo da grade por serviço (link público oferta 30/30 ignorando duração) | ABERTO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -577,6 +578,78 @@
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: revisão de DTO de lista em cada PR-WEB (gate transversal).
 - Status final: ACEITO_COMO_PENDÊNCIA (deferida; restrição transversal ativa)
+
+### PROP-SLOT-STEP-PER-SERVICE-01 — Passo da grade por serviço (emenda ADR-023 ratificada localmente; aguardando implementação)
+- Data: 2026-06-26
+- PR/Fase: emenda ao ADR-023 ratificada em `docs/ARCHITECTURE_DECISIONS.md` → implementação em `PR-BE-SERVICE-SLOT-STEP-01`
+- Severidade: ALTA
+- Erro encontrado: no link público de agendamento os horários ofertados aparecem fixos de 30 em 30 min,
+  ignorando a `duration_min` do serviço. Empresa com serviços de durações distintas (ex.: corte 50,
+  barba 30) não consegue ofertar horários coerentes com cada serviço.
+- Sintoma: `GET /public/:orgSlug/professionals/:slug/availability` emite slots espaçados por
+  `organizations.slot_interval_min` (default 30), não pela duração do serviço escolhido. Observado por
+  dono ao reconstruir o link externo.
+- Causa raiz: por **decisão de ADR-023**, o passo da grade (`alignToSlotGrid(..., slotIntervalMin)`) é
+  `organizations.slot_interval_min` — config **única por empresa** e **independente da duração do
+  serviço**. ADR-023 rejeitou "grade = duração" no código (para preservar a alavanca de ocupação:
+  passo menor que a duração gera mais pontos de início) e **registrou** "grade por serviço (cada serviço
+  com seu passo)" como **futuro aditivo, pós-MVP**, junto de buffers/overrides em `professional_services`
+  (PLANNING §10.2; ADR-023 § Consequências, linha ~677).
+- Impacto: usabilidade real do MVP multi-empresa. A config global única força a mesma cadência para todos
+  os serviços da empresa; inviável quando a empresa tem serviços de durações diferentes (caso do dono, que
+  já vai colocar 2+ empresas/profissionais em uso). **Muda canônico:** ADR-023, PLANNING §10.2/§16,
+  API §15/§16.1 (resposta de availability), `packages/shared` (DTO) e possível migração aditiva em
+  `professional_services`/`services`.
+- Arquivo(s) afetado(s): `apps/api/db/migrations/0009_professional_service_slot_step.sql`,
+  `apps/api/db/schema/index.ts`, `apps/api/src/scheduling/slot-step.util.ts`,
+  `apps/api/src/scheduling/availability.service.ts`, `apps/api/src/public-booking/public-booking.service.ts`,
+  `apps/api/src/appointments/appointments.service.ts`, `apps/api/scripts/smoke-service-slot-step-runtime.mjs`,
+  `packages/shared/src/dto/availability.dto.ts`, `packages/shared/src/slot-grid.ts`,
+  `docs/API_CONTRACTS.md`, `docs/DATABASE_SCHEMA_V2.md`, este ledger.
+- Correção aplicada:
+  1. ledger sincronizado com a emenda do ADR-023 já ratificada localmente;
+  2. adicionada coluna aditiva `professional_services.slot_step_min integer null` com constraint
+     `NULL OR (>= 5 AND <= 240 AND % 5 = 0)`;
+  3. criado helper backend único `resolveEffectiveSlotStepMin()` com regra:
+     `professional_services.slot_step_min ?? services.duration_min ?? organizations.slot_interval_min`;
+  4. availability, POST público, create staff e reschedule passaram a reutilizar o mesmo cálculo de grade,
+     preservando a mesma âncora/jornada/timezone do ADR-023;
+  5. `AvailabilityResponse.slotIntervalMin` foi mantido por compatibilidade, agora retornando o passo
+     efetivo usado na consulta;
+  6. duração do atendimento permaneceu em `services.duration_min`; o passo só define a cadência dos
+     horários ofertados/validados.
+- Pontos a decidir na ratificação:
+  1. Onde mora o passo por serviço: coluna nova (ex.: `services.slot_step_min` ou em
+     `professional_services`) **ou** derivar passo = `duration_min` quando não houver override.
+  2. Preservar a alavanca de ocupação de ADR-023: permitir passo **menor** que a duração (override
+     explícito), com fallback `passo = duration_min`. Não fixar cegamente "grade = duração".
+  3. Manter a âncora única e o **gate de coerência POST↔availability sob DST** de ADR-023 (o passo muda;
+     a âncora = início da jornada e o utilitário único **não** mudam de semântica).
+  4. `slot_interval_min` da empresa: mantém-se como default/fallback ou é aposentado? (decisão de contrato
+     — api-contract-guardian).
+  5. Compatibilidade do DTO `slotIntervalMin` na resposta de availability (campo informativo hoje;
+     web renderiza `days/slots` direto, não usa o campo para render).
+- Teste/validação executado:
+  * `pnpm --filter @nexos/shared build` → PASS
+  * `pnpm --filter @nexos/api build` → PASS
+  * `pnpm --filter @nexos/api test:runtime-role` → PASS
+    (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`)
+  * `pnpm --filter @nexos/api migrate:fresh -- --database nexos_service_slot_step_20260626` → PASS
+  * `POSTGRES_DB=nexos_service_slot_step_20260626 node apps/api/scripts/smoke-service-slot-step-runtime.mjs`
+    → PASS, com as seguintes provas:
+    - serviço 30min: `09:00`, `09:30`, `10:00`
+    - serviço 45min: `09:00`, `09:45`, `10:30`
+    - serviço 50min: `09:00`, `09:50`, `10:40`
+    - override 25 para duração 50: `09:00`, `09:25`, `09:50`
+    - público: slot emitido por availability foi aceito por `POST /api/v1/public/:orgSlug/appointments` → `201`
+    - staff create: slot emitido por availability foi aceito por `POST /api/v1/appointments` → `201`
+    - reschedule: slot alinhado → `200`; slot off-grid → `422 VALIDATION_ERROR`
+    - cross-company: org A serviço 50 ficou com passo 50; org B serviço 30 seguiu com passo 30
+    - migration/constraint: `slot_step_min=7` foi rejeitado pela constraint
+- Branch/commit relacionado: `PR-BE-SERVICE-SLOT-STEP-01`
+- Prevenção de regressão: estender o gate de coerência de ADR-023 (todo slot do availability passa no POST)
+  para o passo por serviço; teste multi-serviço/multi-empresa de cadência.
+- Status final: CORRIGIDO
 
 ### INV-WEB-001 — Slug público inexistente retorna 500
 - Data: 2026-06-23

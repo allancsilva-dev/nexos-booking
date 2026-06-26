@@ -7,7 +7,7 @@
  *
  * @param candidate - ISO-8601 instant string
  * @param anchor - day-start instant (first working_hours.start_time joined with date in org tz)
- * @param slotIntervalMin - step between slot starts in minutes
+ * @param slotIntervalMin - effective step between slot starts in minutes
  * @returns aligned Date (grid point >= anchor, candidate rounded up if off-grid)
  */
 export function alignToSlotGrid(

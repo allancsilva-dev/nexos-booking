@@ -137,6 +137,7 @@ export const professionalServices = pgTable("professional_services", {
   organization_id: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   professional_id: uuid("professional_id").notNull().references(() => professionals.id, { onDelete: "cascade" }),
   service_id: uuid("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+  slot_step_min: integer("slot_step_min"),
 }, (table) => [
   primaryKey({ columns: [table.professional_id, table.service_id] }),
   index("professional_services_org_idx").on(table.organization_id),

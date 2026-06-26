@@ -27,6 +27,7 @@ import {
 import type { CreateAppointmentInput, RescheduleInput, AppointmentStatus } from "@nexos/shared";
 import type { AppointmentEventPublisher, PublishedEvent } from "../realtime/publisher.interface";
 import { appointmentEvents } from "../../db/schema";
+import { resolveEffectiveSlotStepMin } from "../scheduling/slot-step.util";
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -309,6 +310,12 @@ export class AppointmentsService {
           throw new NotFoundException("Organization not found");
         }
 
+        const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+          professionalServiceSlotStepMin: junction.slot_step_min,
+          serviceDurationMin: service.duration_min,
+          organizationSlotIntervalMin: config.slotIntervalMin,
+        });
+
         const startsAt = new Date(input.startsAt);
         const endsAt = new Date(
           startsAt.getTime() + service.duration_min * 60 * 1000,
@@ -338,7 +345,7 @@ export class AppointmentsService {
           const aligned = alignToSlotGrid(
             new Date(startsAt.getTime()),
             anchor,
-            config.slotIntervalMin,
+            effectiveSlotStepMin,
           );
           if (aligned.getTime() !== startsAt.getTime()) {
             throw new HttpException(
@@ -588,6 +595,22 @@ export class AppointmentsService {
             throw new NotFoundException("Service not found");
           }
 
+          const junction = await this.repo.findProfessionalService(
+            tx,
+            orgId,
+            appointment.professional_id,
+            appointment.service_id,
+          );
+          if (!junction) {
+            throw new ProfessionalServiceNotLinkedException();
+          }
+
+          const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+            professionalServiceSlotStepMin: junction.slot_step_min,
+            serviceDurationMin: service.duration_min,
+            organizationSlotIntervalMin: config.slotIntervalMin,
+          });
+
           const newStartsAt = new Date(input.startsAt);
           const newEndsAt = new Date(
             newStartsAt.getTime() + service.duration_min * 60 * 1000,
@@ -617,7 +640,7 @@ export class AppointmentsService {
             const aligned = alignToSlotGrid(
               new Date(newStartsAt.getTime()),
               anchor,
-              config.slotIntervalMin,
+              effectiveSlotStepMin,
             );
             if (aligned.getTime() !== newStartsAt.getTime()) {
               throw new HttpException(
