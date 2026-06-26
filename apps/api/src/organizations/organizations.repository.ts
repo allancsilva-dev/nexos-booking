@@ -30,7 +30,13 @@ export class OrganizationsRepository {
   ) {
     const [row] = await tx
       .update(organizations)
-      .set({ ...data, updated_at: new Date() })
+      .set({
+        name: data.name,
+        slug: data.slug,
+        timezone: data.timezone,
+        slot_interval_min: data.slotIntervalMin,
+        updated_at: new Date(),
+      })
       .where(eq(organizations.id, orgId))
       .returning();
     return row!;

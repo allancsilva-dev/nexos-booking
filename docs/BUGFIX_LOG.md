@@ -88,6 +88,7 @@
 | INV-RLS-001 | 2026-06-23 | PR-FIX-RLS-RUNTIME-ROLE-01 · PR-REVERIFY-RLS-RUNTIME-01 | ALTA | GRANT genérico de setup regrediu hardening append-only de audit_logs | CORRIGIDO |
 | DIV-PR-4.3 | a confirmar | PR-4.3 / Fase 4 | BAIXA | Design-spec primária ausente | ACEITO_COMO_PENDÊNCIA |
 | BUG-019 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | ALTA | `GET /appointments` (lista) retorna items sem os 4 campos de snapshot do serviço | CORRIGIDO |
+| BUG-020 | 2026-06-25 | PR-BE-FIX-ORG-SETTINGS-ROUTE-01 | ALTA | `GET /organizations/:id` falha com `404` na tela de Configurações; `PATCH` não persistia `slotIntervalMin` | CORRIGIDO |
 | DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | MÉDIA | `DATABASE_SCHEMA_V2 §8.1` não lista colunas de snapshot que já existem (doc-lag) | PROPOSTA |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
@@ -875,6 +876,34 @@
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: ao próximo update de `DATABASE_SCHEMA_V2.md` ou `API_CONTRACTS.md`, validador deve cruzar contra schema executável/DTO e asserir presença de todos os campos obrigatórios.
 - Status final: PROPOSTA / PENDENTE de aprovação do dono documental. **Justificativa de bloqueio:** NÃO BLOQUEOU a correção (BUG-019) porque a hierarquia de autoridade (ADR + decisão ratificada + schema executável > documentação) é clara no `MVP_EXECUTION_PLAN.md`. O fix foi validado contra o que é executável, não contra o que está escrito em §8.1 desatualizado. Aberto como proposta para que a documentação canônica siga a realidade ratificada.
+
+### BUG-020 — `GET /organizations/:id` falha com `404` na tela de Configurações; `PATCH` não persistia `slotIntervalMin`
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-ORG-SETTINGS-ROUTE-01
+- Severidade: ALTA
+- Erro encontrado: `GET /api/v1/organizations/:id` retornava `404 NOT_FOUND` mesmo para tenant correto na tela de Configurações da organização. Durante prova de regressão mínima, também ficou evidente que `PATCH /api/v1/organizations/:id` respondia `200`, mas não persistia `slotIntervalMin`.
+- Sintoma: Web autenticada conseguia entrar no painel, mas `/settings/organization` não carregava dados básicos da empresa; update de grade/fuso podia aparentar sucesso parcial, com `slotIntervalMin` permanecendo no valor anterior.
+- Causa raiz: dois defeitos no backend de `organizations/settings`:
+  1. `apps/api/src/organizations/organizations.service.ts`: `getById()` e `update()` abriam `db.client.transaction(...)` sem `withTenantContext`. Com RLS ativa, leituras de `organizations`/`organization_users` rodavam sem GUC tenant efetivo e negavam acesso, virando `404`.
+  2. `apps/api/src/organizations/organizations.repository.ts`: `updateOrg()` fazia `.set({ ...data })` com chave camelCase `slotIntervalMin`, mas coluna real é `slot_interval_min`; PATCH retornava `200` sem atualizar esse campo.
+- Impacto: bloqueava WEB-1 / organization settings. Usuário membro não conseguia ler dados contratados da org ativa (`id`, `name`, `slug`, `timezone`, `slotIntervalMin`, `currency`) e a edição de `slotIntervalMin` ficava inconsistente.
+- Arquivo(s) afetado(s): `apps/api/src/organizations/organizations.service.ts`, `apps/api/src/organizations/organizations.repository.ts`, `apps/api/scripts/smoke-org-settings-route.mjs`, `docs/BUGFIX_LOG.md`.
+- Correção aplicada:
+  1. `getById()` e `update()` passaram a usar `withTenantContext(this.db, orgId, userId, ...)`, seguindo padrão canônico já usado em módulos tenant-scoped do repo.
+  2. `updateOrg()` passou a mapear explicitamente `slotIntervalMin -> slot_interval_min` no `.set(...)`, preservando demais campos contratados.
+  3. Adicionado smoke focado `apps/api/scripts/smoke-org-settings-route.mjs` para prova runtime de GET/PATCH + tenant + RLS.
+- Teste/validação executado:
+  * `pnpm --filter @nexos/api build` → PASS.
+  * `pnpm --filter @nexos/api test:runtime-role` → PASS (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`).
+  * `pnpm --filter @nexos/api migrate:fresh -- --database nexos_org_settings_route_20260625` → PASS.
+  * `POSTGRES_DB=nexos_org_settings_route_20260625 node apps/api/scripts/smoke-org-settings-route.mjs` → PASS.
+    - Tenant correto: `GET /api/v1/organizations/:id` → `200`; shape contratado presente (`id`, `name`, `slug`, `timezone`, `slotIntervalMin`, `currency`).
+    - Regressão mínima PATCH: `PATCH /api/v1/organizations/:id` → `200`; retorno pós-update com `name` atualizado, `timezone="America/Sao_Paulo"`, `slotIntervalMin=45`, `currency="BRL"`.
+    - Negativos: `timezone` inválido → `422`; `slotIntervalMin=3` → `422`; id inexistente → `404`; tenant cruzado no GET/PATCH → `404`; sem auth → `401`.
+    - RLS: consulta SQL sem contexto → `0` linhas; com tenant errado → `0` linhas; com tenant correto → `1` linha.
+- Branch/commit relacionado: não se aplica (sem commit no momento do registro).
+- Prevenção de regressão: manter smoke focado de settings route cobrindo GET/PATCH, tenant cruzado e consulta SQL sem contexto.
+- Status final: CORRIGIDO
 
 ---
 
