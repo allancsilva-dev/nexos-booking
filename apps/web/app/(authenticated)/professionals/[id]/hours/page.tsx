@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { useParams } from "next/navigation";
 import { useMeQuery } from "@/hooks/use-auth";
 import {
   useWorkingHoursQuery,
@@ -18,11 +18,11 @@ import { INTERNAL_ERROR } from "@/lib/error-codes";
 import type { WorkingHoursInput, CreateBlockInput } from "@nexos/shared";
 
 export default function ProfessionalHoursPage({
-  params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: professionalId } = use(params);
+  const params = useParams<{ id: string }>();
+  const professionalId = params.id;
   const { data: meData } = useMeQuery();
   const activeOrgId = meData?.activeOrg ?? null;
 

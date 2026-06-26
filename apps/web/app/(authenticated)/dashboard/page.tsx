@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMeQuery } from "@/hooks/use-auth";
 import { useAuthBootstrap } from "@/hooks/use-auth-bootstrap";
 import { LoadingState } from "@/components/loading-state";
@@ -10,6 +11,7 @@ import { UNAUTHENTICATED, INTERNAL_ERROR } from "@/lib/error-codes";
 import { LayoutDashboard } from "lucide-react";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { status: bootstrapStatus, user: bootstrapUser } = useAuthBootstrap();
   const { data: meData, isLoading, isError, error, refetch } = useMeQuery();
 
@@ -69,7 +71,10 @@ export default function DashboardPage() {
           icon={<LayoutDashboard className="h-8 w-8" />}
           title="Bem-vindo ao Nexos"
           description="Configure sua empresa para começar a usar a agenda."
-          action={{ label: "Começar", onClick: () => {} }}
+          action={{
+            label: "Começar",
+            onClick: () => router.push("/settings/organization"),
+          }}
         />
       </div>
     );

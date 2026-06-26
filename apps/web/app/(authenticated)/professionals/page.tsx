@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useMeQuery } from "@/hooks/use-auth";
 import {
   useProfessionalsQuery,
@@ -19,7 +20,7 @@ import { INTERNAL_ERROR } from "@/lib/error-codes";
 import { toast } from "sonner";
 import { formatGlobalError } from "@/lib/error-handler";
 import type { CreateProfessionalInput, UpdateProfessionalInput } from "@/lib/professional-schemas";
-import { Plus, Pencil, Users } from "lucide-react";
+import { Clock3, Plus, Pencil, Users } from "lucide-react";
 
 export default function ProfessionalsPage() {
   const { data: meData } = useMeQuery();
@@ -164,6 +165,11 @@ export default function ProfessionalsPage() {
                   </div>
                   <div className="flex items-center gap-2 ml-4 shrink-0">
                     <ServiceLinkEditor activeOrgId={activeOrgId!} professionalId={prof.id} professionalName={prof.name} />
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/professionals/${prof.id}/hours`}>
+                        <Clock3 className="h-4 w-4" /> Jornada
+                      </Link>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

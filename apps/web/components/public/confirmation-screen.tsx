@@ -11,12 +11,13 @@ interface ConfirmationScreenProps {
   serviceName: string;
   startsAt: string;
   endsAt: string;
-  cancelToken: string;
+  cancelUrl: string;
+  timezone: string;
   onNewBooking?: () => void;
   className?: string;
 }
 
-function formatDateTime(iso: string): { date: string; time: string } {
+function formatDateTime(iso: string, timezone: string): { date: string; time: string } {
   try {
     const d = new Date(iso);
     return {
@@ -24,12 +25,12 @@ function formatDateTime(iso: string): { date: string; time: string } {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-        timeZone: "America/Sao_Paulo",
+        timeZone: timezone,
       }),
       time: d.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
-        timeZone: "America/Sao_Paulo",
+        timeZone: timezone,
       }),
     };
   } catch {
@@ -42,11 +43,12 @@ export function ConfirmationScreen({
   serviceName,
   startsAt,
   endsAt,
-  cancelToken,
+  cancelUrl,
+  timezone,
   onNewBooking,
   className,
 }: ConfirmationScreenProps) {
-  const { date, time } = formatDateTime(startsAt);
+  const { date, time } = formatDateTime(startsAt, timezone);
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -88,7 +90,8 @@ export function ConfirmationScreen({
         professionalName={professionalName}
         startsAt={startsAt}
         endsAt={endsAt}
-        cancelToken={cancelToken}
+        cancelUrl={cancelUrl}
+        timezone={timezone}
       />
 
       {onNewBooking && (

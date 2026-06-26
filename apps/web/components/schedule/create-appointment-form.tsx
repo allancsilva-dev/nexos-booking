@@ -8,6 +8,7 @@ import { Loader2, CalendarPlus } from "lucide-react";
 import { CreateAppointmentSchema, type CreateAppointmentInput } from "@nexos/shared";
 import { ApiError } from "@/lib/http-client";
 import { applyFormFieldErrors } from "@/lib/error-handler";
+import { useStableIdempotencyKey } from "@/hooks/use-stable-idempotency-key";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -34,6 +35,7 @@ export function CreateAppointmentForm({
   onSubmit,
   onCancel,
 }: Props) {
+  const { getKey, resetKey } = useStableIdempotencyKey();
   const form = useForm<CreateAppointmentInput>({
     resolver: zodResolver(CreateAppointmentSchema),
     defaultValues: {
@@ -51,16 +53,18 @@ export function CreateAppointmentForm({
     form.setValue("professionalId", professionalId);
     form.setValue("serviceId", serviceId);
     form.setValue("startsAt", startsAt);
-  }, [professionalId, serviceId, startsAt, form]);
+    resetKey();
+  }, [professionalId, serviceId, startsAt, form, resetKey]);
 
   async function handleSubmit(data: CreateAppointmentInput) {
-    // Nova chave a cada tentativa de criação
-    const idempotencyKey = crypto.randomUUID();
+    const idempotencyKey = getKey();
     try {
       await onSubmit(data, idempotencyKey);
       form.reset();
+      resetKey();
     } catch (err) {
       if (err instanceof ApiError) {
+        resetKey();
         const { applied, unknownFields } = applyFormFieldErrors(
           err,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,7 +137,15 @@ export function CreateAppointmentForm({
                 {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}
                 Agendar
               </Button>
-              <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  resetKey();
+                  onCancel();
+                }}
+                disabled={isPending}
+              >
                 Cancelar
               </Button>
             </div>

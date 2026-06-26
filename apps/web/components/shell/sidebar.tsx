@@ -15,11 +15,11 @@ import { UserMenu } from "@/components/shell/user-menu";
 
 const navItems = [
   { label: "Painel", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Agenda", href: "#", icon: CalendarDays, disabled: true },
-  { label: "Serviços", href: "#", icon: Scissors, disabled: true },
-  { label: "Equipe", href: "#", icon: Users, disabled: true },
+  { label: "Agenda", href: "/schedule", icon: CalendarDays },
+  { label: "Serviços", href: "/services", icon: Scissors },
+  { label: "Equipe", href: "/professionals", icon: Users },
   { label: "Clientes", href: "#", icon: UserRound, disabled: true },
-  { label: "Configurações", href: "#", icon: Settings, disabled: true },
+  { label: "Configurações", href: "/settings/organization", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -39,7 +39,10 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 p-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.href === pathname;
+          const isActive =
+            item.href === "/dashboard"
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           if (item.disabled) {
             return (

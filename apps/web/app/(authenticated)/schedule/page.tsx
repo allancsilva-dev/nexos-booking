@@ -24,8 +24,17 @@ import type { CreateAppointmentInput } from "@nexos/shared";
 import type { AvailabilitySlot } from "@nexos/shared";
 
 function dateRange(date: string) {
-  const [y, m, d] = date.split("-").map(Number);
+  const parts = date.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part))) {
+    const fallback = new Date().toISOString().slice(0, 10);
+    return dateRange(fallback);
+  }
+  const [y, m, d] = parts;
   const next = new Date(Date.UTC(y!, m! - 1, d! + 1));
+  if (Number.isNaN(next.getTime())) {
+    const fallback = new Date().toISOString().slice(0, 10);
+    return dateRange(fallback);
+  }
   return { from: date, to: next.toISOString().slice(0, 10) };
 }
 
@@ -72,14 +81,20 @@ export default function SchedulePage() {
   }
 
   async function handleCreate(input: CreateAppointmentInput, idempotencyKey: string) {
-    // startsAt com offset explícito baseado no slot selecionado
-    const startsAtIso = selectedSlot?.startsAt ?? input.startsAt;
-    await createMutation.mutateAsync({
-      input: { ...input, startsAt: startsAtIso, professionalId: professionalId!, serviceId: serviceId! },
-      idempotencyKey,
-    });
-    setSelectedSlot(null);
-    toast.success("Agendamento criado");
+    try {
+      const startsAtIso = selectedSlot?.startsAt ?? input.startsAt;
+      await createMutation.mutateAsync({
+        input: { ...input, startsAt: startsAtIso, professionalId: professionalId!, serviceId: serviceId! },
+        idempotencyKey,
+      });
+      setSelectedSlot(null);
+      toast.success("Agendamento criado");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "APPOINTMENT_CONFLICT") {
+        availabilityQuery.refetch();
+      }
+      throw err;
+    }
   }
 
   async function handleCancel(appointmentId: string, version: number) {
@@ -116,6 +131,30 @@ export default function SchedulePage() {
     return (
       <div className="p-6">
         <ErrorDisplay error={e} onRetry={() => profsRefetch()} />
+      </div>
+    );
+  }
+
+  if (availabilityQuery.isError) {
+    const error = availabilityQuery.error;
+    const errorBody = error instanceof ApiError
+      ? { code: error.code, message: error.message, requestId: error.requestId, timestamp: new Date().toISOString() as never }
+      : { code: INTERNAL_ERROR, message: "Erro ao carregar disponibilidade", requestId: "", timestamp: new Date().toISOString() as never };
+    return (
+      <div className="p-6">
+        <ErrorDisplay error={errorBody} onRetry={() => availabilityQuery.refetch()} />
+      </div>
+    );
+  }
+
+  if (appointmentsQuery.isError) {
+    const error = appointmentsQuery.error;
+    const errorBody = error instanceof ApiError
+      ? { code: error.code, message: error.message, requestId: error.requestId, timestamp: new Date().toISOString() as never }
+      : { code: INTERNAL_ERROR, message: "Erro ao carregar agendamentos", requestId: "", timestamp: new Date().toISOString() as never };
+    return (
+      <div className="p-6">
+        <ErrorDisplay error={errorBody} onRetry={() => appointmentsQuery.refetch()} />
       </div>
     );
   }

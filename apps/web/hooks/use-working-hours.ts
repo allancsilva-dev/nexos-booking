@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/http-client";
 import type {
@@ -59,7 +60,7 @@ export function useBlocksQuery(
   activeOrgId: string | null | undefined,
   professionalId: string | null | undefined,
 ) {
-  const { from, to } = blockWindow();
+  const { from, to } = useMemo(() => blockWindow(), []);
   return useQuery({
     queryKey: ["blocks", activeOrgId ?? "", professionalId ?? "", from, to],
     queryFn: () =>
@@ -75,7 +76,6 @@ export function useCreateBlockMutation(
   professionalId: string,
 ) {
   const queryClient = useQueryClient();
-  const { from, to } = blockWindow();
   return useMutation({
     mutationFn: (input: CreateBlockInput) =>
       apiFetch<AvailabilityBlockDTO>(
@@ -84,7 +84,7 @@ export function useCreateBlockMutation(
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["blocks", activeOrgId, professionalId, from, to],
+        queryKey: ["blocks", activeOrgId, professionalId],
       });
     },
   });
@@ -95,7 +95,6 @@ export function useDeleteBlockMutation(
   professionalId: string,
 ) {
   const queryClient = useQueryClient();
-  const { from, to } = blockWindow();
   return useMutation({
     mutationFn: (blockId: string) =>
       apiFetch<void>(
@@ -104,7 +103,7 @@ export function useDeleteBlockMutation(
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["blocks", activeOrgId, professionalId, from, to],
+        queryKey: ["blocks", activeOrgId, professionalId],
       });
     },
   });

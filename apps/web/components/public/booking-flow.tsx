@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch, ApiError } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 import { cn } from "@/lib/utils";
+import { useStableIdempotencyKey } from "@/hooks/use-stable-idempotency-key";
 
 type Step = "service" | "professional" | "slot" | "client" | "confirm" | "confirming" | "done" | "error";
 
@@ -73,10 +74,11 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     serviceName: string;
     startsAt: string;
     endsAt: string;
-    cancelToken: string;
+    cancelUrl: string;
   } | null>(null);
 
   const availabilityAbortRef = useRef<AbortController | null>(null);
+  const { getKey, resetKey } = useStableIdempotencyKey();
 
   const selectedService = vitrine.services.find((s) => s.id === selectedServiceId);
 
@@ -141,17 +143,19 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
   const handleSelectService = useCallback(
     (serviceId: string) => {
+      resetKey();
       setSelectedServiceId(serviceId);
       setSelectedProfessionalSlug(null);
       setSelectedSlot(null);
       setAvailability(null);
       setStep("professional");
     },
-    []
+    [resetKey]
   );
 
   const handleSelectProfessional = useCallback(
     (professionalSlug: string) => {
+      resetKey();
       setSelectedProfessionalSlug(professionalSlug);
       setSelectedSlot(null);
       setAvailability(null);
@@ -160,15 +164,16 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
       }
       setStep("slot");
     },
-    [selectedServiceId, fetchAvailability]
+    [selectedServiceId, fetchAvailability, resetKey]
   );
 
   const handleSelectSlot = useCallback(
     (slot: { date: string; startsAt: string; endsAt: string }) => {
+      resetKey();
       setSelectedSlot(slot);
       setStep("client");
     },
-    []
+    [resetKey]
   );
 
   const handleClientSubmit = useCallback(() => {
@@ -178,6 +183,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     setClientErrors(errors);
 
     if (Object.keys(errors).length === 0) {
+      setInlineErrors({});
       setStep("confirm");
     }
   }, [client]);
@@ -203,33 +209,29 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     };
 
     try {
-      const idempotencyKey = crypto.randomUUID();
       const result = await apiFetch<PublicBookingResponse>(
         `/api/v1/public/${orgSlug}/appointments`,
         {
           method: "POST",
           body: JSON.stringify(payload),
           headers: {
-            "Idempotency-Key": idempotencyKey,
+            "Idempotency-Key": getKey(),
           },
         }
       );
-
-      const cancelTokenMatch = result.cancelUrl.match(/\/cancelar\/(.+)$/);
-      const cancelToken = cancelTokenMatch
-        ? cancelTokenMatch[1]
-        : result.cancelUrl;
 
       setBookingResult({
         professionalName: result.professional.name,
         serviceName: result.service.name,
         startsAt: result.startsAt,
         endsAt: result.endsAt,
-        cancelToken,
+        cancelUrl: result.cancelUrl,
       });
+      resetKey();
       setStep("done");
     } catch (err) {
       if (err instanceof ApiError) {
+        resetKey();
         if (err.code === "APPOINTMENT_CONFLICT") {
           setStep("error");
           setError({
@@ -258,13 +260,24 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
         if (err.code === "VALIDATION_ERROR") {
           const fieldErrors: Record<string, string> = {};
+          const summaryErrors: Record<string, string> = {};
           if (Array.isArray(err.details)) {
             for (const detail of err.details) {
-              fieldErrors[detail.field] = detail.issue;
+              if (detail.field === "client.name") {
+                fieldErrors.name = detail.issue;
+              } else if (detail.field === "client.phone") {
+                fieldErrors.phone = detail.issue;
+              } else {
+                summaryErrors[detail.field] = detail.issue;
+              }
             }
           }
           if (Object.keys(fieldErrors).length > 0) {
-            setInlineErrors(fieldErrors);
+            setClientErrors(fieldErrors);
+            setInlineErrors(summaryErrors);
+            setStep("client");
+          } else if (Object.keys(summaryErrors).length > 0) {
+            setInlineErrors(summaryErrors);
             setStep("confirm");
           } else {
             setStep("error");
@@ -299,22 +312,27 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     selectedSlot,
     client,
     fetchAvailability,
+    getKey,
+    resetKey,
   ]);
 
   function handleBack() {
     switch (step) {
       case "professional":
+        resetKey();
         setStep("service");
         setSelectedProfessionalSlug(null);
         setSelectedSlot(null);
         setAvailability(null);
         break;
       case "slot":
+        resetKey();
         setStep("professional");
         setSelectedSlot(null);
         setAvailability(null);
         break;
       case "client":
+        resetKey();
         setStep("slot");
         setClientErrors({});
         break;
@@ -350,6 +368,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
   }
 
   function handleNewBooking() {
+    resetKey();
     setStep("service");
     setSelectedServiceId(null);
     setSelectedProfessionalSlug(null);
@@ -368,7 +387,8 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
         serviceName={bookingResult.serviceName}
         startsAt={bookingResult.startsAt}
         endsAt={bookingResult.endsAt}
-        cancelToken={bookingResult.cancelToken}
+        cancelUrl={bookingResult.cancelUrl}
+        timezone={vitrine.timezone}
         onNewBooking={handleNewBooking}
         className={className}
       />

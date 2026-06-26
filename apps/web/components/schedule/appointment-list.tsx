@@ -18,6 +18,19 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function hasServiceSnapshot(appointment: AppointmentListItemDTO) {
+  return (
+    typeof appointment.serviceNameSnapshot === "string" &&
+    appointment.serviceNameSnapshot.length > 0 &&
+    typeof appointment.serviceDurationMinSnapshot === "number" &&
+    Number.isFinite(appointment.serviceDurationMinSnapshot) &&
+    typeof appointment.servicePriceCentsSnapshot === "number" &&
+    Number.isFinite(appointment.servicePriceCentsSnapshot) &&
+    typeof appointment.serviceCurrencySnapshot === "string" &&
+    appointment.serviceCurrencySnapshot.length > 0
+  );
+}
+
 const STATUS_LABELS: Record<string, string> = {
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
@@ -64,8 +77,9 @@ export function AppointmentList({ appointments, isLoading, isCancelling, onCance
               </p>
               {/* Snapshot do serviço — NÃO busca serviço atual */}
               <p className="text-xs text-[var(--color-muted-foreground)]">
-                {a.serviceNameSnapshot} · {a.serviceDurationMinSnapshot}min ·{" "}
-                {formatPrice(a.servicePriceCentsSnapshot, a.serviceCurrencySnapshot)}
+                {hasServiceSnapshot(a)
+                  ? `${a.serviceNameSnapshot} · ${a.serviceDurationMinSnapshot}min · ${formatPrice(a.servicePriceCentsSnapshot, a.serviceCurrencySnapshot)}`
+                  : "Snapshot do serviço indisponível"}
               </p>
               {a.clientPhone && (
                 <p className="text-xs text-[var(--color-muted-foreground)]">{a.clientPhone}</p>

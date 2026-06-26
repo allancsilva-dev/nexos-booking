@@ -34,8 +34,9 @@ export function WorkingHoursEditor({ data, isLoading, isPending, onSave }: Props
 
   useEffect(() => {
     if (data && !initialized) {
+      const sourceShifts = Array.isArray(data.shifts) ? data.shifts : [];
       setShifts(
-        data.shifts.map((s) => ({
+        sourceShifts.map((s) => ({
           weekday: s.weekday,
           startTime: s.startTime,
           endTime: s.endTime,
