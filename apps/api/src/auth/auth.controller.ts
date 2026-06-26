@@ -10,7 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from "@nestjs/common";
-import type { Request, Response } from "express";
+import type { CookieOptions, Request, Response } from "express";
 
 import { AuthService } from "./auth.service";
 import { AuthGuard } from "./guards/auth.guard";
@@ -31,23 +31,24 @@ const REFRESH_COOKIE = "refresh_token";
 const REFRESH_COOKIE_PATH = "/api/v1/auth/refresh";
 const REFRESH_TTL_MS = 30 * 86400_000;
 
-function setRefreshCookie(res: Response, token: string): void {
-  res.cookie(REFRESH_COOKIE, token, {
+function getRefreshCookieOptions(): CookieOptions {
+  return {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: REFRESH_COOKIE_PATH,
+  };
+}
+
+function setRefreshCookie(res: Response, token: string): void {
+  res.cookie(REFRESH_COOKIE, token, {
+    ...getRefreshCookieOptions(),
     maxAge: REFRESH_TTL_MS,
   });
 }
 
 function clearRefreshCookie(res: Response): void {
-  res.clearCookie(REFRESH_COOKIE, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    path: REFRESH_COOKIE_PATH,
-  });
+  res.clearCookie(REFRESH_COOKIE, getRefreshCookieOptions());
 }
 
 function parseCookies(req: Request): Record<string, string> {

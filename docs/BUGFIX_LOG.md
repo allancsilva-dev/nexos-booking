@@ -65,6 +65,7 @@
 
 | ID | Data | PR/Fase | Severidade | Título | Status |
 |---|---|---|---|---|---|
+| BUG-011 | 2026-06-25 | PR-BE-FIX-REFRESH-COOKIE-DEV-01 | ALTA | Cookie de refresh saía com `Secure` fixo em dev/local HTTP | CORRIGIDO |
 | BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | CORRIGIDO |
 | BUG-013 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | `POST /appointments` retorna 500 por `ON CONFLICT` incompatível com índice parcial de clients | CORRIGIDO |
 | BUG-014 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller | VALIDADO |
@@ -345,6 +346,25 @@
   em prova server-side runtime de replay fiel, divergência `409` e `IN_PROGRESS`; manter smoke dedicado
   de availability civil-date/timezone para não regredir BUG-016.
 - Status final: PARCIALMENTE_CORRIGIDO
+
+### BUG-011 — Cookie de refresh saía com `Secure` fixo em dev/local HTTP
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-REFRESH-COOKIE-DEV-01
+- Severidade: ALTA
+- Erro encontrado: o backend emitia e limpava `refresh_token` com `secure: true` hardcoded mesmo em `NODE_ENV=development`, o que impede persistência/envio do cookie em `http://localhost`.
+- Sintoma: login podia responder com sucesso e `/auth/me` funcionava logo após login, mas o bootstrap real por cookie após reload não se sustentava em ambiente local HTTP.
+- Causa raiz: `setRefreshCookie()` e `clearRefreshCookie()` em `apps/api/src/auth/auth.controller.ts` repetiam flags do cookie com `secure: true` fixo, sem distinguir dev/local de produção.
+- Impacto: quebrava persistência real de sessão da Web em localhost e empurrava o frontend para contornos indevidos de bootstrap.
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.controller.ts`, `apps/api/scripts/smoke-refresh-cookie-controller.mjs`.
+- Correção aplicada: extraído helper local único `getRefreshCookieOptions()` para compartilhar flags de `set` e `clear`; regra final ficou `process.env.NODE_ENV === "production"` → `secure: true`, caso contrário `secure: false`, sempre preservando `httpOnly: true`, `sameSite: "strict"` e `path: "/api/v1/auth/refresh"`.
+- Teste/validação executado:
+  `pnpm --filter @nexos/api build` → `PASS`;
+  `pnpm --filter @nexos/api test:runtime-role` → `PASS` (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`);
+  `node apps/api/scripts/smoke-refresh-cookie-controller.mjs` → `PASS`, com prova runtime focada de controller/guard: em `development`, `register`, `login` e `refresh` emitiram `refresh_token` com `HttpOnly`, `SameSite=strict`, `Path=/api/v1/auth/refresh`, `Max-Age=2592000000` e `secure=false`; `refresh` sem `X-CSRF: 1` retornou `403`; `logout` preservou `204` e limpou cookie com mesmas flags; em `production`, `login` emitiu `refresh_token` com `secure=true`.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: manter smoke focado cobrindo dev/prod e garantir que qualquer mudança futura em cookie reuse helper único para `set`/`clear`.
+- Status final: CORRIGIDO
+- Observação: prova pré-fix foi por inspeção do hardcode `secure: true`; prova pós-fix foi runtime focada via harness de controller/guard porque bootstrap HTTP integral da API nesta worktree continua bloqueado por dependência pré-existente fora do escopo deste PR.
 
 ### BUG-018 — Web do MVP mantinha rotas operacionais sem navegação útil e submissões com `Idempotency-Key` instável
 - Data: 2026-06-25
