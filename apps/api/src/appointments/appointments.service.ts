@@ -28,6 +28,7 @@ import type { CreateAppointmentInput, RescheduleInput, AppointmentStatus } from 
 import type { AppointmentEventPublisher, PublishedEvent } from "../realtime/publisher.interface";
 import { appointmentEvents } from "../../db/schema";
 import { resolveEffectiveSlotStepMin } from "../scheduling/slot-step.util";
+import { computeOccupiedUntil } from "../scheduling/occupied-interval.util";
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -320,6 +321,10 @@ export class AppointmentsService {
         const endsAt = new Date(
           startsAt.getTime() + service.duration_min * 60 * 1000,
         );
+        const occupiedUntil = computeOccupiedUntil(
+          endsAt,
+          service.buffer_after_min,
+        );
 
         const dateStr = getDateKey(startsAt, config.timezone);
         const weekday = getWeekdayForDate(dateStr, config.timezone);
@@ -380,7 +385,7 @@ export class AppointmentsService {
           );
           if (
             startsAt.getTime() >= shiftStart.getTime() &&
-            endsAt.getTime() <= shiftEnd.getTime()
+            occupiedUntil.getTime() <= shiftEnd.getTime()
           ) {
             withinWorkingHours = true;
             break;
@@ -392,12 +397,12 @@ export class AppointmentsService {
           orgId,
           input.professionalId,
           startsAt,
-          endsAt,
+          occupiedUntil,
         );
 
         const withinBlock = blocks.some(
           (b) =>
-            b.starts_at.getTime() < endsAt.getTime() &&
+            b.starts_at.getTime() < occupiedUntil.getTime() &&
             b.ends_at.getTime() > startsAt.getTime(),
         );
 
@@ -437,6 +442,7 @@ export class AppointmentsService {
             client_id: client.id,
             starts_at: startsAt,
             ends_at: endsAt,
+            occupied_until: occupiedUntil,
             status: "CONFIRMED",
             source: "PANEL",
             note: input.note ?? null,
@@ -615,6 +621,10 @@ export class AppointmentsService {
           const newEndsAt = new Date(
             newStartsAt.getTime() + service.duration_min * 60 * 1000,
           );
+          const newOccupiedUntil = computeOccupiedUntil(
+            newEndsAt,
+            service.buffer_after_min,
+          );
 
           const dateStr = getDateKey(newStartsAt, config.timezone);
           const weekday = getWeekdayForDate(dateStr, config.timezone);
@@ -670,7 +680,7 @@ export class AppointmentsService {
             );
             if (
               newStartsAt.getTime() >= shiftStart.getTime() &&
-              newEndsAt.getTime() <= shiftEnd.getTime()
+              newOccupiedUntil.getTime() <= shiftEnd.getTime()
             ) {
               withinWorkingHours = true;
               break;
@@ -682,12 +692,12 @@ export class AppointmentsService {
             orgId,
             appointment.professional_id,
             newStartsAt,
-            newEndsAt,
+            newOccupiedUntil,
           );
 
           const withinBlock = blocks.some(
             (b) =>
-              b.starts_at.getTime() < newEndsAt.getTime() &&
+              b.starts_at.getTime() < newOccupiedUntil.getTime() &&
               b.ends_at.getTime() > newStartsAt.getTime(),
           );
 
@@ -701,6 +711,7 @@ export class AppointmentsService {
 
           updateData.starts_at = newStartsAt;
           updateData.ends_at = newEndsAt;
+          updateData.occupied_until = newOccupiedUntil;
           metadata.newStartsAt = newStartsAt.toISOString();
           metadata.newEndsAt = newEndsAt.toISOString();
 

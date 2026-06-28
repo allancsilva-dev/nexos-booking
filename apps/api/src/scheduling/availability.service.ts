@@ -18,6 +18,7 @@ import {
 } from "@nexos/shared";
 import type { AvailabilityQuery, AvailabilityResponse, AvailabilityDay, AvailabilitySlot } from "@nexos/shared";
 import { resolveEffectiveSlotStepMin } from "./slot-step.util";
+import { computeOccupiedUntil } from "./occupied-interval.util";
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -141,7 +142,6 @@ export class AvailabilityService {
       );
 
       const now = new Date();
-      const durationMs = service.duration_min * 60 * 1000;
       const stepMs = effectiveSlotStepMin * 60 * 1000;
       const days: AvailabilityDay[] = [];
       let dateStr = fromCivilDate;
@@ -174,20 +174,26 @@ export class AvailabilityService {
               anchor,
               effectiveSlotStepMin,
             );
-            const slotEnd = new Date(slotStart.getTime() + durationMs);
+            const slotEnd = new Date(
+              slotStart.getTime() + service.duration_min * 60 * 1000,
+            );
+            const occupiedUntil = computeOccupiedUntil(
+              slotEnd,
+              service.buffer_after_min,
+            );
 
-            if (slotEnd.getTime() > shiftEnd.getTime()) break;
+            if (occupiedUntil.getTime() > shiftEnd.getTime()) break;
 
             if (slotStart.getTime() >= now.getTime()) {
               const blocked = blockRows.some(
                 (b) =>
-                  b.starts_at.getTime() < slotEnd.getTime() &&
+                  b.starts_at.getTime() < occupiedUntil.getTime() &&
                   b.ends_at.getTime() > slotStart.getTime(),
               );
               const hasAppointment = appointmentRows.some(
                 (a) =>
-                  a.starts_at.getTime() < slotEnd.getTime() &&
-                  a.ends_at.getTime() > slotStart.getTime(),
+                  a.starts_at.getTime() < occupiedUntil.getTime() &&
+                  a.occupied_until.getTime() > slotStart.getTime(),
               );
 
               if (!blocked && !hasAppointment) {

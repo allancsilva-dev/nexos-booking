@@ -123,7 +123,7 @@ export class AvailabilityRepository {
           eq(appointments.professional_id, professionalId),
           inArray(appointments.status, ["SCHEDULED", "CONFIRMED"]),
           lt(appointments.starts_at, to),
-          gt(appointments.ends_at, from),
+          gt(appointments.occupied_until, from),
         ),
       );
   }

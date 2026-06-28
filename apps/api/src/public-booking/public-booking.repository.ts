@@ -262,6 +262,7 @@ export class PublicBookingRepository {
       client_id: string;
       starts_at: Date;
       ends_at: Date;
+      occupied_until: Date;
       status: string;
       source: string;
       note: string | null;
