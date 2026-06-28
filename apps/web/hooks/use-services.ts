@@ -36,6 +36,7 @@ export function useCreateServiceMutation(activeOrgId: string) {
         name: input.name,
         durationMin: input.durationMin,
         priceCents: input.priceCents,
+        bufferAfterMin: input.bufferAfterMin ?? 0,
       };
       if (input.currency && input.currency.length === 3) {
         payload.currency = input.currency;
@@ -71,6 +72,9 @@ export function useUpdateServiceMutation(activeOrgId: string) {
       if (input.name !== undefined) payload.name = input.name;
       if (input.durationMin !== undefined) payload.durationMin = input.durationMin;
       if (input.priceCents !== undefined) payload.priceCents = input.priceCents;
+      if (input.bufferAfterMin !== undefined) {
+        payload.bufferAfterMin = input.bufferAfterMin;
+      }
       if (input.currency !== undefined && input.currency.length === 3) {
         payload.currency = input.currency;
       }

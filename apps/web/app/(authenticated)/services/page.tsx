@@ -190,6 +190,7 @@ export default function ServicesPage() {
               defaultValues={{
                 name: svc.name,
                 durationMin: svc.durationMin,
+                bufferAfterMin: svc.bufferAfterMin,
                 priceCents: svc.priceCents,
                 currency: svc.currency,
                 active: svc.active,
@@ -218,6 +219,9 @@ export default function ServicesPage() {
                   <p className="text-sm text-[var(--color-muted-foreground)] mt-0.5">
                     {svc.durationMin}min ·{" "}
                     {formatPrice(svc.priceCents, svc.currency)}
+                    {svc.bufferAfterMin && svc.bufferAfterMin > 0
+                      ? ` · +${svc.bufferAfterMin}min buffer`
+                      : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 ml-4 shrink-0">
