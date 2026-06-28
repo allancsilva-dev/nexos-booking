@@ -7,7 +7,37 @@ import type {
   WorkingHoursInput,
   CreateBlockInput,
   AvailabilityBlockDTO,
+  ShiftDTO,
 } from "@nexos/shared";
+
+type WorkingHoursApiShift = ShiftDTO & { id?: string };
+type WorkingHoursApiResponse = WorkingHoursInput | WorkingHoursApiShift[];
+
+function isShiftArray(value: unknown): value is WorkingHoursApiShift[] {
+  return Array.isArray(value);
+}
+
+function normalizeWorkingHoursResponse(
+  payload: WorkingHoursApiResponse | null | undefined,
+): WorkingHoursInput {
+  if (!payload) {
+    return { shifts: [] };
+  }
+
+  if (isShiftArray(payload)) {
+    return {
+      shifts: payload.map((shift) => ({
+        weekday: shift.weekday,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+      })),
+    };
+  }
+
+  return {
+    shifts: Array.isArray(payload.shifts) ? payload.shifts : [],
+  };
+}
 
 // ── Working Hours ─────────────────────────────────────────────────
 
@@ -17,9 +47,11 @@ export function useWorkingHoursQuery(
 ) {
   return useQuery({
     queryKey: ["working-hours", activeOrgId ?? "", professionalId ?? ""],
-    queryFn: () =>
-      apiFetch<WorkingHoursInput>(
-        `/api/v1/professionals/${professionalId}/working-hours`,
+    queryFn: async () =>
+      normalizeWorkingHoursResponse(
+        await apiFetch<WorkingHoursApiResponse>(
+          `/api/v1/professionals/${professionalId}/working-hours`,
+        ),
       ),
     enabled: !!activeOrgId && !!professionalId,
   });
@@ -31,10 +63,12 @@ export function useSetWorkingHoursMutation(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: WorkingHoursInput) =>
-      apiFetch<WorkingHoursInput>(
-        `/api/v1/professionals/${professionalId}/working-hours`,
-        { method: "PUT", body: JSON.stringify(input) },
+    mutationFn: async (input: WorkingHoursInput) =>
+      normalizeWorkingHoursResponse(
+        await apiFetch<WorkingHoursApiResponse>(
+          `/api/v1/professionals/${professionalId}/working-hours`,
+          { method: "PUT", body: JSON.stringify(input) },
+        ),
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({

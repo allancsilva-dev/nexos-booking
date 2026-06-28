@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/shell/sidebar";
 export default function AuthenticatedLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-[var(--color-background)]">
+      <div className="min-h-screen bg-[var(--color-surface-operational)]">
         <Sidebar />
         <main className="pl-[var(--spacing-sidebar)]">
           {children}

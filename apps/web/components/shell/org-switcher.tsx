@@ -78,15 +78,15 @@ export function OrgSwitcher() {
             }}
             disabled={switchOrgMutation.isPending}
             className={cn(
-              "flex w-full items-center gap-2 rounded-[var(--radius-nav)] px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-muted)]",
-              isActive && "bg-[var(--color-primary)]/10"
+              "flex w-full items-center gap-2 rounded-[var(--radius-nav)] px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-operational-chip)]",
+              isActive && "bg-[var(--color-accent-soft)]"
             )}
           >
             <Building2
               className={cn(
                 "h-4 w-4 shrink-0",
                 isActive
-                  ? "text-[var(--color-primary)]"
+                  ? "text-[var(--color-accent-strong)]"
                   : "text-[var(--color-muted-foreground)]"
               )}
             />
@@ -99,7 +99,7 @@ export function OrgSwitcher() {
               </p>
             </div>
             {isActive && (
-              <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
+              <Check className="h-4 w-4 shrink-0 text-[var(--color-accent-strong)]" />
             )}
             {switchOrgMutation.isPending &&
               switchOrgMutation.variables?.organizationId ===

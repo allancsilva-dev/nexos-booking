@@ -8,12 +8,12 @@ import {
   useProfessionalServicesQuery,
   useSetProfessionalServicesMutation,
 } from "@/hooks/use-professionals";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/loading-state";
 import { ApiError } from "@/lib/http-client";
 import { formatGlobalError } from "@/lib/error-handler";
 import type { ProfessionalServicesInput } from "@nexos/shared";
+import { OperationalModal } from "@/components/ui/operational/modal";
 
 interface Props {
   activeOrgId: string;
@@ -22,12 +22,12 @@ interface Props {
 }
 
 export function ServiceLinkEditor({ activeOrgId, professionalId, professionalName }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const synced = useRef(false);
 
   const servicesQuery = useServicesQuery(activeOrgId);
-  const linkQuery = useProfessionalServicesQuery(activeOrgId, expanded ? professionalId : null);
+  const linkQuery = useProfessionalServicesQuery(activeOrgId, open ? professionalId : null);
   const setLinkMutation = useSetProfessionalServicesMutation(activeOrgId);
 
   // Sync checkboxes with server data on first load after expand
@@ -39,18 +39,9 @@ export function ServiceLinkEditor({ activeOrgId, professionalId, professionalNam
   }, [linkQuery.data]);
 
   // Reset sync flag when collapsed
-  function collapse() {
-    setExpanded(false);
+  function closeModal() {
+    setOpen(false);
     synced.current = false;
-  }
-
-  if (!expanded) {
-    return (
-      <Button variant="ghost" size="sm" onClick={() => setExpanded(true)}>
-        <Link2 className="h-4 w-4" />
-        Serviços
-      </Button>
-    );
   }
 
   const services = servicesQuery.data ?? [];
@@ -60,7 +51,7 @@ export function ServiceLinkEditor({ activeOrgId, professionalId, professionalNam
     const input: ProfessionalServicesInput = { serviceIds: [...selected] };
     try {
       await setLinkMutation.mutateAsync({ professionalId, input });
-      collapse();
+      closeModal();
     } catch (err) {
       if (err instanceof ApiError) {
         const { code, message, requestId } = formatGlobalError(err);
@@ -84,44 +75,72 @@ export function ServiceLinkEditor({ activeOrgId, professionalId, professionalNam
   }
 
   return (
-    <Card className="mt-3">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Serviços de {professionalName}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        className="bg-[var(--color-surface-operational-strong)] hover:bg-[var(--color-muted)]"
+        onClick={() => setOpen(true)}
+      >
+        <Link2 className="h-4 w-4" />
+        Serviços
+      </Button>
+      <OperationalModal
+        open={open}
+        title={`Serviços de ${professionalName}`}
+        description="Escolha quais serviços este profissional pode receber na agenda e no link público."
+        onClose={closeModal}
+        footer={
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-[var(--color-surface-operational-strong)] hover:bg-[var(--color-muted)]"
+              onClick={closeModal}
+            >
+              Fechar
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={setLinkMutation.isPending}>
+              {setLinkMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Salvar vínculos
+            </Button>
+          </>
+        }
+      >
         {isLoading ? (
           <LoadingState variant="inline" message="Carregando..." />
         ) : (
-          <div className="space-y-1 max-h-48 overflow-y-auto">
+          <div className="grid gap-2 sm:grid-cols-2">
             {services.map((svc) => (
               <label
                 key={svc.id}
-                className="flex items-center gap-2 text-sm cursor-pointer hover:bg-[var(--color-muted)]/30 rounded px-1 py-0.5"
+                className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] px-3 py-3 transition-colors hover:bg-[var(--color-accent-soft)]"
               >
                 <input
                   type="checkbox"
                   checked={selected.has(svc.id)}
                   onChange={() => toggle(svc.id)}
-                  className="h-4 w-4 rounded border-[var(--color-border)]"
+                  className="mt-0.5 h-4 w-4 rounded border-[var(--color-border)]"
                 />
-                <span className={svc.active ? "" : "text-[var(--color-muted-foreground)]"}>
-                  {svc.name}
-                  {!svc.active && " (inativo)"}
+                <span className="min-w-0">
+                  <span
+                    className={
+                      svc.active
+                        ? "block text-sm font-medium text-[var(--color-foreground)]"
+                        : "block text-sm font-medium text-[var(--color-muted-foreground)]"
+                    }
+                  >
+                    {svc.name}
+                  </span>
+                  <span className="block text-xs text-[var(--color-muted-foreground)]">
+                    {svc.active ? "Disponível para vínculo" : "Serviço inativo"}
+                  </span>
                 </span>
               </label>
             ))}
           </div>
         )}
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave} disabled={setLinkMutation.isPending}>
-            {setLinkMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-            Salvar vínculos
-          </Button>
-          <Button size="sm" variant="outline" onClick={collapse}>
-            Fechar
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </OperationalModal>
+    </>
   );
 }

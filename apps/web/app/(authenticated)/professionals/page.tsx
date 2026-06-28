@@ -14,13 +14,26 @@ import { LoadingState } from "@/components/loading-state";
 import { ErrorDisplay } from "@/components/error-display";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  OperationalPanel,
+  OperationalPanelContent,
+} from "@/components/ui/operational/panel";
+import { OperationalPageHeader } from "@/components/ui/operational/page-header";
 import { ApiError } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 import { toast } from "sonner";
 import { formatGlobalError } from "@/lib/error-handler";
 import type { CreateProfessionalInput, UpdateProfessionalInput } from "@/lib/professional-schemas";
 import { Clock3, Plus, Pencil, Users } from "lucide-react";
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
 
 export default function ProfessionalsPage() {
   const { data: meData } = useMeQuery();
@@ -97,22 +110,29 @@ export default function ProfessionalsPage() {
 
   if (!professionals || professionals.length === 0) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--color-foreground)]">Equipe</h1>
-            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">Gerencie os profissionais</p>
-          </div>
-        </div>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+        <OperationalPageHeader
+          title="Equipe"
+          description="Cadastre profissionais, organize a operação diária e prepare a base para agenda, serviços e jornada."
+          meta={
+            <span className="inline-flex items-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-accent-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent-strong)]">
+              Operação de equipe
+            </span>
+          }
+        />
         {showCreateForm ? (
           <ProfessionalForm mode="create" isPending={createMutation.isPending} onSubmit={handleCreate} onCancel={() => setShowCreateForm(false)} />
         ) : (
-          <EmptyState
-            icon={<Users className="h-8 w-8" />}
-            title="Nenhum profissional"
-            description="Cadastre o primeiro profissional da equipe."
-            action={{ label: "Criar profissional", onClick: () => setShowCreateForm(true) }}
-          />
+          <OperationalPanel variant="muted">
+            <OperationalPanelContent className="pt-6">
+              <EmptyState
+                icon={<Users className="h-8 w-8" />}
+                title="Nenhum profissional"
+                description="Cadastre o primeiro profissional da equipe para começar a distribuir serviços e configurar jornadas."
+                action={{ label: "Criar profissional", onClick: () => setShowCreateForm(true) }}
+              />
+            </OperationalPanelContent>
+          </OperationalPanel>
         )}
       </div>
     );
@@ -121,24 +141,34 @@ export default function ProfessionalsPage() {
   // ── data ──
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--color-foreground)]">Equipe</h1>
-          <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">Gerencie os profissionais</p>
-        </div>
-        {!showCreateForm && !editingId && (
-          <Button onClick={() => setShowCreateForm(true)} size="sm">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      <OperationalPageHeader
+        title="Equipe"
+        description="Mantenha profissionais ativos, prontos para jornada e vinculados aos serviços certos antes de abrir mais horários na agenda."
+        meta={
+          <>
+            <span className="inline-flex items-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-accent-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent-strong)]">
+              Operação de equipe
+            </span>
+            <span className="inline-flex items-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 py-1 text-sm font-semibold text-[var(--color-foreground)]">
+              {professionals.length} profissionais
+            </span>
+          </>
+        }
+        actions={
+          !showCreateForm && !editingId ? (
+            <Button onClick={() => setShowCreateForm(true)} className="bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:bg-[var(--color-accent)]">
             <Plus className="h-4 w-4" /> Novo profissional
           </Button>
-        )}
-      </div>
+          ) : null
+        }
+      />
 
       {showCreateForm && (
         <ProfessionalForm mode="create" isPending={createMutation.isPending} onSubmit={handleCreate} onCancel={() => setShowCreateForm(false)} />
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {professionals.map((prof) =>
           editingId === prof.id ? (
             <ProfessionalForm
@@ -150,22 +180,44 @@ export default function ProfessionalsPage() {
               onCancel={() => setEditingId(null)}
             />
           ) : (
-            <Card key={prof.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-[var(--color-foreground)] truncate">{prof.name}</h3>
-                      <span
-                        className={`inline-block h-2 w-2 rounded-full ${prof.active ? "bg-green-500" : "bg-[var(--color-muted-foreground)]"}`}
-                        title={prof.active ? "Ativo" : "Inativo"}
-                      />
+            <OperationalPanel key={prof.id} variant="muted">
+              <OperationalPanelContent className="pt-5">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-accent-soft)] text-sm font-bold text-[var(--color-accent-strong)]">
+                      {getInitials(prof.name)}
                     </div>
-                    <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5">{prof.slug}</p>
+                    <div className="min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-lg font-bold text-[var(--color-foreground)]">
+                          {prof.name}
+                        </h3>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                            prof.active
+                              ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
+                              : "border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] text-[var(--color-muted-foreground)]"
+                          }`}
+                          title={prof.active ? "Ativo" : "Inativo"}
+                        >
+                          {prof.active ? "Ativo" : "Inativo"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+                        <span className="inline-flex rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-2.5 py-1 font-medium">
+                          /{prof.slug}
+                        </span>
+                        <span>
+                          {prof.active
+                            ? "Disponível para receber serviços e jornada."
+                            : "Precisa ser reativado para voltar à operação."}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-4 shrink-0">
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
                     <ServiceLinkEditor activeOrgId={activeOrgId!} professionalId={prof.id} professionalName={prof.name} />
-                    <Button asChild variant="outline" size="sm">
+                    <Button asChild variant="outline" size="sm" className="bg-[var(--color-surface-operational-strong)] hover:bg-[var(--color-muted)]">
                       <Link href={`/professionals/${prof.id}/hours`}>
                         <Clock3 className="h-4 w-4" /> Jornada
                       </Link>
@@ -173,6 +225,7 @@ export default function ProfessionalsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="bg-[var(--color-surface-operational-strong)] hover:bg-[var(--color-muted)]"
                       onClick={() => handleToggleActive(prof.id, prof.active)}
                       disabled={updateMutation.isPending}
                     >
@@ -181,6 +234,7 @@ export default function ProfessionalsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="bg-[var(--color-surface-operational-strong)] hover:bg-[var(--color-muted)]"
                       onClick={() => { setShowCreateForm(false); setEditingId(prof.id); }}
                       disabled={updateMutation.isPending}
                     >
@@ -188,8 +242,8 @@ export default function ProfessionalsPage() {
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </OperationalPanelContent>
+            </OperationalPanel>
           ),
         )}
       </div>

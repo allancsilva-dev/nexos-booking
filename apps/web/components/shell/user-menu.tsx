@@ -51,15 +51,15 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[var(--radius-nav)] p-1 hover:bg-[var(--color-muted)] transition-colors outline-none">
+      <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[var(--radius-nav)] p-1.5 outline-none transition-colors hover:bg-[var(--color-operational-chip)]">
         <Avatar className="h-7 w-7">
-          <AvatarFallback className="text-[10px] bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+          <AvatarFallback className="bg-[var(--color-accent-soft)] text-[10px] text-[var(--color-accent-strong)]">
             {initials}
           </AvatarFallback>
         </Avatar>
         <ChevronDown className="h-3 w-3 text-[var(--color-muted-foreground)]" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top" className="w-64">
+      <DropdownMenuContent align="start" side="top" className="w-64 border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)]">
         <div className="px-2 py-1.5">
           <p className="text-sm font-medium text-[var(--color-foreground)] truncate">
             {user.name}

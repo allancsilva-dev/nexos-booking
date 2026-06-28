@@ -13,14 +13,28 @@ import { WorkingHoursEditor } from "@/components/professionals/working-hours-edi
 import { BlocksManager } from "@/components/professionals/blocks-manager";
 import { LoadingState } from "@/components/loading-state";
 import { ErrorDisplay } from "@/components/error-display";
+import { OperationalPageHeader } from "@/components/ui/operational/page-header";
 import { ApiError } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 import type { WorkingHoursInput, CreateBlockInput } from "@nexos/shared";
 
-export default function ProfessionalHoursPage({
-}: {
-  params: Promise<{ id: string }>;
-}) {
+function toErrorDisplayBody(error: unknown, fallbackMessage: string) {
+  return error instanceof ApiError
+    ? {
+        code: error.code,
+        message: error.message,
+        requestId: error.requestId,
+        timestamp: new Date().toISOString() as never,
+      }
+    : {
+        code: INTERNAL_ERROR,
+        message: fallbackMessage,
+        requestId: "",
+        timestamp: new Date().toISOString() as never,
+      };
+}
+
+export default function ProfessionalHoursPage() {
   const params = useParams<{ id: string }>();
   const professionalId = params.id;
   const { data: meData } = useMeQuery();
@@ -68,54 +82,35 @@ export default function ProfessionalHoursPage({
   // ── error ──
 
   if (whError) {
-    const e =
-      whErr instanceof ApiError
-        ? { code: whErr.code, message: whErr.message, requestId: whErr.requestId, timestamp: new Date().toISOString() as never }
-        : { code: INTERNAL_ERROR, message: "Erro ao carregar", requestId: "", timestamp: new Date().toISOString() as never };
     return (
       <div className="p-6">
-        <ErrorDisplay error={e} onRetry={() => whRefetch()} />
+        <ErrorDisplay
+          error={toErrorDisplayBody(whErr, "Erro ao carregar")}
+          onRetry={() => whRefetch()}
+        />
       </div>
     );
   }
 
   const blocksErrorBody =
-    blocksError && blocksErr instanceof ApiError
-      ? { code: blocksErr.code, message: blocksErr.message, requestId: blocksErr.requestId, timestamp: new Date().toISOString() as never }
-      : blocksError
-        ? { code: INTERNAL_ERROR, message: "Erro ao carregar bloqueios", requestId: "", timestamp: new Date().toISOString() as never }
+    blocksError
+      ? toErrorDisplayBody(blocksErr, "Erro ao carregar bloqueios")
         : null;
 
-  // ── data ──
-
-  async function handleSaveHours(input: WorkingHoursInput) {
-    await saveHoursMutation.mutateAsync(input);
-  }
-
-  async function handleCreateBlock(input: CreateBlockInput) {
-    await createBlockMutation.mutateAsync(input);
-  }
-
-  async function handleDeleteBlock(blockId: string) {
-    await deleteBlockMutation.mutateAsync(blockId);
-  }
-
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--color-foreground)]">
-          Jornada e bloqueios
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          Configure os horários do profissional
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      <OperationalPageHeader
+        title="Jornada"
+        description="Horários de atendimento da semana e ausências do profissional."
+      />
 
       <WorkingHoursEditor
         data={workingHours}
         isLoading={whLoading}
         isPending={saveHoursMutation.isPending}
-        onSave={handleSaveHours}
+        onSave={async (input: WorkingHoursInput) => {
+          await saveHoursMutation.mutateAsync(input);
+        }}
       />
 
       {blocksErrorBody ? (
@@ -128,8 +123,12 @@ export default function ProfessionalHoursPage({
           isLoading={blocksLoading}
           isCreating={createBlockMutation.isPending}
           isDeleting={deleteBlockMutation.isPending}
-          onCreate={handleCreateBlock}
-          onDelete={handleDeleteBlock}
+          onCreate={async (input: CreateBlockInput) => {
+            await createBlockMutation.mutateAsync(input);
+          }}
+          onDelete={async (blockId: string) => {
+            await deleteBlockMutation.mutateAsync(blockId);
+          }}
         />
       )}
     </div>

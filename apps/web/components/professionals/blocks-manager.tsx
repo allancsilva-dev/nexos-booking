@@ -8,9 +8,15 @@ import { ApiError } from "@/lib/http-client";
 import { formatGlobalError } from "@/lib/error-handler";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingState } from "@/components/loading-state";
 import { EmptyState } from "@/components/empty-state";
+import {
+  OperationalPanel,
+  OperationalPanelContent,
+  OperationalPanelDescription,
+  OperationalPanelHeader,
+  OperationalPanelTitle,
+} from "@/components/ui/operational/panel";
 
 /** Converte datetime-local (ex: "2026-06-24T14:30") para ISO-8601 com offset. */
 function toIsoWithOffset(localValue: string): string {
@@ -40,6 +46,68 @@ interface Props {
   isDeleting: boolean;
   onCreate: (input: CreateBlockInput) => Promise<void>;
   onDelete: (blockId: string) => Promise<void>;
+}
+
+interface DateTimeFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+interface BlockListItemProps {
+  block: AvailabilityBlockDTO;
+  isDeleting: boolean;
+  onDelete: (blockId: string) => void;
+}
+
+function notifyApiError(err: unknown) {
+  if (err instanceof ApiError) {
+    const { code, message, requestId } = formatGlobalError(err);
+    toast.error(message, { description: `${code} — Ref: ${requestId || "N/A"}` });
+    return;
+  }
+
+  toast.error("Erro ao conectar.");
+}
+
+function DateTimeField({ label, value, onChange }: DateTimeFieldProps) {
+  return (
+    <div className="flex-1 min-w-[180px]">
+      <label className="text-xs text-[var(--color-muted-foreground)]">{label}</label>
+      <Input
+        type="datetime-local"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 text-xs"
+      />
+    </div>
+  );
+}
+
+function BlockListItem({ block, isDeleting, onDelete }: BlockListItemProps) {
+  return (
+    <div className="flex items-center justify-between rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 py-3 text-sm">
+      <div className="min-w-0">
+        <p className="text-[var(--color-foreground)] truncate">
+          {formatBlockRange(block)}
+        </p>
+        {block.reason ? (
+          <p className="text-xs text-[var(--color-muted-foreground)] truncate">
+            {block.reason}
+          </p>
+        ) : null}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onDelete(block.id)}
+        disabled={isDeleting}
+        className="text-[var(--color-destructive)] shrink-0 ml-2"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }
 
 export function BlocksManager({
@@ -85,12 +153,7 @@ export function BlocksManager({
       await onCreate(input);
       resetForm();
     } catch (err) {
-      if (err instanceof ApiError) {
-        const { code, message, requestId } = formatGlobalError(err);
-        toast.error(message, { description: `${code} — Ref: ${requestId || "N/A"}` });
-      } else {
-        toast.error("Erro ao conectar.");
-      }
+      notifyApiError(err);
     }
   }
 
@@ -98,47 +161,39 @@ export function BlocksManager({
     try {
       await onDelete(blockId);
     } catch (err) {
-      if (err instanceof ApiError) {
-        const { code, message, requestId } = formatGlobalError(err);
-        toast.error(message, { description: `${code} — Ref: ${requestId || "N/A"}` });
-      } else {
-        toast.error("Erro ao conectar.");
-      }
+      notifyApiError(err);
     }
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Bloqueios</CardTitle>
+    <OperationalPanel variant="muted">
+      <OperationalPanelHeader className="flex flex-row items-center justify-between">
+        <div className="space-y-1">
+          <OperationalPanelTitle className="text-xl">Bloqueios</OperationalPanelTitle>
+          <OperationalPanelDescription>
+            Registre férias, ausências e pausas fora do padrão semanal.
+          </OperationalPanelDescription>
+        </div>
         {!showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4" /> Novo bloqueio
           </Button>
         )}
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </OperationalPanelHeader>
+      <OperationalPanelContent className="space-y-3">
         {showForm && (
-          <div className="space-y-2 border border-[var(--color-border)] rounded-[var(--radius-control)] p-3">
+          <div className="space-y-2 rounded-[20px] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-4">
             <div className="flex flex-wrap gap-2">
-              <div className="flex-1 min-w-[180px]">
-                <label className="text-xs text-[var(--color-muted-foreground)]">Início</label>
-                <Input
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={(e) => setStartsAt(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="flex-1 min-w-[180px]">
-                <label className="text-xs text-[var(--color-muted-foreground)]">Fim</label>
-                <Input
-                  type="datetime-local"
-                  value={endsAt}
-                  onChange={(e) => setEndsAt(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
+              <DateTimeField
+                label="Início"
+                value={startsAt}
+                onChange={setStartsAt}
+              />
+              <DateTimeField
+                label="Fim"
+                value={endsAt}
+                onChange={setEndsAt}
+              />
             </div>
             <Input
               placeholder="Motivo (opcional)"
@@ -167,30 +222,12 @@ export function BlocksManager({
         ) : blocks && blocks.length > 0 ? (
           <div className="space-y-2">
             {blocks.map((b) => (
-              <div
+              <BlockListItem
                 key={b.id}
-                className="flex items-center justify-between text-sm border border-[var(--color-border)] rounded-[var(--radius-control)] px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="text-[var(--color-foreground)] truncate">
-                    {formatBlockRange(b)}
-                  </p>
-                  {b.reason && (
-                    <p className="text-xs text-[var(--color-muted-foreground)] truncate">
-                      {b.reason}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(b.id)}
-                  disabled={isDeleting}
-                  className="text-[var(--color-destructive)] shrink-0 ml-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+                block={b}
+                isDeleting={isDeleting}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         ) : (
@@ -199,7 +236,7 @@ export function BlocksManager({
             description="Adicione bloqueios para dias específicos."
           />
         )}
-      </CardContent>
-    </Card>
+      </OperationalPanelContent>
+    </OperationalPanel>
   );
 }

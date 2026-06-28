@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AvailabilityDay } from "@nexos/shared";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface SlotPickerProps {
@@ -11,6 +13,34 @@ interface SlotPickerProps {
   onSelectSlot: (slot: { date: string; startsAt: string; endsAt: string }) => void;
   loading?: boolean;
   className?: string;
+}
+
+type CalendarSlot = {
+  startsAt: string;
+  endsAt: string;
+};
+
+function parseCivilDate(dateStr: string) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return { year, month, day };
+}
+
+function getMonthKey(dateStr: string): string {
+  return dateStr.slice(0, 7);
+}
+
+function getMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, 1));
+}
+
+function shiftMonth(monthKey: string, offset: number): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  const next = new Date(year, month - 1 + offset, 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function formatTime(iso: string, tz: string): string {
@@ -25,19 +55,38 @@ function formatTime(iso: string, tz: string): string {
   }
 }
 
-function formatDateLabel(dateStr: string, tz: string): string {
+function formatSelectedDate(dateStr: string, tz: string): string {
   try {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const d = new Date(year, month - 1, day);
-    return d.toLocaleDateString("pt-BR", {
-      weekday: "short",
+    const { year, month, day } = parseCivilDate(dateStr);
+    return new Intl.DateTimeFormat("pt-BR", {
+      weekday: "long",
       day: "2-digit",
-      month: "2-digit",
+      month: "long",
       timeZone: tz,
-    });
+    }).format(new Date(year, month - 1, day));
   } catch {
     return dateStr;
   }
+}
+
+function buildMonthCells(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const first = new Date(year, month - 1, 1);
+  const startOffset = (first.getDay() + 6) % 7;
+  const start = new Date(year, month - 1, 1 - startOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const current = new Date(start);
+    current.setDate(start.getDate() + index);
+
+    return {
+      date: `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(
+        current.getDate()
+      ).padStart(2, "0")}`,
+      dayNumber: current.getDate(),
+      inMonth: current.getMonth() === month - 1,
+    };
+  });
 }
 
 export function SlotPicker({
@@ -48,141 +97,171 @@ export function SlotPicker({
   loading,
   className,
 }: SlotPickerProps) {
-  const gridRef = useRef<HTMLDivElement>(null);
-  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const daysWithSlots = useMemo(() => days.filter((day) => day.slots.length > 0), [days]);
 
-  const allSlots = days.flatMap((day) =>
-    day.slots.map((slot) => ({
-      date: day.date,
-      startsAt: slot.startsAt,
-      endsAt: slot.endsAt,
-      key: `${day.date}|${slot.startsAt}`,
-    }))
+  const slotsByDate = useMemo(
+    () =>
+      new Map<string, CalendarSlot[]>(
+        daysWithSlots.map((day) => [day.date, day.slots.map((slot) => ({ startsAt: slot.startsAt, endsAt: slot.endsAt }))])
+      ),
+    [daysWithSlots]
   );
 
-  const selectedKey = selectedSlot
-    ? `${selectedSlot.date}|${selectedSlot.startsAt}`
-    : null;
+  const firstAvailableDate = daysWithSlots[0]?.date ?? null;
+  const [visibleMonth, setVisibleMonth] = useState<string>(() =>
+    getMonthKey(firstAvailableDate ?? new Date().toISOString().slice(0, 7) + "-01")
+  );
+  const [selectedDate, setSelectedDate] = useState<string | null>(selectedSlot?.date ?? firstAvailableDate);
 
   useEffect(() => {
-    if (selectedKey) {
-      const btn = buttonRefs.current.get(selectedKey);
-      btn?.focus();
+    if (selectedSlot?.date) {
+      setSelectedDate(selectedSlot.date);
+      setVisibleMonth(getMonthKey(selectedSlot.date));
+      return;
     }
-  }, [selectedKey]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent, index: number) => {
-      const cols = 3;
+    if (selectedDate && slotsByDate.has(selectedDate)) {
+      return;
+    }
 
-      switch (e.key) {
-        case "ArrowRight":
-          e.preventDefault();
-          {
-            const next = Math.min(index + 1, allSlots.length - 1);
-            if (next !== index) {
-              buttonRefs.current.get(allSlots[next]?.key ?? "")?.focus();
-            }
-          }
-          return;
-        case "ArrowLeft":
-          e.preventDefault();
-          {
-            const next = Math.max(index - 1, 0);
-            if (next !== index) {
-              buttonRefs.current.get(allSlots[next]?.key ?? "")?.focus();
-            }
-          }
-          return;
-        case "ArrowDown":
-          e.preventDefault();
-          {
-            const next = Math.min(index + cols, allSlots.length - 1);
-            if (next !== index) {
-              buttonRefs.current.get(allSlots[next]?.key ?? "")?.focus();
-            }
-          }
-          return;
-        case "ArrowUp":
-          e.preventDefault();
-          {
-            const next = Math.max(index - cols, 0);
-            if (next !== index) {
-              buttonRefs.current.get(allSlots[next]?.key ?? "")?.focus();
-            }
-          }
-          return;
-        case "Escape":
-          (e.currentTarget as HTMLElement)?.blur();
-          return;
-        default:
-          return;
-      }
-    },
-    [allSlots]
-  );
+    setSelectedDate(firstAvailableDate);
+    if (firstAvailableDate) {
+      setVisibleMonth(getMonthKey(firstAvailableDate));
+    }
+  }, [firstAvailableDate, selectedDate, selectedSlot?.date, slotsByDate]);
+
+  const selectedDaySlots = selectedDate ? slotsByDate.get(selectedDate) ?? [] : [];
+  const monthCells = useMemo(() => buildMonthCells(visibleMonth), [visibleMonth]);
 
   if (days.length === 0 && !loading) {
     return (
-      <p className="text-sm text-[var(--color-muted-foreground)] text-center py-8">
+      <p className="py-8 text-center text-sm text-[var(--color-muted-foreground)]">
         Nenhum horario disponivel no periodo.
       </p>
     );
   }
 
   return (
-    <div className={cn("space-y-6", className)} ref={gridRef} role="grid" aria-label="Horarios disponiveis">
-      {days.map((day) => (
-        <div key={day.date} role="rowgroup" aria-label={formatDateLabel(day.date, timezone)}>
-          <h3 className="text-sm font-medium text-[var(--color-muted-foreground)] mb-2">
-            {formatDateLabel(day.date, timezone)}
-          </h3>
-          {day.slots.length === 0 ? (
-            <p className="text-xs text-[var(--color-muted-foreground)] pl-1">
-              Sem horarios neste dia.
-            </p>
-          ) : (
-            <div className="grid grid-cols-3 gap-2" role="row">
-              {day.slots.map((slot) => {
-                const key = `${day.date}|${slot.startsAt}`;
-                const isSelected = selectedKey === key;
-                const globalIndex = allSlots.findIndex((s) => s.key === key);
-
-                return (
-                  <button
-                    key={key}
-                    ref={(el) => {
-                      if (el) buttonRefs.current.set(key, el);
-                      else buttonRefs.current.delete(key);
-                    }}
-                    type="button"
-                    role="gridcell"
-                    aria-selected={isSelected}
-                    aria-label={`${formatTime(slot.startsAt, timezone)} as ${formatTime(slot.endsAt, timezone)}`}
-                    className={cn(
-                      "rounded-[var(--radius-control)] border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
-                      isSelected
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
-                        : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:border-[var(--color-muted-foreground)]"
-                    )}
-                    disabled={loading}
-                    onClick={() =>
-                      onSelectSlot({
-                        date: day.date,
-                        startsAt: slot.startsAt,
-                        endsAt: slot.endsAt,
-                      })
-                    }
-                    onKeyDown={(e) => handleKeyDown(e, globalIndex)}
-                  >
-                    {formatTime(slot.startsAt, timezone)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+    <div className={cn("space-y-4", className)}>
+      <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="text-sm font-semibold capitalize text-[var(--color-foreground)]">
+            {getMonthLabel(visibleMonth)}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setVisibleMonth((current) => shiftMonth(current, -1))}
+              aria-label="Mes anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setVisibleMonth((current) => shiftMonth(current, 1))}
+              aria-label="Proximo mes"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      ))}
+
+        <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--color-muted-foreground)]">
+          {["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"].map((label) => (
+            <span key={label} className="py-0">
+              {label}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-1 grid grid-cols-7 gap-0.5" role="grid" aria-label="Calendario de disponibilidade">
+          {monthCells.map((cell) => {
+            const isSelected = selectedDate === cell.date;
+            const hasSlots = slotsByDate.has(cell.date);
+
+            return (
+              <button
+                key={cell.date}
+                type="button"
+                role="gridcell"
+                disabled={!hasSlots || loading}
+                aria-pressed={isSelected}
+                onClick={() => setSelectedDate(cell.date)}
+                className={cn(
+                  "flex h-9 w-full items-center justify-center rounded-[6px] border text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] sm:h-10",
+                  hasSlots && isSelected
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                    : hasSlots
+                      ? "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:border-[var(--color-primary)] hover:bg-[var(--color-muted)]"
+                      : "border-transparent bg-transparent text-[var(--color-muted-foreground)] opacity-45",
+                  !cell.inMonth && "text-[var(--color-muted-foreground)]"
+                )}
+              >
+                {cell.dayNumber}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--color-foreground)]">
+              Escolha o horario
+            </h3>
+            <p className="text-xs capitalize text-[var(--color-muted-foreground)]">
+              {selectedDate
+                ? formatSelectedDate(selectedDate, timezone)
+                : "Escolha um dia no calendario para ver os horarios."}
+            </p>
+          </div>
+          <span className="rounded-full bg-[var(--color-muted)] px-2.5 py-1 text-xs font-medium text-[var(--color-muted-foreground)]">
+            {selectedDaySlots.length} disponiveis
+          </span>
+        </div>
+
+        {selectedDaySlots.length === 0 ? (
+          <p className="py-6 text-sm text-[var(--color-muted-foreground)]">
+            Escolha um dia destacado para ver horarios disponiveis.
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {selectedDaySlots.map((slot) => {
+              const key = `${selectedDate}|${slot.startsAt}`;
+              const isSelected = selectedSlot?.date === selectedDate && selectedSlot.startsAt === slot.startsAt;
+
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    onSelectSlot({
+                      date: selectedDate!,
+                      startsAt: slot.startsAt,
+                      endsAt: slot.endsAt,
+                    })
+                  }
+                  className={cn(
+                    "rounded-[var(--radius-control)] border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
+                    isSelected
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:border-[var(--color-muted-foreground)]"
+                  )}
+                >
+                  {formatTime(slot.startsAt, timezone)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -43,7 +43,7 @@ export function SlotPicker({ data, isLoading, selectedSlot, onSelectSlot }: Prop
     <div className="space-y-4">
       {data.days.map((day) => (
         <div key={day.date}>
-          <p className="text-xs font-medium text-[var(--color-muted-foreground)] mb-2">
+          <p className="mb-2 text-xs font-medium text-[var(--color-muted-foreground)]">
             {new Date(day.date + "T00:00:00").toLocaleDateString("pt-BR", {
               weekday: "long",
               day: "2-digit",
@@ -58,10 +58,10 @@ export function SlotPicker({ data, isLoading, selectedSlot, onSelectSlot }: Prop
                 <button
                   key={key}
                   onClick={() => onSelectSlot(slot)}
-                  className={`rounded-[var(--radius-control)] border px-2 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[var(--radius-control)] border px-2 py-2 text-xs font-medium transition-colors ${
                     selected
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
-                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:border-[var(--color-primary)]/50"
+                      ? "border-[var(--color-primary)] bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]"
+                      : "border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] text-[var(--color-foreground)] hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-operational-chip)]"
                   }`}
                 >
                   {formatTime(slot.startsAt, data.timezone)}

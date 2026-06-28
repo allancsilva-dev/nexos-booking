@@ -18,9 +18,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch, ApiError } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 import { cn } from "@/lib/utils";
+import { formatPhoneBR, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { useStableIdempotencyKey } from "@/hooks/use-stable-idempotency-key";
 
-type Step = "service" | "professional" | "slot" | "client" | "confirm" | "confirming" | "done" | "error";
+type Step = "service" | "slot" | "client" | "confirm" | "confirming" | "done" | "error";
 
 interface ClientInfo {
   name: string;
@@ -53,6 +54,21 @@ function addCivilDays(dateStr: string, amount: number): string {
   const [year, month, day] = dateStr.split("-").map(Number);
   const next = new Date(Date.UTC(year!, month! - 1, day! + amount));
   return next.toISOString().slice(0, 10);
+}
+
+function formatSlotDateTime(iso: string, timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat("pt-BR", {
+      timeZone,
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
 }
 
 export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
@@ -141,30 +157,29 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     };
   }, []);
 
-  const handleSelectService = useCallback(
+  const handleToggleService = useCallback(
     (serviceId: string) => {
       resetKey();
-      setSelectedServiceId(serviceId);
       setSelectedProfessionalSlug(null);
       setSelectedSlot(null);
       setAvailability(null);
-      setStep("professional");
+      // Toggle: clicar no serviço já expandido recolhe o card.
+      setSelectedServiceId((prev) => (prev === serviceId ? null : serviceId));
     },
     [resetKey]
   );
 
   const handleSelectProfessional = useCallback(
-    (professionalSlug: string) => {
+    (serviceId: string, professionalSlug: string) => {
       resetKey();
+      setSelectedServiceId(serviceId);
       setSelectedProfessionalSlug(professionalSlug);
       setSelectedSlot(null);
       setAvailability(null);
-      if (selectedServiceId) {
-        fetchAvailability(professionalSlug, selectedServiceId);
-      }
+      fetchAvailability(professionalSlug, serviceId);
       setStep("slot");
     },
-    [selectedServiceId, fetchAvailability, resetKey]
+    [fetchAvailability, resetKey]
   );
 
   const handleSelectSlot = useCallback(
@@ -318,16 +333,10 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
   function handleBack() {
     switch (step) {
-      case "professional":
+      case "slot":
         resetKey();
         setStep("service");
         setSelectedProfessionalSlug(null);
-        setSelectedSlot(null);
-        setAvailability(null);
-        break;
-      case "slot":
-        resetKey();
-        setStep("professional");
         setSelectedSlot(null);
         setAvailability(null);
         break;
@@ -422,11 +431,10 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
   return (
     <div className={cn("space-y-6", className)}>
       <nav aria-label="Etapas do agendamento" className="flex items-center gap-1 text-sm">
-        {(["service", "professional", "slot", "client", "confirm"] as Step[]).map(
+        {(["service", "slot", "client", "confirm"] as Step[]).map(
           (s, i) => {
             const stepLabels: Record<Step, string> = {
               service: "Servico",
-              professional: "Profissional",
               slot: "Horario",
               client: "Dados",
               confirm: "Confirmar",
@@ -437,7 +445,6 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
             const currentIdx = [
               "service",
-              "professional",
               "slot",
               "client",
               "confirm",
@@ -471,75 +478,11 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
       {step === "service" && (
         <VitrineDisplay
           data={vitrine}
-          onSelectService={handleSelectService}
+          onSelectService={handleToggleService}
+          onSelectProfessional={handleSelectProfessional}
           selectedServiceId={selectedServiceId ?? undefined}
+          selectedProfessionalSlug={selectedProfessionalSlug ?? undefined}
         />
-      )}
-
-      {step === "professional" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleBack} aria-label="Voltar">
-              Voltar
-            </Button>
-          </div>
-
-          {selectedService && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Servico selecionado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <span className="text-sm text-[var(--color-foreground)]">
-                  {selectedService.name} · {selectedService.durationMin}min ·{" "}
-                  {(selectedService.priceCents / 100).toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: selectedService.currency,
-                  })}
-                </span>
-              </CardContent>
-            </Card>
-          )}
-
-          {selectedService && selectedService.professionalSlugs.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-[var(--color-muted-foreground)]">
-                Nenhum profissional disponível para este serviço.
-              </p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={handleBack}>
-                Escolher outro serviço
-              </Button>
-            </div>
-          ) : (
-            <>
-              <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
-                Escolha o profissional
-              </h2>
-              <ul className="grid gap-3" role="listbox" aria-label="Profissionais">
-                {vitrine.professionals
-                  .filter((pro) => selectedService?.professionalSlugs.includes(pro.slug))
-                  .map((pro) => (
-                    <li key={pro.slug} role="option" aria-selected={selectedProfessionalSlug === pro.slug}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "w-full text-left rounded-[var(--radius-card)] border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
-                          selectedProfessionalSlug === pro.slug
-                            ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
-                            : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-muted-foreground)]"
-                        )}
-                        onClick={() => handleSelectProfessional(pro.slug)}
-                      >
-                        <span className="text-sm font-medium text-[var(--color-foreground)]">
-                          {pro.name}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-              </ul>
-            </>
-          )}
-        </div>
       )}
 
       {step === "slot" && (
@@ -551,7 +494,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
           </div>
 
           <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
-            Escolha o horario
+            Escolha dia e horario
           </h2>
 
           {availabilityLoading ? (
@@ -614,10 +557,13 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
               <Input
                 id="client-phone"
                 type="tel"
+                inputMode="tel"
+                maxLength={PHONE_MAX_LENGTH}
                 placeholder="(11) 99999-9999"
                 value={client.phone}
                 onChange={(e) => {
-                  setClient((prev) => ({ ...prev, phone: e.target.value }));
+                  const masked = formatPhoneBR(e.target.value);
+                  setClient((prev) => ({ ...prev, phone: masked }));
                   if (clientErrors.phone) {
                     setClientErrors((prev) => {
                       const next = { ...prev };
@@ -677,7 +623,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--color-muted-foreground)]">Data/Hora</span>
                 <span className="font-medium text-[var(--color-foreground)]">
-                  {selectedSlot.startsAt}
+                  {formatSlotDateTime(selectedSlot.startsAt, vitrine.timezone)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
