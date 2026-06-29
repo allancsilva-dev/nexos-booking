@@ -102,7 +102,7 @@ function fetchJson(pathStr, opts = {}) {
           let json = null;
           try {
             json = JSON.parse(body);
-          } catch {}
+          } catch { /* ignore */ }
           resolve({
             status: res.statusCode,
             headers: res.headers,
@@ -124,7 +124,7 @@ async function waitForApi(timeoutMs = 20_000) {
     try {
       const res = await fetchJson("/health");
       if (res.status === 200) return;
-    } catch {}
+    } catch { /* ignore */ }
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
   throw new Error("API did not start within timeout");
@@ -173,7 +173,7 @@ function startApi() {
 async function stopApi(api) {
   try {
     api.proc.kill("SIGTERM");
-  } catch {}
+  } catch { /* ignore */ }
 
   await new Promise((resolve) => {
     const timer = setTimeout(resolve, 3000);

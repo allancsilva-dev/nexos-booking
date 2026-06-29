@@ -14,7 +14,6 @@ import {
   alignToSlotGrid,
   civilDateStartToInstant,
   formatInstantWithOffset,
-  instantToCivilDate,
   zonedDateTimeToInstant,
   AVAILABILITY_MAX_RANGE_DAYS,
 } from "@nexos/shared";

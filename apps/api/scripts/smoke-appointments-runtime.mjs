@@ -108,7 +108,7 @@ async function waitForApi(timeoutMs = 20_000) {
     try {
       const res = await fetchJson("/health");
       if (res.status === 200) return;
-    } catch {}
+    } catch { /* ignore */ }
     await new Promise((r) => setTimeout(r, 300));
   }
   throw new Error("API did not start within timeout");
@@ -155,7 +155,7 @@ function startApi() {
 }
 
 function killApi(api) {
-  try { api.proc.kill("SIGTERM"); } catch {}
+  try { api.proc.kill("SIGTERM"); } catch { /* ignore */ }
 }
 
 async function stopApi(api) {
