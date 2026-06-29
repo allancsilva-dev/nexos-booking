@@ -1,145 +1,158 @@
-Você é o executor de um único PR/documentação do projeto `nexos-booking`.
+# EXECUTION_PROMPT_PROTOCOL — gabarito de prompt por PR (`nexos-booking`)
 
-Tarefa atual: atualizar `docs/EXECUTION_PROMPT_PROTOCOL.md` para `v1.1`.
+**Versão:** v1.1 · **Natureza:** GABARITO (molde reutilizável), não instância.
 
-Implemente exclusivamente esta alteração documental.
+> **Leia isto primeiro.** Este arquivo é o **molde abstrato** dos 13 blocos que todo prompt de execução
+> de PR segue. Ele **não** é o prompt de nenhum PR específico. Um prompt já preenchido para um PR (ex.: o
+> prompt do `PR-VERIFY-RLS-RUNTIME-01`) é uma **instância** deste gabarito — não confunda os dois. Se um
+> arquivo "protocolo" começar com "PROMPT 1 — PR-…" e trouxer comandos concretos, é instância, não este
+> gabarito.
 
-Não implemente código. Não altere migrations. Não altere `apps/`, `packages/`, schema, API, auth, RLS, CI ou qualquer feature. Não avance para PR-1.1. Não faça commit.
+---
 
-## Fontes obrigatórias
+## 0. Para que serve e quem usa
 
-Antes de alterar o arquivo, leia:
+- **Objetivo:** garantir que todo despacho de PR ao executor (OpenCode/subagentes) tenha a mesma
+  estrutura de 13 blocos, com **restrição antes de capacidade**, gates de parada e provas obrigatórias —
+  para evitar escopo solto, falso PASS e premissa incorreta (lição **F2/sid**).
+- **Quem compõe:** o `conductor` compõe (ou, em PRs densos, dispara o `design-auditor`) o prompt de cada
+  PR a partir da **trilha de condução ativa** + deste gabarito. Diagnósticos read-only podem ser compostos
+  direto da seção do roadmap correspondente; gates de segurança usam o prompt **escrito à mão**.
+- **Quem executa:** o subagente executor segue o prompt **estritamente**, um PR por vez.
+- **Quem aprova:** o **humano** aprova nos gates (5b e fechamento). Commit/push são **sempre** do humano.
 
-* `docs/EXECUTION_PROMPT_PROTOCOL.md`
-* `docs/MVP_EXECUTION_PLAN.md`
-* `docs/IMPLEMENTATION_ROADMAP.md`
-* `docs/ARCHITECTURE_DECISIONS.md`
-* `docs/BUGFIX_LOG.md`
-* `docs/pr/PR-0.2_REPORT.md`
-* `docs/pr/PR-0.3_REPORT.md`
+## 1. Princípios invariantes (valem para todo PR)
 
-## Objetivo
+- **Papel do executor:** "**executor de UM ÚNICO PR**". Nunca "engenheiro sênior". **Restrição vem
+  primeiro**; capacidade depois.
+- **Um PR por vez. Sem antecipar fase futura. Sem commit.**
+- **Ordem de autoridade documental:** `ARCHITECTURE_DECISIONS.md` (ADR) → `DATABASE_SCHEMA_V2.md` →
+  `API_CONTRACTS.md` → `PLANNING.md` → `IMPLEMENTATION_ROADMAP.md`. `POST_MVP_*` é **referência futura**,
+  nunca fonte. `MVP_EXECUTION_PLAN.md`, `IMPLEMENTATION_ROADMAP.md` e `WEB_IMPLEMENTATION_ROADMAP.md`
+  **organizam** a execução — **não são contrato**; em conflito, vence a hierarquia acima.
+  `PATCHES_PLANNING_E_SCHEMA.md` é histórico/aplicado, não fonte ativa.
+- **Lock documental:** ADR/SCHEMA/API/PLANNING/ROADMAP **não se editam**. Divergência descoberta na
+  execução vira **PROPOSTA no `BUGFIX_LOG.md`** (via docs-reporter), nunca alteração silenciosa.
+- **`NÃO EXECUTADO` nunca vira PASS por inferência.** Comando que não rodou é `NÃO EXECUTADO`, ponto.
+- **Builders só rodam após o 5b aprovado pelo humano.** Pular o 5b foi a causa de falso PASS no passado.
+- **Veredito:** `PASS` · `PASS_COM_RESSALVA` · `BLOCKED`. **Enquanto a CI estiver deferida (D10),** o
+  desfecho permitido de PR de build é **`PASS_PROVISÓRIO_CI_PENDENTE`** — nunca `PASS` pleno (esse só na
+  passada única de CI no fim). **Diagnósticos read-only têm veredito próprio** (ex.: inventário → MAPA;
+  verificação de segurança → PASS/FAIL binário).
+- **Commit/push são do humano**, em qualquer PR.
 
-Atualizar o protocolo de prompts para `v1.1`, formalizando o modelo canônico de 13 blocos usado daqui para frente.
+---
 
-A mudança principal é adicionar a auditoria de desenho com parada obrigatória antes de qualquer alteração de arquivo, além de tornar obrigatórias a prova negativa quando aplicável e a trava documental.
+## 2. Os 13 blocos (o gabarito)
 
-## Escopo permitido
+> Preencha cada bloco para o PR em questão. Mantenha a ordem e os nomes. Onde diz "(adapte por tipo de
+> PR)", veja a seção 4.
 
-Alterar somente:
+### [1] IDENTIFICAÇÃO
+Quem é o executor e qual é o PR. Frase de papel: "Você é o executor de UM ÚNICO PR do `nexos-booking`:
+`<ID-DO-PR>`. Você NÃO é engenheiro sênior, não tem autonomia de escopo." **Restrição primeiro.** Diga em
+uma linha qual é a função única do PR.
 
-* `docs/EXECUTION_PROMPT_PROTOCOL.md`
+### [2] REGRA CENTRAL
+Um PR só, sem antecipar nenhum outro. Liste o que é **proibido por natureza** neste PR (no mínimo:
+`git add`/`git commit`/`git push`; para read-only: também escrever arquivo, DDL, migration, alterar
+role/grant/.env, escrever código, qualquer `INSERT/UPDATE/DELETE`).
 
-A alteração deve incluir:
+### [3] FONTES OBRIGATÓRIAS DE LEITURA (antes de qualquer comando)
+Os documentos e **§/ADR exatos** que o executor deve ler antes de agir, mais os caminhos de código que
+pode inspecionar. Cite seção/linha, não "o documento inteiro". As fontes têm de **existir no repo** na
+forma correta — premissa incorreta aqui produz falso PASS (F2/sid).
 
-1. Identificação do executor e do PR.
-2. Regra central: um PR só, sem antecipar escopo, sem commit automático.
-3. Fontes obrigatórias de leitura.
-4. Ordem de autoridade documental.
-5. Auditoria de estado.
-6. Auditoria de desenho com parada obrigatória.
-7. Objetivo do PR.
-8. Escopo permitido.
-9. Escopo proibido.
-10. Arquivos esperados.
-11. Validações obrigatórias com prova positiva e prova negativa quando aplicável.
-12. Relatório obrigatório.
-13. Regras de parada.
-14. Entrega final esperada.
+### [4] ORDEM DE AUTORIDADE DOCUMENTAL
+Reafirme a hierarquia (princípio 1.3) e a regra de que divergência **não se corrige aqui** — vira proposta
+no `BUGFIX_LOG` (bloco 12).
 
-Observação: pode manter a numeração como 13 blocos se a auditoria for dividida em `5a` e `5b`.
+### [5a] AUDITORIA DE ESTADO
+O que o executor levanta **sem alterar nada** para formar a figura atual: o que já existe, o que falta, o
+que só dá para confirmar depois (e por isso fica para depois do 5b). Separe "levantável agora" de "depende
+de inspeção efetiva".
 
-## Regras específicas do v1.1
+### [5b] AUDITORIA DE DESENHO — **PARADA OBRIGATÓRIA**
+Antes de **qualquer** escrita, `curl`, comando em runtime ou inspeção efetiva, o executor **DEVOLVE e
+PARA** para aprovação humana, entregando um **mapa ancorado em §X/ADR**:
+1. O que será tocado e o que **NÃO** pode ser tocado; invariantes que precisam sobreviver; onde parar se
+   houver conflito.
+2. Para PRs que rodam comandos: a **lista exata** dos comandos/`curl`/SQL que pretende rodar, cada um
+   ancorado em §/ADR.
+3. O que conta como **prova positiva** e como **prova negativa** em cada checagem.
+**Nenhum builder, `curl` ou inspeção roda antes deste mapa voltar e o humano aprovar.** "Compor sem prompt
+manual" **não** dispensa o 5b.
 
-A auditoria de estado deve exigir, no mínimo:
+### [6] OBJETIVO
+O resultado do PR em uma a três linhas, objetivo e verificável. Para verificação: resultado binário com
+prova. Para build: o comportamento entregue. Para proposta: a decisão a ratificar.
 
-* `git status --short`;
-* confirmação de PR anterior `PASS`;
-* relatório do PR anterior existente;
-* working tree limpo ou alteração pré-existente explicitamente isolada;
-* confirmação de que o PR atual começa do estado correto.
+### [7] ESCOPO PERMITIDO
+Exatamente o que o executor pode tocar/rodar. (adapte por tipo de PR)
 
-A auditoria de desenho deve exigir parada obrigatória antes de alterar arquivos.
+### [8] ESCOPO PROIBIDO
+O que encerra em `BLOCKED` se forçado. Inclua sempre: editar fora do escopo; antecipar PR futuro;
+commit/push; "corrigir" bug que pertence a outro PR; afrouxar invariante de segurança. (adapte por tipo)
 
-Antes de implementar, o executor deve devolver um mapa do que pretende construir ou alterar, ancorado nas fontes canônicas. Para PRs de banco, esse mapa deve listar tabelas, colunas, nullability, constraints, índices, FKs, policies, triggers, functions e resolvers. Para PRs de contrato, deve listar tipos, payloads, códigos e helpers. Para PRs de UI/API, deve listar rotas, componentes, DTOs, estados e efeitos.
+### [9] ARQUIVOS ESPERADOS
+Os caminhos que o PR deve produzir/alterar. Para read-only: "**nenhum arquivo alterado**; saída é o
+relatório (bloco 11)". Marque como **provisórios** se dependerem de um diagnóstico ainda não feito.
 
-O executor não deve continuar para implementação enquanto essa auditoria de desenho não estiver registrada no relatório ou explicitamente aprovada, conforme o prompt do PR.
+### [10] VALIDAÇÕES OBRIGATÓRIAS (**prova positiva E negativa**)
+Como se prova que o PR está certo. **Todo ramo de erro exige prova negativa.** O que não foi rodado entra
+como `NÃO EXECUTADO`, jamais PASS. Para verificações de segurança: prova direta no banco/runtime, não por
+endpoint HTTP (guard/controller pode mascarar).
 
-A ordem de autoridade deve ficar clara:
+### [11] RELATÓRIO OBRIGATÓRIO
+O que o executor entrega ao final, incluindo **seção de "COMANDOS/PASSOS NÃO EXECUTADOS E MOTIVO"** (impede
+PASS implícito quando algo falha por permissão, falta de dado ou ambiente incompleto). Para read-only:
+o MAPA/relatório. Para build: arquivos alterados, o que ficou deliberadamente fora, testes/comandos
+rodados e os `NÃO EXECUTADO`.
 
-1. `ARCHITECTURE_DECISIONS.md`
-2. `DATABASE_SCHEMA_V2.md`
-3. `API_CONTRACTS.md`
-4. `PLANNING.md`
-5. `IMPLEMENTATION_ROADMAP.md`
-6. `POST_MVP_PRODUCT_ROADMAP.md` apenas como orientação futura
+### [12] REGRAS DE PARADA
+- **Trava documental:** não alterar canônico; divergência → proposta no `BUGFIX_LOG`.
+- Se qualquer passo exigir escrita/privilégio que viole o bloco 8: **PARE e reporte**, não execute.
+- **Sem gate humano no 5b aprovado, não rode inspeção/build.**
 
-`MVP_EXECUTION_PLAN.md` organiza a execução. `EXECUTION_PROMPT_PROTOCOL.md` define o protocolo operacional. Eles não substituem ADR, schema ou contrato HTTP.
+### [13] ENTREGA FINAL ESPERADA
+O artefato final e o **veredito** no vocabulário do princípio 1.7. Diga explicitamente o que este veredito
+**bloqueia** a jusante (ex.: um VERIFY em FAIL bloqueia qualquer builder tenant-scoped até ficar verde).
 
-A prova negativa deve virar regra obrigatória quando o PR criar gate, constraint, validação, type-check, migration runner, política de segurança ou qualquer mecanismo que precise falhar diante de caso inválido.
+---
 
-Exemplos:
+## 3. Premissas canônicas que TODO handoff embute (lição F2/sid)
 
-* migration inválida deve quebrar o runner;
-* ausência de `ErrorCode` deve quebrar type-check;
-* operação proibida por RLS deve falhar;
-* `UPDATE`/`DELETE` em `audit_logs` deve falhar quando append-only for implementado;
-* payload inválido deve falhar validação quando houver validação implementada.
+Carregue estas como premissa em todo prompt aplicável, para o auditor/executor não validar contra suposição
+errada:
 
-A trava documental deve dizer:
+- `/auth/me` é **fonte única** do estado de sessão (sem sintetizar do body).
+- `Idempotency-Key` **estável por submissão** em toda mutação; `If-Match: <version>` em remarcação/ações.
+- Matriz de transições / `alignToSlotGrid` vêm do `packages/shared` (não redeclarar contrato local).
+- Público **sempre** rejeita fora da jornada; **token no body**, nunca em path/query; `consent` obrigatório.
+- **`403`** (mesma org, sem permissão) × **`404`** (cross-tenant/inexistente).
+- **RLS provada → isolamento provado**: sem o VERIFY verde, isolamento não é critério de aceite de tela.
+- **Sem PII** em log/`metadata`/socket.
+- **`NÃO EXECUTADO` nunca vira PASS por inferência** · **builders só após 5b** · **commit/push são do humano**.
 
-* não alterar documento canônico silenciosamente para fazer o código “bater”;
-* divergência entre documentos deve parar a execução;
-* divergência deve ser registrada no `BUGFIX_LOG.md` ou proposta como ADR, conforme severidade;
-* só depois da decisão registrada o PR pode continuar.
+---
 
-O papel do executor deve continuar sendo restritivo:
+## 4. Adaptação por tipo de PR (o gabarito é o mesmo; alguns blocos mudam)
 
-* usar “executor de um único PR”;
-* não usar “engenheiro sênior” como moldura principal;
-* não autorizar refactor, antecipação, melhoria oportunista ou preparação de futuro fora do escopo do PR.
+- **Diagnóstico read-only (ex.: inventário, verificação):** blocos 7/8 = leitura + comandos read-only,
+  sem escrita; bloco 9 = nenhum arquivo; bloco 11 = MAPA/relatório; bloco 13 = veredito próprio (MAPA, ou
+  PASS/FAIL binário), **não** PASS/FAIL de build. O 5b lista os comandos/`curl` antes de rodar.
+- **Build de backend:** blocos 7/8 limitam a `apps/api/**` (+ `packages/shared` só se o contrato já
+  permitir); bloco 10 exige testes com prova positiva e negativa; bloco 13 fecha em
+  `PASS_PROVISÓRIO_CI_PENDENTE` sob D10.
+- **Build de frontend:** executor `frontend-builder`, edita **só** `apps/web/**`; mudança em `shared`
+  (contrato) ou instalar dependência fora do 5b → PARA e devolve `BLOCKED`; demais regras iguais ao build.
+- **Proposta que muda canônico (PROP-*):** não implementa; bloco 11/13 entregam a **PROPOSTA/ADR** para
+  ratificação humana, registrada no `BUGFIX_LOG`. Implementação só vem em PR posterior, após ratificada.
 
-## Escopo proibido
+---
 
-Não alterar:
+## 5. Nota sobre instâncias
 
-* `docs/ARCHITECTURE_DECISIONS.md`
-* `docs/DATABASE_SCHEMA_V2.md`
-* `docs/API_CONTRACTS.md`
-* `docs/PLANNING.md`
-* `docs/IMPLEMENTATION_ROADMAP.md`
-* `docs/MVP_EXECUTION_PLAN.md`
-* `docs/BUGFIX_LOG.md`
-* `apps/**`
-* `packages/**`
-* `.github/**`
-* migrations
-* scripts
-* lockfile
-
-Não criar prompt do PR-1.1 neste mesmo passo.
-
-## Validações
-
-Executar:
-
-```bash
-git status --short
-```
-
-Se houver alteração pré-existente fora de `docs/EXECUTION_PROMPT_PROTOCOL.md`, registrar e não tocar nela.
-
-Se houver ferramenta de markdown/lint já configurada no repo para docs, executar. Se não houver, registrar `N/A — sem lint específico de markdown configurado`.
-
-## Relatório final
-
-Ao final, responder com:
-
-* status final;
-* arquivo alterado;
-* resumo exato do que mudou no protocolo;
-* confirmação de que nenhum código foi alterado;
-* confirmação de que nenhum documento canônico foi alterado;
-* confirmação de que o PR-1.1 não foi iniciado;
-* confirmação de que nenhum commit foi feito.
-
+Prompts já preenchidos (ex.: `PR-VERIFY-RLS-RUNTIME-01`, `PR-DIAG-WEB`) são **instâncias** deste gabarito e
+vivem como arquivos próprios — não dentro deste documento. Manter este arquivo como molde puro evita que um
+prompt de PR seja lido por engano como "o protocolo".

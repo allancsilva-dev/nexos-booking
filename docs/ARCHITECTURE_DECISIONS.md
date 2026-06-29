@@ -678,6 +678,27 @@ rejeita por "fora da grade" — bug silencioso e quase irreproduzível. A fixtur
   junto de buffers/overrides em `professional_services` (PLANNING §10.2).
 - Espelhos: API §15/§16.1, PLANNING §10.2/§16, ROADMAP PR-3.1.
 
+**Emenda (2026-06-26) — grade por serviço promovida ao MVP (ref. PROP-SLOT-STEP-PER-SERVICE-01):**
+- **Motivação:** com múltiplas empresas/profissionais reais em uso, a config única `slot_interval_min` por
+  empresa não atende empresas com serviços de durações distintas (ex.: corte 50, barba 30). O link público
+  ofertava cadência fixa (default 30), ignorando a duração do serviço escolhido.
+- **Decisão:** o passo da grade passa a ser **resolvido por serviço**, não por uma config global única.
+  Ordem de resolução do passo: (1) override explícito por serviço, se houver; senão (2) `duration_min` do
+  serviço como passo. `organizations.slot_interval_min` permanece apenas como **fallback/default** quando
+  não houver passo resolvível por serviço.
+- **Preserva a alavanca de ocupação** (razão original da rejeição): o override por serviço pode ser **menor**
+  que a `duration_min` (mais pontos de início, melhor ocupação) — não se fixa cegamente "grade = duração".
+  O default `passo = duration_min` é só o caso mais comum, não uma trava no código.
+- **Invariantes mantidos:** âncora única = início da jornada do profissional no dia (inalterada); utilitário
+  único `alignToSlotGrid` reusado por availability e validação do POST; **gate de coerência POST↔availability
+  sob DST permanece** — todo slot emitido pelo availability deve passar na validação de grade do POST, agora
+  com o passo por serviço. Só o **valor do passo** muda; a semântica de âncora/coerência não.
+- **Local do passo por serviço:** a definir no design-auditor — candidato `professional_services`
+  (alinhado a buffers/overrides já registrados em PLANNING §10.2) ou `services`. Migração **aditiva**.
+- **Contrato:** `slotIntervalMin` na resposta de availability deixa de ser a fonte única de cadência;
+  api-contract-guardian decide se vira informativo, por-serviço, ou é aposentado. `packages/shared` e
+  `alignToSlotGrid` recebem o passo do serviço.
+
 ## ADR-024 — Antecedência mínima de agendamento público + nota sobre força do anti-abuso
 **Status:** Aceita — antecipa do pós-MVP (POST_MVP §6.1) uma validação temporal barata.
 **Contexto:** o horizonte máximo (90 dias) fecha o flanco "longe demais", mas o flanco oposto estava
