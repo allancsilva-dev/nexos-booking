@@ -1,6 +1,12 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { apiFetch } from "@/lib/http-client";
 import type {
   ProfessionalDTO,
@@ -93,4 +99,36 @@ export function useSetProfessionalServicesMutation(activeOrgId: string) {
       });
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Serviços vinculados de cada profissional (agregado para a tela de equipe).
+// Reaproveita o mesmo queryKey de useProfessionalServicesQuery, então a cache
+// e as invalidações continuam coerentes.
+// ---------------------------------------------------------------------------
+
+export function useProfessionalServiceIds(
+  activeOrgId: string | null | undefined,
+  professionals: ProfessionalDTO[] | undefined,
+) {
+  const list = professionals ?? [];
+
+  const results = useQueries({
+    queries: list.map((p) => ({
+      queryKey: ["professional-services", activeOrgId ?? "", p.id],
+      queryFn: () =>
+        apiFetch<ProfessionalServicesResponse>(
+          `/api/v1/professionals/${p.id}/services`,
+        ),
+      enabled: !!activeOrgId,
+    })),
+  });
+
+  return useMemo(() => {
+    const map = new Map<string, string[]>();
+    list.forEach((p, i) => {
+      map.set(p.id, results[i]?.data?.serviceIds ?? []);
+    });
+    return map;
+  }, [results.map((r) => r.dataUpdatedAt).join(","), list.map((p) => p.id).join(",")]);
 }

@@ -29,6 +29,7 @@ import { ScheduleShell } from "@/components/schedule/schedule-shell";
 import { ScheduleSidebarSummary } from "@/components/schedule/schedule-sidebar-summary";
 import { ScheduleWeekGrid } from "@/components/schedule/schedule-week-grid";
 import { OperationalModal } from "@/components/ui/operational/modal";
+import { PageChrome } from "@/components/shell/page-chrome";
 import {
   addDaysToCivilDate,
   getCivilDateInTimeZone,
@@ -425,6 +426,7 @@ export default function SchedulePage() {
 
   return (
     <>
+      <PageChrome title="Agenda" subtitle="Atendimentos por profissional" />
       <ScheduleShell
         header={
           <ScheduleHeader

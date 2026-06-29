@@ -21,7 +21,7 @@ export function PublicBookingLinkCard({ slug }: PublicBookingLinkCardProps) {
 
   const url =
     slug && typeof window !== "undefined"
-      ? `${window.location.origin}/${slug}`
+      ? `${window.location.origin}/${slug}/agendar`
       : "";
 
   async function handleCopy() {

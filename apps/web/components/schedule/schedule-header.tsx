@@ -31,15 +31,6 @@ export function ScheduleHeader({
   return (
     <header className="flex flex-col gap-4 px-4 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
       <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold capitalize tracking-tight text-[var(--color-foreground)]">
-            {heading.title}
-          </h1>
-          <p className="text-sm font-medium text-[var(--color-muted-foreground)]">
-            {heading.subtitle}
-          </p>
-        </div>
-
         <div className="flex items-center rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-1">
           <Button variant="ghost" size="icon" className="h-10 w-10 text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)]" onClick={onPrev}>
             <ChevronLeft className="h-4 w-4" />
@@ -50,6 +41,10 @@ export function ScheduleHeader({
           <Button variant="ghost" size="icon" className="h-10 w-10 text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)]" onClick={onNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
+        </div>
+
+        <div className="text-[15px] font-extrabold capitalize tracking-tight text-[var(--color-foreground)]">
+          {heading.title}
         </div>
       </div>
 

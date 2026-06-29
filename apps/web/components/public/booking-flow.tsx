@@ -1,27 +1,23 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from "react";
 import type {
   PublicVitrineResponse,
   AvailabilityResponse,
   PublicBookingResponse,
 } from "@nexos/shared";
-import { VitrineDisplay } from "@/components/public/vitrine-display";
-import { SlotPicker } from "@/components/public/slot-picker";
-import { ErrorFeedback } from "@/components/public/error-feedback";
 import { ConfirmationScreen } from "@/components/public/confirmation-screen";
+import { ErrorFeedback } from "@/components/public/error-feedback";
 import { LoadingState } from "@/components/loading-state";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch, ApiError } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 import { cn } from "@/lib/utils";
 import { formatPhoneBR, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { useStableIdempotencyKey } from "@/hooks/use-stable-idempotency-key";
+import { Scissors, User, CalendarDays, Star, ChevronLeft, ChevronRight } from "lucide-react";
 
-type Step = "service" | "slot" | "client" | "confirm" | "confirming" | "done" | "error";
+type Step = "form" | "confirming" | "done" | "error";
 
 interface ClientInfo {
   name: string;
@@ -41,6 +37,8 @@ interface BookingFlowProps {
   className?: string;
 }
 
+const CAT_VARS = [1, 5, 2, 4, 3]; // cyan, violet, emerald, rose, amber
+
 function getCivilDateInTimeZone(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,
@@ -56,13 +54,19 @@ function addCivilDays(dateStr: string, amount: number): string {
   return next.toISOString().slice(0, 10);
 }
 
-function formatSlotDateTime(iso: string, timeZone: string): string {
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function formatTime(iso: string, tz: string): string {
   try {
     return new Intl.DateTimeFormat("pt-BR", {
-      timeZone,
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
+      timeZone: tz,
       hour: "2-digit",
       minute: "2-digit",
     }).format(new Date(iso));
@@ -71,10 +75,66 @@ function formatSlotDateTime(iso: string, timeZone: string): string {
   }
 }
 
+function getMonthKey(dateStr: string): string {
+  return dateStr.slice(0, 7);
+}
+
+function getMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(
+    new Date(year!, month! - 1, 1),
+  );
+}
+
+function shiftMonth(monthKey: string, offset: number): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  const next = new Date(year!, month! - 1 + offset, 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// Grade de 6 semanas (42 células) começando no domingo, como no protótipo.
+function buildMonthGrid(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const first = new Date(year!, month! - 1, 1);
+  const start = new Date(year!, month! - 1, 1 - first.getDay());
+  return Array.from({ length: 42 }, (_, index) => {
+    const current = new Date(start);
+    current.setDate(start.getDate() + index);
+    return {
+      date: `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(
+        current.getDate(),
+      ).padStart(2, "0")}`,
+      dayNumber: current.getDate(),
+      inMonth: current.getMonth() === month! - 1,
+    };
+  });
+}
+
+const CAL_WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
+
+function formatSummaryWhen(dateStr: string, iso: string, tz: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y!, m! - 1, d!, 12));
+  const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: tz })
+    .format(date)
+    .replace(".", "");
+  const month = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: tz })
+    .format(date)
+    .replace(".", "");
+  return `${weekday}, ${d} ${month} · ${formatTime(iso, tz)}`;
+}
+
+function formatPrice(cents: number, currency: string): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(
+    cents / 100,
+  );
+}
+
 export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
-  const [step, setStep] = useState<Step>("service");
+  const [step, setStep] = useState<Step>("form");
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedProfessionalSlug, setSelectedProfessionalSlug] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{
     date: string;
     startsAt: string;
@@ -85,6 +145,8 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [error, setError] = useState<ErrorState | null>(null);
+  const [inlineErrors, setInlineErrors] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState<string | null>(null);
   const [bookingResult, setBookingResult] = useState<{
     professionalName: string;
     serviceName: string;
@@ -97,6 +159,17 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
   const { getKey, resetKey } = useStableIdempotencyKey();
 
   const selectedService = vitrine.services.find((s) => s.id === selectedServiceId);
+  const selectedProfessional = vitrine.professionals.find(
+    (p) => p.slug === selectedProfessionalSlug,
+  );
+
+  // Serviços oferecidos pelo profissional escolhido (backend rejeita combinação não vinculada).
+  const offeredServices = useMemo(() => {
+    if (!selectedProfessionalSlug) return vitrine.services;
+    return vitrine.services.filter((s) =>
+      s.professionalSlugs.includes(selectedProfessionalSlug),
+    );
+  }, [vitrine.services, selectedProfessionalSlug]);
 
   const fetchAvailability = useCallback(
     async (professionalSlug: string, serviceId: string) => {
@@ -113,42 +186,38 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
       try {
         const result = await apiFetch<AvailabilityResponse>(
           `/api/v1/public/${orgSlug}/professionals/${encodeURIComponent(professionalSlug)}/availability?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&serviceId=${encodeURIComponent(serviceId)}`,
-          {
-            signal: controller.signal,
-          }
+          { signal: controller.signal },
         );
         if (!controller.signal.aborted) {
           setAvailability(result);
+          const firstDay = result.days.find((d) => d.slots.length > 0);
+          setSelectedDate(firstDay?.date ?? result.days[0]?.date ?? null);
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         if (err instanceof ApiError) {
-          if (!controller.signal.aborted) {
-            setError({
-              code: err.code,
-              message: err.message,
-              requestId: err.requestId,
-              retryAfterSeconds: err.status === 429 ? 5 : undefined,
-            });
-            setStep("error");
-          }
+          setError({
+            code: err.code,
+            message: err.message,
+            requestId: err.requestId,
+            retryAfterSeconds: err.status === 429 ? 5 : undefined,
+          });
         } else {
-          if (!controller.signal.aborted) {
-            setError({
-              code: INTERNAL_ERROR,
-              message: "Erro ao buscar horarios disponiveis.",
-              requestId: "",
-            });
-            setStep("error");
-          }
+          setError({
+            code: INTERNAL_ERROR,
+            message: "Erro ao buscar horarios disponiveis.",
+            requestId: "",
+          });
         }
+        setStep("error");
       } finally {
         if (!controller.signal.aborted) {
           setAvailabilityLoading(false);
         }
       }
     },
-    [orgSlug]
+    [orgSlug, vitrine.timezone],
   );
 
   useEffect(() => {
@@ -157,55 +226,57 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     };
   }, []);
 
-  const handleToggleService = useCallback(
-    (serviceId: string) => {
-      resetKey();
-      setSelectedProfessionalSlug(null);
-      setSelectedSlot(null);
-      setAvailability(null);
-      // Toggle: clicar no serviço já expandido recolhe o card.
-      setSelectedServiceId((prev) => (prev === serviceId ? null : serviceId));
+  const maybeFetch = useCallback(
+    (pro: string | null, svc: string | null) => {
+      if (pro && svc) fetchAvailability(pro, svc);
     },
-    [resetKey]
+    [fetchAvailability],
   );
 
   const handleSelectProfessional = useCallback(
-    (serviceId: string, professionalSlug: string) => {
+    (slug: string) => {
       resetKey();
-      setSelectedServiceId(serviceId);
-      setSelectedProfessionalSlug(professionalSlug);
+      setNotice(null);
+      setSelectedProfessionalSlug(slug);
       setSelectedSlot(null);
+      setSelectedDate(null);
       setAvailability(null);
-      fetchAvailability(professionalSlug, serviceId);
-      setStep("slot");
+      // Mantém o serviço apenas se o novo profissional o oferece.
+      const keptService =
+        selectedServiceId &&
+        vitrine.services
+          .find((s) => s.id === selectedServiceId)
+          ?.professionalSlugs.includes(slug)
+          ? selectedServiceId
+          : null;
+      setSelectedServiceId(keptService);
+      maybeFetch(slug, keptService);
     },
-    [fetchAvailability, resetKey]
+    [resetKey, selectedServiceId, vitrine.services, maybeFetch],
   );
 
-  const handleSelectSlot = useCallback(
-    (slot: { date: string; startsAt: string; endsAt: string }) => {
+  const handleSelectService = useCallback(
+    (serviceId: string) => {
       resetKey();
-      setSelectedSlot(slot);
-      setStep("client");
+      setNotice(null);
+      setSelectedServiceId(serviceId);
+      setSelectedSlot(null);
+      setSelectedDate(null);
+      setAvailability(null);
+      maybeFetch(selectedProfessionalSlug, serviceId);
     },
-    [resetKey]
+    [resetKey, selectedProfessionalSlug, maybeFetch],
   );
 
-  const handleClientSubmit = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     const errors: Record<string, string> = {};
-    if (!client.name.trim()) errors.name = "Nome e obrigatorio.";
-    if (!client.phone.trim()) errors.phone = "Telefone e obrigatorio.";
+    if (!selectedProfessionalSlug) errors.professional = "Escolha um profissional.";
+    if (!selectedServiceId) errors.service = "Escolha um serviço.";
+    if (!selectedSlot) errors.slot = "Escolha um horário.";
+    if (!client.name.trim()) errors.name = "Nome é obrigatório.";
+    if (!client.phone.trim()) errors.phone = "Telefone é obrigatório.";
     setClientErrors(errors);
-
-    if (Object.keys(errors).length === 0) {
-      setInlineErrors({});
-      setStep("confirm");
-    }
-  }, [client]);
-
-  const [inlineErrors, setInlineErrors] = useState<Record<string, string>>({});
-
-  const handleConfirmBooking = useCallback(async () => {
+    if (Object.keys(errors).length > 0) return;
     if (!selectedServiceId || !selectedProfessionalSlug || !selectedSlot) return;
 
     setStep("confirming");
@@ -216,10 +287,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
       professionalSlug: selectedProfessionalSlug,
       serviceId: selectedServiceId,
       startsAt: selectedSlot.startsAt,
-      client: {
-        name: client.name.trim(),
-        phone: client.phone.trim(),
-      },
+      client: { name: client.name.trim(), phone: client.phone.trim() },
       consent: true as const,
     };
 
@@ -229,10 +297,8 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
         {
           method: "POST",
           body: JSON.stringify(payload),
-          headers: {
-            "Idempotency-Key": getKey(),
-          },
-        }
+          headers: { "Idempotency-Key": getKey() },
+        },
       );
 
       setBookingResult({
@@ -247,29 +313,27 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     } catch (err) {
       if (err instanceof ApiError) {
         resetKey();
-        if (err.code === "APPOINTMENT_CONFLICT") {
-          setStep("error");
-          setError({
-            code: err.code,
-            message: err.message,
-            requestId: err.requestId,
-          });
 
+        if (err.code === "APPOINTMENT_CONFLICT") {
+          setSelectedSlot(null);
+          setNotice(
+            "Este horário acabou de ser reservado. Atualizamos os horários disponíveis.",
+          );
+          setStep("form");
           if (selectedServiceId && selectedProfessionalSlug) {
             fetchAvailability(selectedProfessionalSlug, selectedServiceId);
           }
-          setSelectedSlot(null);
           return;
         }
 
         if (err.code === "RATE_LIMITED") {
-          setStep("error");
           setError({
             code: err.code,
             message: err.message,
             requestId: err.requestId,
             retryAfterSeconds: 5,
           });
+          setStep("error");
           return;
         }
 
@@ -278,46 +342,31 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
           const summaryErrors: Record<string, string> = {};
           if (Array.isArray(err.details)) {
             for (const detail of err.details) {
-              if (detail.field === "client.name") {
-                fieldErrors.name = detail.issue;
-              } else if (detail.field === "client.phone") {
-                fieldErrors.phone = detail.issue;
-              } else {
-                summaryErrors[detail.field] = detail.issue;
-              }
+              if (detail.field === "client.name") fieldErrors.name = detail.issue;
+              else if (detail.field === "client.phone") fieldErrors.phone = detail.issue;
+              else summaryErrors[detail.field] = detail.issue;
             }
           }
-          if (Object.keys(fieldErrors).length > 0) {
-            setClientErrors(fieldErrors);
-            setInlineErrors(summaryErrors);
-            setStep("client");
-          } else if (Object.keys(summaryErrors).length > 0) {
-            setInlineErrors(summaryErrors);
-            setStep("confirm");
-          } else {
+          setClientErrors(fieldErrors);
+          setInlineErrors(summaryErrors);
+          if (Object.keys(fieldErrors).length === 0 && Object.keys(summaryErrors).length === 0) {
+            setError({ code: err.code, message: err.message, requestId: err.requestId });
             setStep("error");
-            setError({
-              code: err.code,
-              message: err.message,
-              requestId: err.requestId,
-            });
+          } else {
+            setStep("form");
           }
           return;
         }
 
+        setError({ code: err.code, message: err.message, requestId: err.requestId });
         setStep("error");
-        setError({
-          code: err.code,
-          message: err.message,
-          requestId: err.requestId,
-        });
       } else {
-        setStep("error");
         setError({
           code: INTERNAL_ERROR,
           message: "Erro inesperado ao confirmar agendamento.",
           requestId: "",
         });
+        setStep("error");
       }
     }
   }, [
@@ -331,62 +380,28 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     resetKey,
   ]);
 
-  function handleBack() {
-    switch (step) {
-      case "slot":
-        resetKey();
-        setStep("service");
-        setSelectedProfessionalSlug(null);
-        setSelectedSlot(null);
-        setAvailability(null);
-        break;
-      case "client":
-        resetKey();
-        setStep("slot");
-        setClientErrors({});
-        break;
-      case "confirm":
-        setStep("client");
-        break;
-      default:
-        break;
-    }
-  }
-
-  function handleErrorRetry() {
-    setError(null);
-
-    if (
-      selectedServiceId &&
-      selectedProfessionalSlug &&
-      (step === "slot" || step === "error")
-    ) {
-      setStep("slot");
-      fetchAvailability(selectedProfessionalSlug, selectedServiceId);
-    } else if (step === "confirm" || step === "confirming") {
-      setStep("confirm");
-    }
-  }
-
-  function handleConflictRefetch() {
-    setError(null);
-    setStep("slot");
-    if (selectedServiceId && selectedProfessionalSlug) {
-      fetchAvailability(selectedProfessionalSlug, selectedServiceId);
-    }
-  }
-
   function handleNewBooking() {
     resetKey();
-    setStep("service");
+    setStep("form");
     setSelectedServiceId(null);
     setSelectedProfessionalSlug(null);
+    setSelectedDate(null);
     setSelectedSlot(null);
     setClient({ name: "", phone: "" });
     setAvailability(null);
     setBookingResult(null);
     setError(null);
     setClientErrors({});
+    setInlineErrors({});
+    setNotice(null);
+  }
+
+  function handleErrorRetry() {
+    setError(null);
+    setStep("form");
+    if (selectedProfessionalSlug && selectedServiceId) {
+      fetchAvailability(selectedProfessionalSlug, selectedServiceId);
+    }
   }
 
   if (step === "done" && bookingResult) {
@@ -408,255 +423,453 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     return (
       <ErrorFeedback
         code={error.code}
-        message={
-          error.code === "APPOINTMENT_CONFLICT"
-            ? "Este horario acabou de ser reservado. Os horarios disponiveis foram atualizados."
-            : error.message
-        }
+        message={error.message}
         requestId={error.requestId}
         retryAfterSeconds={error.retryAfterSeconds}
-        onRetry={error.code === "APPOINTMENT_CONFLICT" ? undefined : handleErrorRetry}
-        onRefetch={error.code === "APPOINTMENT_CONFLICT" ? handleConflictRefetch : undefined}
+        onRetry={handleErrorRetry}
         className={className}
       />
     );
   }
 
-  if (step === "confirming") {
-    return (
-      <LoadingState message="Confirmando agendamento..." className={className} />
+  const daysWithSlots = availability?.days ?? [];
+  const activeDay = daysWithSlots.find((d) => d.date === selectedDate) ?? null;
+
+  // ---- calendário mensal (janela de 7 dias: só os dias buscados são clicáveis) ----
+  const availableDates = useMemo(
+    () =>
+      new Set(
+        daysWithSlots.filter((d) => d.slots.length > 0).map((d) => d.date),
+      ),
+    [daysWithSlots],
+  );
+  const [calMonth, setCalMonth] = useState<string | null>(null);
+  // Recentraliza o calendário sempre que a disponibilidade muda (novo pro/serviço).
+  useEffect(() => {
+    setCalMonth(null);
+  }, [availability]);
+  const visibleMonth =
+    calMonth ??
+    getMonthKey(
+      selectedDate ??
+        daysWithSlots.find((d) => d.slots.length > 0)?.date ??
+        getCivilDateInTimeZone(new Date(), vitrine.timezone),
     );
-  }
+  const monthCells = useMemo(() => buildMonthGrid(visibleMonth), [visibleMonth]);
 
   return (
-    <div className={cn("space-y-6", className)}>
-      <nav aria-label="Etapas do agendamento" className="flex items-center gap-1 text-sm">
-        {(["service", "slot", "client", "confirm"] as Step[]).map(
-          (s, i) => {
-            const stepLabels: Record<Step, string> = {
-              service: "Servico",
-              slot: "Horario",
-              client: "Dados",
-              confirm: "Confirmar",
-              confirming: "Confirmar",
-              done: "Concluido",
-              error: "Erro",
-            };
+    <div
+      className={cn(
+        "overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)]",
+        className,
+      )}
+    >
+      {/* header */}
+      <div className="flex items-center gap-4 border-b border-[var(--color-border)] bg-[radial-gradient(120%_130%_at_0%_0%,#0e2230_0%,#0b1019_60%)] px-7 py-7">
+        <div
+          style={{ background: "var(--gradient-accent)" }}
+          className="flex h-[60px] w-[60px] items-center justify-center rounded-[16px] text-[var(--color-primary-foreground)] shadow-[0_10px_24px_rgba(8,145,178,0.4)]"
+        >
+          <Scissors className="h-[30px] w-[30px]" strokeWidth={2.3} />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-[23px] font-extrabold tracking-[-0.02em] text-[var(--color-foreground)]">
+            {vitrine.name}
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--color-muted-foreground)]">
+            <Star className="h-3.5 w-3.5 fill-[#fbbf24] text-[#fbbf24]" />
+            Agendamento online
+          </div>
+        </div>
+      </div>
 
-            const currentIdx = [
-              "service",
-              "slot",
-              "client",
-              "confirm",
-            ].indexOf(step);
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_330px]">
+        {/* ---- steps ---- */}
+        <div className="flex flex-col gap-7 p-7">
+          {/* PASSO 1 — profissional */}
+          <section>
+            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-accent-strong)]">
+              Passo 1
+            </div>
+            <h2 className="mb-3.5 mt-1 text-[15px] font-extrabold text-[var(--color-foreground)]">
+              Escolha o profissional
+            </h2>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+              {vitrine.professionals.map((pro, i) => {
+                const active = pro.slug === selectedProfessionalSlug;
+                const v = CAT_VARS[i % CAT_VARS.length];
+                return (
+                  <button
+                    key={pro.slug}
+                    type="button"
+                    onClick={() => handleSelectProfessional(pro.slug)}
+                    className={cn(
+                      "flex flex-col items-center rounded-[13px] border px-2 py-3.5 text-center transition-colors",
+                      active
+                        ? "border-[var(--color-primary)] bg-[var(--color-accent-soft)]"
+                        : "border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] hover:border-[var(--color-accent-strong)]",
+                    )}
+                  >
+                    <span
+                      className="flex h-[42px] w-[42px] items-center justify-center rounded-[12px] text-[14px] font-bold"
+                      style={{ background: `var(--cat-${v}-bg)`, color: `var(--cat-${v}-ink)` }}
+                    >
+                      {getInitials(pro.name)}
+                    </span>
+                    <span className="mt-2 truncate text-[12.5px] font-bold text-[var(--color-foreground)]">
+                      {pro.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {clientErrors.professional ? (
+              <p className="mt-2 text-xs text-[var(--color-destructive)]">{clientErrors.professional}</p>
+            ) : null}
+          </section>
 
-            const isActive = i === currentIdx;
-            const isPast = i < currentIdx;
+          {/* PASSO 2 — serviço */}
+          <section>
+            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-accent-strong)]">
+              Passo 2
+            </div>
+            <h2 className="mb-3.5 mt-1 text-[15px] font-extrabold text-[var(--color-foreground)]">
+              Escolha o serviço
+            </h2>
+            {offeredServices.length === 0 ? (
+              <p className="text-sm text-[var(--color-muted-foreground)]">
+                Este profissional não tem serviços disponíveis.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {offeredServices.map((svc) => {
+                  const active = svc.id === selectedServiceId;
+                  return (
+                    <button
+                      key={svc.id}
+                      type="button"
+                      onClick={() => handleSelectService(svc.id)}
+                      className={cn(
+                        "flex items-center gap-3.5 rounded-[12px] border px-3.5 py-3 text-left transition-colors",
+                        active
+                          ? "border-[var(--color-primary)] bg-[var(--color-accent-soft)]"
+                          : "border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] hover:border-[var(--color-accent-strong)]",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                          active ? "border-[var(--color-primary)]" : "border-[var(--color-border-strong)]",
+                        )}
+                      >
+                        {active ? (
+                          <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
+                        ) : null}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13.5px] font-bold text-[var(--color-foreground)]">
+                          {svc.name}
+                        </span>
+                        <span className="block text-[11.5px] text-[var(--color-muted-foreground)]">
+                          {svc.durationMin} min
+                        </span>
+                      </span>
+                      <span className="text-[14px] font-extrabold text-[var(--color-foreground)]">
+                        {formatPrice(svc.priceCents, svc.currency)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {clientErrors.service ? (
+              <p className="mt-2 text-xs text-[var(--color-destructive)]">{clientErrors.service}</p>
+            ) : null}
+          </section>
 
-            return (
-              <span key={s} className="flex items-center gap-1">
-                {i > 0 && (
-                  <span className="text-[var(--color-muted-foreground)]" aria-hidden="true">
-                    /
-                  </span>
+          {/* PASSO 3 — data e horário */}
+          <section>
+            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-accent-strong)]">
+              Passo 3
+            </div>
+            <h2 className="mb-3.5 mt-1 text-[15px] font-extrabold text-[var(--color-foreground)]">
+              Escolha a data
+            </h2>
+
+            {notice ? (
+              <div className="mb-3 rounded-[10px] border border-[var(--cat-3-line)] bg-[var(--cat-3-bg)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[var(--cat-3-ink)]">
+                {notice}
+              </div>
+            ) : null}
+
+            {!selectedProfessionalSlug || !selectedServiceId ? (
+              <p className="text-sm text-[var(--color-muted-foreground)]">
+                Selecione profissional e serviço para ver os horários.
+              </p>
+            ) : availabilityLoading ? (
+              <LoadingState message="Buscando horários..." />
+            ) : daysWithSlots.length === 0 ? (
+              <p className="text-sm text-[var(--color-muted-foreground)]">
+                Nenhum horário disponível nos próximos dias.
+              </p>
+            ) : (
+              <>
+                <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-4">
+                  <div className="mb-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm font-extrabold capitalize text-[var(--color-foreground)]">
+                        {getMonthLabel(visibleMonth)}
+                      </span>
+                      <span className="rounded-full bg-[var(--cat-1-bg)] px-2.5 py-[3px] text-[11px] font-bold text-[var(--cat-1-ink)]">
+                        Esta semana
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[var(--color-muted-foreground)]">
+                      <button
+                        type="button"
+                        aria-label="Mês anterior"
+                        onClick={() => setCalMonth(shiftMonth(visibleMonth, -1))}
+                        className="flex h-7 w-7 items-center justify-center rounded-[8px] transition-colors hover:bg-[var(--color-surface-operational-strong)] hover:text-[var(--color-foreground)]"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Próximo mês"
+                        onClick={() => setCalMonth(shiftMonth(visibleMonth, 1))}
+                        className="flex h-7 w-7 items-center justify-center rounded-[8px] transition-colors hover:bg-[var(--color-surface-operational-strong)] hover:text-[var(--color-foreground)]"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {CAL_WEEKDAYS.map((w, i) => (
+                      <div
+                        key={i}
+                        className="text-center text-[10.5px] font-bold text-[var(--color-muted-foreground)]"
+                      >
+                        {w}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+                    {monthCells.map((cell) => {
+                      const available = availableDates.has(cell.date);
+                      const active = available && cell.date === selectedDate;
+                      return (
+                        <button
+                          key={cell.date}
+                          type="button"
+                          disabled={!available}
+                          aria-pressed={active}
+                          onClick={() => {
+                            setSelectedDate(cell.date);
+                            setSelectedSlot(null);
+                          }}
+                          style={active ? { background: "var(--gradient-accent)" } : undefined}
+                          className={cn(
+                            "flex aspect-square items-center justify-center rounded-[8px] text-[13px] font-bold transition-colors",
+                            active
+                              ? "text-[var(--color-primary-foreground)]"
+                              : available
+                                ? "border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] text-[var(--color-foreground)] hover:border-[var(--color-accent-strong)]"
+                                : cn(
+                                    "cursor-not-allowed text-[var(--color-muted-foreground)]",
+                                    cell.inMonth ? "opacity-55" : "opacity-25",
+                                  ),
+                          )}
+                        >
+                          {cell.dayNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 text-[12px] font-bold text-[var(--color-muted-foreground)]">
+                  Horários disponíveis
+                </div>
+                {activeDay && activeDay.slots.length > 0 ? (
+                  <div className="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                    {activeDay.slots.map((slot) => {
+                      const active = selectedSlot?.startsAt === slot.startsAt;
+                      return (
+                        <button
+                          key={slot.startsAt}
+                          type="button"
+                          onClick={() =>
+                            setSelectedSlot({
+                              date: activeDay.date,
+                              startsAt: slot.startsAt,
+                              endsAt: slot.endsAt,
+                            })
+                          }
+                          style={active ? { background: "var(--gradient-accent)" } : undefined}
+                          className={cn(
+                            "rounded-[10px] py-2.5 text-center text-[12.5px] font-bold transition-colors",
+                            active
+                              ? "text-[var(--color-primary-foreground)]"
+                              : "border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] text-[var(--color-foreground)] hover:border-[var(--color-accent-strong)]",
+                          )}
+                        >
+                          {formatTime(slot.startsAt, vitrine.timezone)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+                    Sem horários neste dia.
+                  </p>
                 )}
-                <span
-                  className={cn(
-                    isActive && "text-[var(--color-primary)] font-semibold",
-                    isPast && "text-[var(--color-muted-foreground)]",
-                    !isActive && !isPast && "text-[var(--color-muted-foreground)]"
-                  )}
-                >
-                  {stepLabels[s]}
-                </span>
-              </span>
-            );
-          }
-        )}
-      </nav>
+                {clientErrors.slot ? (
+                  <p className="mt-2 text-xs text-[var(--color-destructive)]">{clientErrors.slot}</p>
+                ) : null}
+              </>
+            )}
+          </section>
+        </div>
 
-      {step === "service" && (
-        <VitrineDisplay
-          data={vitrine}
-          onSelectService={handleToggleService}
-          onSelectProfessional={handleSelectProfessional}
-          selectedServiceId={selectedServiceId ?? undefined}
-          selectedProfessionalSlug={selectedProfessionalSlug ?? undefined}
-        />
-      )}
-
-      {step === "slot" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleBack} aria-label="Voltar">
-              Voltar
-            </Button>
+        {/* ---- summary sidebar ---- */}
+        <div className="flex flex-col border-t border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-6 lg:border-l lg:border-t-0">
+          <div className="mb-4 text-sm font-extrabold text-[var(--color-foreground)]">
+            Seu agendamento
           </div>
 
-          <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
-            Escolha dia e horario
-          </h2>
-
-          {availabilityLoading ? (
-            <LoadingState message="Buscando horarios..." />
-          ) : availability ? (
-            <SlotPicker
-              days={availability.days}
-              timezone={availability.timezone}
-              selectedSlot={selectedSlot}
-              onSelectSlot={handleSelectSlot}
-              loading={availabilityLoading}
+          <div className="flex flex-col gap-3.5">
+            <SummaryRow
+              icon={<Scissors className="h-4 w-4" />}
+              label="Serviço"
+              value={selectedService?.name ?? "—"}
             />
-          ) : null}
-        </div>
-      )}
-
-      {step === "client" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleBack} aria-label="Voltar">
-              Voltar
-            </Button>
+            <SummaryRow
+              icon={<User className="h-4 w-4" />}
+              label="Profissional"
+              value={selectedProfessional?.name ?? "—"}
+            />
+            <SummaryRow
+              icon={<CalendarDays className="h-4 w-4" />}
+              label="Data e hora"
+              value={
+                selectedSlot
+                  ? formatSummaryWhen(selectedSlot.date, selectedSlot.startsAt, vitrine.timezone)
+                  : "—"
+              }
+            />
           </div>
 
-          <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
-            Seus dados
-          </h2>
+          <div className="my-5 h-px bg-[var(--color-border)]" />
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="client-name">Nome</Label>
-              <Input
-                id="client-name"
-                type="text"
-                placeholder="Seu nome completo"
-                value={client.name}
-                onChange={(e) => {
-                  setClient((prev) => ({ ...prev, name: e.target.value }));
-                  if (clientErrors.name) {
-                    setClientErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.name;
-                      return next;
-                    });
-                  }
-                }}
-                aria-invalid={!!clientErrors.name}
-                aria-describedby={clientErrors.name ? "client-name-error" : undefined}
-                autoComplete="name"
-              />
-              {clientErrors.name && (
-                <p id="client-name-error" className="text-sm text-[var(--color-destructive)]">
-                  {clientErrors.name}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="client-phone">Telefone</Label>
-              <Input
-                id="client-phone"
-                type="tel"
-                inputMode="tel"
-                maxLength={PHONE_MAX_LENGTH}
-                placeholder="(11) 99999-9999"
-                value={client.phone}
-                onChange={(e) => {
-                  const masked = formatPhoneBR(e.target.value);
-                  setClient((prev) => ({ ...prev, phone: masked }));
-                  if (clientErrors.phone) {
-                    setClientErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.phone;
-                      return next;
-                    });
-                  }
-                }}
-                aria-invalid={!!clientErrors.phone}
-                aria-describedby={clientErrors.phone ? "client-phone-error" : undefined}
-                autoComplete="tel"
-              />
-              {clientErrors.phone && (
-                <p id="client-phone-error" className="text-sm text-[var(--color-destructive)]">
-                  {clientErrors.phone}
-                </p>
-              )}
-            </div>
-
-            <Button className="w-full" onClick={handleClientSubmit}>
-              Continuar
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === "confirm" && selectedService && selectedSlot && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleBack} aria-label="Voltar">
-              Voltar
-            </Button>
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] font-semibold text-[var(--color-muted-foreground)]">
+              Total
+            </span>
+            <span className="text-[22px] font-extrabold tracking-[-0.02em] text-[var(--color-accent-strong)]">
+              {selectedService ? formatPrice(selectedService.priceCents, selectedService.currency) : "—"}
+            </span>
           </div>
 
-          <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
-            Confirmar agendamento
-          </h2>
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Input
+              placeholder="Seu nome"
+              value={client.name}
+              autoComplete="name"
+              aria-invalid={!!clientErrors.name}
+              onChange={(e) => {
+                setClient((prev) => ({ ...prev, name: e.target.value }));
+                if (clientErrors.name) {
+                  setClientErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.name;
+                    return next;
+                  });
+                }
+              }}
+            />
+            {clientErrors.name ? (
+              <p className="text-xs text-[var(--color-destructive)]">{clientErrors.name}</p>
+            ) : null}
+            <Input
+              type="tel"
+              inputMode="tel"
+              maxLength={PHONE_MAX_LENGTH}
+              placeholder="Telefone (WhatsApp)"
+              value={client.phone}
+              autoComplete="tel"
+              aria-invalid={!!clientErrors.phone}
+              onChange={(e) => {
+                const masked = formatPhoneBR(e.target.value);
+                setClient((prev) => ({ ...prev, phone: masked }));
+                if (clientErrors.phone) {
+                  setClientErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.phone;
+                    return next;
+                  });
+                }
+              }}
+            />
+            {clientErrors.phone ? (
+              <p className="text-xs text-[var(--color-destructive)]">{clientErrors.phone}</p>
+            ) : null}
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Resumo</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-muted-foreground)]">Servico</span>
-                <span className="font-medium text-[var(--color-foreground)]">
-                  {selectedService.name}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-muted-foreground)]">Profissional</span>
-                <span className="font-medium text-[var(--color-foreground)]">
-                  {vitrine.professionals.find((p) => p.slug === selectedProfessionalSlug)?.name ??
-                    selectedProfessionalSlug}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-muted-foreground)]">Data/Hora</span>
-                <span className="font-medium text-[var(--color-foreground)]">
-                  {formatSlotDateTime(selectedSlot.startsAt, vitrine.timezone)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-muted-foreground)]">Nome</span>
-                <span className="font-medium text-[var(--color-foreground)]">{client.name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-muted-foreground)]">Telefone</span>
-                <span className="font-medium text-[var(--color-foreground)]">{client.phone}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {Object.keys(inlineErrors).length > 0 && (
-            <div className="rounded-[var(--radius-card)] border border-[var(--color-destructive)] bg-[var(--color-destructive)]/10 p-4 space-y-1" role="alert">
+          {Object.keys(inlineErrors).length > 0 ? (
+            <div
+              role="alert"
+              className="mt-3 rounded-[10px] border border-[var(--color-destructive)] bg-[var(--color-destructive)]/10 p-3"
+            >
               {Object.entries(inlineErrors).map(([field, issue]) => (
-                <p key={field} className="text-sm text-[var(--color-destructive)]">
+                <p key={field} className="text-xs text-[var(--color-destructive)]">
                   {issue}
                 </p>
               ))}
             </div>
-          )}
+          ) : null}
 
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            Ao confirmar, voce autoriza o armazenamento do seu nome e telefone para este agendamento,
-            conforme a LGPD.
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={step === "confirming"}
+            style={{ background: "var(--gradient-accent)" }}
+            className="mt-3.5 rounded-[11px] px-4 py-3.5 text-center text-[14px] font-extrabold text-[var(--color-primary-foreground)] shadow-[0_8px_20px_rgba(8,145,178,0.32)] transition-opacity hover:opacity-95 disabled:opacity-60"
+          >
+            {step === "confirming" ? "Confirmando..." : "Confirmar agendamento"}
+          </button>
+
+          <p className="mt-3 text-center text-[11px] leading-relaxed text-[var(--color-muted-foreground)]">
+            Você receberá a confirmação no WhatsApp. Ao confirmar, autoriza o uso do seu nome e
+            telefone para este agendamento, conforme a LGPD.
           </p>
-
-          <Button className="w-full" onClick={handleConfirmBooking}>
-            Confirmar agendamento
-          </Button>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[10.5px] font-semibold text-[var(--color-muted-foreground)]">
+          {label}
+        </div>
+        <div className="truncate text-[13px] font-bold text-[var(--color-foreground)]">{value}</div>
+      </div>
     </div>
   );
 }

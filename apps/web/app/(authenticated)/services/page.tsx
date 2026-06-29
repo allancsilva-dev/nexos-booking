@@ -1,24 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMeQuery } from "@/hooks/use-auth";
 import {
   useServicesQuery,
   useCreateServiceMutation,
   useUpdateServiceMutation,
+  useServiceProfessionalCounts,
 } from "@/hooks/use-services";
+import { useProfessionalsQuery } from "@/hooks/use-professionals";
 import { ServiceForm } from "@/components/services/service-form";
 import { LoadingState } from "@/components/loading-state";
 import { ErrorDisplay } from "@/components/error-display";
 import { EmptyState } from "@/components/empty-state";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { PageChrome } from "@/components/shell/page-chrome";
+import { ActionButton } from "@/components/ui/operational/action-button";
 import { ApiError } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 import { toast } from "sonner";
 import type { CreateServiceInput, UpdateServiceInput } from "@/lib/service-schemas";
 import { formatGlobalError } from "@/lib/error-handler";
-import { Plus, Pencil, Scissors } from "lucide-react";
+import { Plus, Pencil, Scissors, Clock, Users, Timer } from "lucide-react";
 
 function formatPrice(cents: number, currency: string): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -39,11 +41,27 @@ export default function ServicesPage() {
     refetch,
   } = useServicesQuery(activeOrgId);
 
+  const { data: professionals } = useProfessionalsQuery(activeOrgId);
+  const proCounts = useServiceProfessionalCounts(activeOrgId, professionals);
+
   const createMutation = useCreateServiceMutation(activeOrgId ?? "");
   const updateMutation = useUpdateServiceMutation(activeOrgId ?? "");
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const chromeAction = useMemo(
+    () =>
+      !showCreateForm && !editingId ? (
+        <ActionButton
+          icon={<Plus className="h-4 w-4" />}
+          onClick={() => setShowCreateForm(true)}
+        >
+          Novo serviço
+        </ActionButton>
+      ) : null,
+    [showCreateForm, editingId],
+  );
 
   // ---- handlers ----
 
@@ -59,7 +77,6 @@ export default function ServicesPage() {
   }
 
   async function handleToggleActive(serviceId: string, active: boolean) {
-    // Toggle inline fora do form — usa toast para erro global.
     try {
       await updateMutation.mutateAsync({
         id: serviceId,
@@ -80,11 +97,7 @@ export default function ServicesPage() {
   // ---- loading ----
 
   if (!activeOrgId || isLoading) {
-    return (
-      <div className="p-6">
-        <LoadingState variant="skeleton" message="Carregando serviços..." />
-      </div>
-    );
+    return <LoadingState variant="skeleton" message="Carregando serviços..." />;
   }
 
   // ---- error ----
@@ -104,28 +117,15 @@ export default function ServicesPage() {
             requestId: "",
             timestamp: new Date().toISOString() as never,
           };
-    return (
-      <div className="p-6">
-        <ErrorDisplay error={errorBody} onRetry={() => refetch()} />
-      </div>
-    );
+    return <ErrorDisplay error={errorBody} onRetry={() => refetch()} />;
   }
 
   // ---- empty ----
 
   if (!services || services.length === 0) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--color-foreground)]">
-              Serviços
-            </h1>
-            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-              Gerencie os serviços oferecidos
-            </p>
-          </div>
-        </div>
+      <div className="mx-auto w-full max-w-[1180px]">
+        <PageChrome title="Serviços" subtitle="Catálogo de serviços e preços" />
         {showCreateForm ? (
           <ServiceForm
             mode="create"
@@ -151,103 +151,121 @@ export default function ServicesPage() {
   // ---- data ----
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--color-foreground)]">
-            Serviços
-          </h1>
-          <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-            Gerencie os serviços oferecidos
-          </p>
-        </div>
-        {!showCreateForm && !editingId && (
-          <Button
-            onClick={() => setShowCreateForm(true)}
-            size="sm"
-          >
-            <Plus className="h-4 w-4" />
-            Novo serviço
-          </Button>
-        )}
-      </div>
+    <div className="mx-auto w-full max-w-[1180px]">
+      <PageChrome
+        title="Serviços"
+        subtitle="Catálogo de serviços e preços"
+        action={chromeAction}
+      />
 
       {showCreateForm && (
-        <ServiceForm
-          mode="create"
-          isPending={createMutation.isPending}
-          onSubmit={handleCreate}
-          onCancel={() => setShowCreateForm(false)}
-        />
+        <div className="mb-4">
+          <ServiceForm
+            mode="create"
+            isPending={createMutation.isPending}
+            onSubmit={handleCreate}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </div>
       )}
 
-      <div className="space-y-3">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-[var(--color-accent-soft)] px-3.5 py-1.5 text-[12.5px] font-bold text-[var(--color-accent-strong)]">
+          Todos os serviços
+        </span>
+        <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[var(--color-border)] px-3.5 py-1.5 text-[12.5px] font-semibold text-[var(--color-muted-foreground)]">
+          Categorias
+          <span className="rounded-full bg-[var(--color-operational-chip)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+            Em breve
+          </span>
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {services.map((svc) =>
           editingId === svc.id ? (
-            <ServiceForm
-              key={svc.id}
-              mode="edit"
-              defaultValues={{
-                name: svc.name,
-                durationMin: svc.durationMin,
-                bufferAfterMin: svc.bufferAfterMin,
-                priceCents: svc.priceCents,
-                currency: svc.currency,
-                active: svc.active,
-              }}
-              isPending={updateMutation.isPending}
-              onSubmit={handleUpdate}
-              onCancel={() => setEditingId(null)}
-            />
+            <div key={svc.id} className="lg:col-span-2">
+              <ServiceForm
+                mode="edit"
+                defaultValues={{
+                  name: svc.name,
+                  durationMin: svc.durationMin,
+                  bufferAfterMin: svc.bufferAfterMin,
+                  priceCents: svc.priceCents,
+                  currency: svc.currency,
+                  active: svc.active,
+                }}
+                isPending={updateMutation.isPending}
+                onSubmit={handleUpdate}
+                onCancel={() => setEditingId(null)}
+              />
+            </div>
           ) : (
-            <Card key={svc.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-[var(--color-foreground)] truncate">
-                      {svc.name}
-                    </h3>
-                    <span
-                      className={`inline-block h-2 w-2 rounded-full ${
-                        svc.active
-                          ? "bg-green-500"
-                          : "bg-[var(--color-muted-foreground)]"
-                      }`}
-                      title={svc.active ? "Ativo" : "Inativo"}
-                    />
-                  </div>
-                  <p className="text-sm text-[var(--color-muted-foreground)] mt-0.5">
-                    {svc.durationMin}min ·{" "}
+            <div
+              key={svc.id}
+              className="flex items-center gap-4 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-[18px]"
+            >
+              <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[12px] bg-[var(--cat-1-bg)] text-[var(--cat-1-ink)]">
+                <Scissors className="h-[21px] w-[21px]" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-[14.5px] font-bold text-[var(--color-foreground)]">
+                  {svc.name}
+                </h3>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] font-semibold text-[var(--color-muted-foreground)]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    {svc.durationMin} min
+                  </span>
+                  <span className="font-bold text-[var(--color-foreground)]">
                     {formatPrice(svc.priceCents, svc.currency)}
-                    {svc.bufferAfterMin && svc.bufferAfterMin > 0
-                      ? ` · +${svc.bufferAfterMin}min buffer`
-                      : ""}
-                  </p>
+                  </span>
+                  {svc.bufferAfterMin && svc.bufferAfterMin > 0 ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Timer className="h-3.5 w-3.5" />+{svc.bufferAfterMin} min
+                    </span>
+                  ) : null}
+                  {proCounts.get(svc.id) ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5" />
+                      {proCounts.get(svc.id)}{" "}
+                      {proCounts.get(svc.id) === 1
+                        ? "profissional"
+                        : "profissionais"}
+                    </span>
+                  ) : null}
                 </div>
-                <div className="flex items-center gap-2 ml-4 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleActive(svc.id, svc.active)}
-                    disabled={updateMutation.isPending}
-                  >
-                    {svc.active ? "Desativar" : "Ativar"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowCreateForm(false);
-                      setEditingId(svc.id);
-                    }}
-                    disabled={updateMutation.isPending}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Editar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="flex flex-col items-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleToggleActive(svc.id, svc.active)}
+                  disabled={updateMutation.isPending}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    svc.active
+                      ? "bg-[var(--cat-2-bg)] text-[var(--cat-2-ink)]"
+                      : "bg-[var(--color-operational-chip)] text-[var(--color-muted-foreground)]"
+                  }`}
+                  title={svc.active ? "Clique para desativar" : "Clique para ativar"}
+                >
+                  {svc.active ? "Ativo" : "Inativo"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setEditingId(svc.id);
+                  }}
+                  disabled={updateMutation.isPending}
+                  className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
+                  title="Editar serviço"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           ),
         )}
       </div>

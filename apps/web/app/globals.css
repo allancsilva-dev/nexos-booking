@@ -1,46 +1,46 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --color-background: #09090b;
-  --color-foreground: #fafafa;
-  --color-card: #18181b;
-  --color-card-foreground: #fafafa;
-  --color-primary: #d98a3d;
-  --color-primary-foreground: #150f06;
-  --color-accent: #a85d20;
-  --color-accent-foreground: #fafafa;
-  --color-muted: #27272a;
-  --color-muted-foreground: #a1a1aa;
-  --color-border: #27272a;
-  --color-input: #27272a;
-  --color-ring: #d98a3d;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #fafafa;
-  --color-surface-operational: #0b111d;
-  --color-surface-operational-muted: #0f1726;
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-background: #080c14;
+  --color-foreground: #e6edf6;
+  --color-card: #11192a;
+  --color-card-foreground: #e6edf6;
+  --color-primary: #22d3ee;
+  --color-primary-foreground: #04222a;
+  --color-accent: #0891b2;
+  --color-accent-foreground: #e6edf6;
+  --color-muted: #19212f;
+  --color-muted-foreground: #8493a6;
+  --color-border: #1c2740;
+  --color-input: #1c2740;
+  --color-ring: #22d3ee;
+  --color-destructive: #fb7185;
+  --color-destructive-foreground: #05080e;
+  --color-surface-operational: #0a1120;
+  --color-surface-operational-muted: #0e1626;
   --color-surface-operational-strong: #11192a;
   --color-border-strong: rgba(255, 255, 255, 0.1);
-  --color-accent-soft: rgba(217, 138, 61, 0.14);
-  --color-accent-strong: #f0b375;
-  --color-accent-ink: #3a2410;
+  --color-accent-soft: rgba(34, 211, 238, 0.14);
+  --color-accent-strong: #67e8f9;
+  --color-accent-ink: #04222a;
   --color-operational-line: rgba(255, 255, 255, 0.07);
   --color-operational-overlay: rgba(255, 255, 255, 0.03);
   --color-operational-chip: rgba(255, 255, 255, 0.05);
-  --color-operational-empty: rgba(11, 17, 29, 0.95);
-  --color-timeline-now: #d98a3d;
-  --color-metric-positive: #e3a05f;
-  --gradient-accent: linear-gradient(145deg, #d98a3d, #a85d20);
+  --color-operational-empty: rgba(10, 17, 32, 0.95);
+  --color-timeline-now: #22d3ee;
+  --color-metric-positive: #34d399;
+  --gradient-accent: linear-gradient(145deg, #22d3ee, #0891b2);
   --radius-frame: 3px;
   --radius-card: 14px;
   --radius-control: 10px;
   --radius-nav: 9px;
-  --radius-panel: 24px;
-  --spacing-sidebar: 68px;
+  --radius-panel: 20px;
+  --spacing-sidebar: 70px;
   --spacing-panel-resumo: 298px;
   --shadow-operational-card: 0 12px 28px rgba(5, 10, 20, 0.18);
   --shadow-operational-ambient: 0 24px 48px rgba(2, 6, 23, 0.32);
-  --shadow-timeline-now: 0 0 12px rgba(217, 138, 61, 0.42);
+  --shadow-timeline-now: 0 0 12px rgba(34, 211, 238, 0.45);
   --cat-1-bg: rgba(34, 211, 238, 0.14);
   --cat-1-line: rgba(34, 211, 238, 0.4);
   --cat-1-ink: #a5f3fc;
@@ -70,16 +70,16 @@
   --color-surface-operational: #f3f7fb;
   --color-surface-operational-muted: #edf3f9;
   --color-surface-operational-strong: #ffffff;
-  --color-border-strong: rgba(58, 36, 16, 0.14);
-  --color-accent-soft: rgba(217, 138, 61, 0.14);
-  --color-accent-strong: #9a5520;
-  --color-accent-ink: #3a2410;
-  --color-operational-line: rgba(58, 36, 16, 0.1);
+  --color-border-strong: rgba(15, 23, 42, 0.14);
+  --color-accent-soft: rgba(34, 211, 238, 0.12);
+  --color-accent-strong: #0e7490;
+  --color-accent-ink: #04222a;
+  --color-operational-line: rgba(15, 23, 42, 0.1);
   --color-operational-overlay: rgba(15, 23, 42, 0.04);
   --color-operational-chip: rgba(15, 23, 42, 0.03);
   --color-operational-empty: rgba(243, 247, 251, 0.96);
-  --color-timeline-now: #b5641f;
-  --color-metric-positive: #a85d20;
+  --color-timeline-now: #0891b2;
+  --color-metric-positive: #047857;
   --shadow-operational-card: 0 10px 22px rgba(15, 23, 42, 0.08);
   --shadow-operational-ambient: 0 20px 42px rgba(15, 23, 42, 0.1);
   --shadow-timeline-now: 0 0 10px rgba(181, 100, 31, 0.22);
@@ -98,4 +98,17 @@
   --cat-5-bg: rgba(139, 92, 246, 0.1);
   --cat-5-line: #a78bfa;
   --cat-5-ink: #6d28d9;
+}
+
+.nb-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.nb-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 8px;
+  border: 2px solid var(--color-surface-operational);
+}
+::placeholder {
+  color: color-mix(in srgb, var(--color-muted-foreground) 70%, transparent);
 }
