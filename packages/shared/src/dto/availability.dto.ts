@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isCivilDate } from "../civil-date.js";
+import { AVAILABILITY_MAX_RANGE_DAYS } from "../limits.js";
 
 const civilDateString = z.string().refine(isCivilDate, {
   message: "Expected YYYY-MM-DD",
@@ -47,6 +48,20 @@ export const AvailabilityQuerySchema = z
         message: "from must be before to",
         path: ["from"],
       });
+    }
+
+    // Teto de janela: impede DoS por range gigante (BUG-029). `from`/`to` são
+    // datas civis YYYY-MM-DD → Date.parse devolve meia-noite UTC, diff confiável.
+    if (hasFrom && hasTo && value.from! < value.to!) {
+      const spanDays =
+        (Date.parse(value.to!) - Date.parse(value.from!)) / 86_400_000;
+      if (spanDays > AVAILABILITY_MAX_RANGE_DAYS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `from..to range exceeds ${AVAILABILITY_MAX_RANGE_DAYS} days`,
+          path: ["to"],
+        });
+      }
     }
   });
 

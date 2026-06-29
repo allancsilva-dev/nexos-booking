@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROFESSIONAL_SERVICES_MAX } from "../limits.js";
 
 /**
  * Schema para o body do PUT /professionals/:id/services.
@@ -6,7 +7,7 @@ import { z } from "zod";
  * API_CONTRACTS.md §20.1 — substituição total da lista de serviços vinculados.
  */
 export const ProfessionalServicesInputSchema = z.object({
-  serviceIds: z.array(z.string().uuid()),
+  serviceIds: z.array(z.string().uuid()).max(PROFESSIONAL_SERVICES_MAX),
 });
 
 /** Schema para resposta de GET/PUT /professionals/:id/services. */

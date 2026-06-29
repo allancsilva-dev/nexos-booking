@@ -8,6 +8,7 @@ import { DbService } from "../db";
 import { withTenantContext } from "../db/tenant-context";
 import { AvailabilityRepository } from "./availability.repository";
 import { ProfessionalServiceNotLinkedException } from "../common/exceptions/domain.exception";
+import { ValidationException } from "../common/exceptions/validation.exception";
 import {
   addCivilDays,
   alignToSlotGrid,
@@ -15,6 +16,7 @@ import {
   formatInstantWithOffset,
   instantToCivilDate,
   zonedDateTimeToInstant,
+  AVAILABILITY_MAX_RANGE_DAYS,
 } from "@nexos/shared";
 import type { AvailabilityQuery, AvailabilityResponse, AvailabilityDay, AvailabilitySlot } from "@nexos/shared";
 import { resolveEffectiveSlotStepMin } from "./slot-step.util";
@@ -116,6 +118,21 @@ export class AvailabilityService {
       const toCivilDateExclusive = query.date
         ? addCivilDays(query.date, 1)
         : query.to!;
+      // Defesa em profundidade (BUG-029): o schema já limita a janela, mas o
+      // loop de slots vive aqui — recusar range gigante mesmo se chamado por
+      // dentro (ex.: rota pública monta o query antes de delegar).
+      const spanDays =
+        (Date.parse(toCivilDateExclusive) - Date.parse(fromCivilDate)) /
+        86_400_000;
+      if (spanDays > AVAILABILITY_MAX_RANGE_DAYS) {
+        throw new ValidationException("Invalid input", [
+          {
+            field: "to",
+            issue: `from..to range exceeds ${AVAILABILITY_MAX_RANGE_DAYS} days`,
+          },
+        ]);
+      }
+
       const rangeStart = civilDateStartToInstant(fromCivilDate, config.timezone);
       const rangeEnd = civilDateStartToInstant(toCivilDateExclusive, config.timezone);
 

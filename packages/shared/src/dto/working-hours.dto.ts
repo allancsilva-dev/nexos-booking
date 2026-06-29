@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WORKING_HOURS_MAX_SHIFTS } from "../limits.js";
 
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -12,7 +13,7 @@ export const ShiftSchema = z.object({
 );
 
 export const WorkingHoursSchema = z.object({
-  shifts: z.array(ShiftSchema),
+  shifts: z.array(ShiftSchema).max(WORKING_HOURS_MAX_SHIFTS),
 });
 
 export type ShiftDTO = z.infer<typeof ShiftSchema>;

@@ -33,10 +33,12 @@ async function bootstrap() {
           defaultSrc: ["'none'"],
         },
       },
-      hsts: {
-        maxAge: 15552000,
-        includeSubDomains: true,
-      },
+      // HSTS só em produção (atrás de TLS). Enviar em dev/HTTP fixaria
+      // localhost em HTTPS no navegador e atrapalharia o desenvolvimento. BUG-032.
+      hsts:
+        process.env.NODE_ENV === "production"
+          ? { maxAge: 15552000, includeSubDomains: true }
+          : false,
       xContentTypeOptions: true,
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       frameguard: { action: "deny" },
@@ -97,6 +99,36 @@ async function bootstrap() {
   const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
   if (trustProxyHops > 0) {
     app.getHttpAdapter().getInstance().set("trust proxy", trustProxyHops);
+  }
+
+  // 9. CORS — allowlist explícita via CORS_ORIGINS (CSV). Sem a env, mantém
+  // comportamento same-origin (sem CORS), adequado a deploy atrás de proxy reverso.
+  const corsOrigins = (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  if (corsOrigins.includes("*")) {
+    // `*` + credentials:true é rejeitado por navegadores e abriria CORS a qualquer origem.
+    // Falhar explícito é melhor que servir uma config insegura por engano.
+    throw new Error(
+      'CORS_ORIGINS não pode conter "*": liste origens explícitas (credentials:true exige allowlist).',
+    );
+  }
+  if (corsOrigins.length > 0) {
+    app.enableCors({
+      origin: corsOrigins,
+      credentials: true,
+      methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: [
+        "Authorization",
+        "Content-Type",
+        "X-Request-Id",
+        "Idempotency-Key",
+        "If-Match",
+        "X-CSRF",
+      ],
+      exposedHeaders: ["X-Request-Id", "ETag"],
+    });
   }
 
   await app.listen(port);

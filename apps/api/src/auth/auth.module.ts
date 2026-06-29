@@ -11,6 +11,7 @@ import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
 import { AuthGuard } from "./guards/auth.guard";
 import { CsrfGuard } from "./guards/csrf.guard";
 import { TenantGuard } from "./guards/tenant.guard";
+import { MemoryRateLimiter } from "./rate-limit/rate-limiter.memory";
 import { OrganizationsModule } from "../organizations";
 
 @Module({
@@ -27,6 +28,7 @@ import { OrganizationsModule } from "../organizations";
     AuthGuard,
     CsrfGuard,
     TenantGuard,
+    { provide: "RateLimiter", useClass: MemoryRateLimiter },
   ],
   exports: [
     AuthGuard,
