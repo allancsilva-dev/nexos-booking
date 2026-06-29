@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { NAME_MAX, PHONE_MAX } from "../limits.js";
+
 export const ClientListItemSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -30,8 +32,8 @@ export const ClientDetailSchema = z.object({
 export type ClientDetailDTO = z.infer<typeof ClientDetailSchema>;
 
 export const UpdateClientSchema = z.object({
-  name: z.string().min(1).optional(),
-  phone: z.string().optional(),
+  name: z.string().trim().min(1).max(NAME_MAX).optional(),
+  phone: z.string().trim().max(PHONE_MAX).optional(),
 });
 
 export type UpdateClientInput = z.infer<typeof UpdateClientSchema>;

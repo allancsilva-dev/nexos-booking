@@ -19,9 +19,12 @@ import { AuthGuard } from "../auth/guards/auth.guard";
 import { TenantGuard } from "../auth/guards/tenant.guard";
 import { RolesGuard } from "../authorization/guards/roles.guard";
 import { Roles } from "../authorization/decorators/roles.decorator";
-import type { UpdateOrganizationInput } from "./dto/update-organization.dto";
-import type { InviteMemberInput } from "./dto/invite-member.dto";
-import type { UpdateMemberInput } from "./dto/update-member.dto";
+import {
+  UpdateOrganizationSchema,
+  InviteMemberSchema,
+  UpdateMemberSchema,
+} from "@nexos/shared";
+import { parseBody } from "../common/validation/parse-body";
 
 interface TenantInfo {
   orgId: string;
@@ -75,12 +78,13 @@ export class OrganizationsController {
   @Roles("OWNER")
   async update(
     @Param("id") id: string,
-    @Body() body: UpdateOrganizationInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     validateOrgId(req, id);
     const tenant = getTenant(req);
-    return this.orgs.update(id, tenant.userId, body);
+    const data = parseBody(UpdateOrganizationSchema, body);
+    return this.orgs.update(id, tenant.userId, data);
   }
 
   @Get(":id/members")
@@ -97,12 +101,13 @@ export class OrganizationsController {
   async updateMember(
     @Param("id") id: string,
     @Param("userId") userId: string,
-    @Body() body: UpdateMemberInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     validateOrgId(req, id);
     const tenant = getTenant(req);
-    return this.orgs.updateMember(id, tenant.userId, userId, body);
+    const data = parseBody(UpdateMemberSchema, body);
+    return this.orgs.updateMember(id, tenant.userId, userId, data);
   }
 
   @Get(":id/invitations")
@@ -118,12 +123,13 @@ export class OrganizationsController {
   @Roles("OWNER")
   async inviteMember(
     @Param("id") id: string,
-    @Body() body: InviteMemberInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     validateOrgId(req, id);
     const tenant = getTenant(req);
-    return this.invitations.create(id, tenant.userId, body.email, body.role);
+    const data = parseBody(InviteMemberSchema, body);
+    return this.invitations.create(id, tenant.userId, data.email, data.role);
   }
 
   @Delete(":id/invitations/:invitationId")

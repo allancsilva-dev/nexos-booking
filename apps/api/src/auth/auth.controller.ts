@@ -15,17 +15,18 @@ import type { CookieOptions, Request, Response } from "express";
 import { AuthService } from "./auth.service";
 import { AuthGuard } from "./guards/auth.guard";
 import { CsrfGuard } from "./guards/csrf.guard";
-import type { VerifyEmailInput } from "./dto/verify-email.dto";
-import type { ForgotPasswordInput } from "./dto/forgot-password.dto";
-import type { ResetPasswordInput } from "./dto/reset-password.dto";
-import type { PasswordChangeInput } from "./dto/password-change.dto";
-import type { AcceptInviteInput } from "./dto/accept-invite.dto";
 import {
   RegisterInputSchema,
   LoginInputSchema,
   SwitchOrgInputSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
+  PasswordChangeSchema,
+  VerifyEmailSchema,
+  AcceptInviteSchema,
 } from "@nexos/shared";
 import { ValidationException } from "../common/exceptions/validation.exception";
+import { parseBody } from "../common/validation/parse-body";
 
 const REFRESH_COOKIE = "refresh_token";
 const REFRESH_COOKIE_PATH = "/api/v1/auth/refresh";
@@ -214,8 +215,9 @@ export class AuthController {
 
   @Post("verify-email")
   @HttpCode(HttpStatus.OK)
-  async verifyEmail(@Body() body: VerifyEmailInput) {
-    return this.auth.verifyEmail(body.token);
+  async verifyEmail(@Body() body: unknown) {
+    const data = parseBody(VerifyEmailSchema, body);
+    return this.auth.verifyEmail(data.token);
   }
 
   @Post("verify-email/resend")
@@ -229,50 +231,54 @@ export class AuthController {
   @Post("password/forgot")
   @HttpCode(HttpStatus.ACCEPTED)
   async forgotPassword(
-    @Body() body: ForgotPasswordInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
+    const data = parseBody(ForgotPasswordSchema, body);
     const ip = getClientIp(req);
-    await this.auth.forgotPassword(body.email, ip);
+    await this.auth.forgotPassword(data.email, ip);
   }
 
   @Post("password/reset")
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Body() body: ResetPasswordInput) {
-    return this.auth.resetPassword(body.token, body.newPassword);
+  async resetPassword(@Body() body: unknown) {
+    const data = parseBody(ResetPasswordSchema, body);
+    return this.auth.resetPassword(data.token, data.newPassword);
   }
 
   @Post("password/change")
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
   async changePassword(
-    @Body() body: PasswordChangeInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
+    const data = parseBody(PasswordChangeSchema, body);
     const payload = (req as unknown as { accessPayload: { sub: string; sid: string; org?: string } }).accessPayload;
     return this.auth.changePassword(
       payload.sub,
       payload.sid,
-      body.currentPassword,
-      body.newPassword,
+      data.currentPassword,
+      data.newPassword,
     );
   }
 
   @Post("accept-invite")
   async acceptInvite(
-    @Body() body: AcceptInviteInput,
+    @Body() body: unknown,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const data = parseBody(AcceptInviteSchema, body);
     const payload = (req as unknown as { accessPayload?: { sub: string } })
       .accessPayload;
     const userId = payload?.sub;
 
     const result = await this.auth.acceptInvite(
-      body.token,
+      data.token,
       userId,
-      body.name,
-      body.password,
+      data.name,
+      data.password,
     );
 
     if (result.refreshToken) {

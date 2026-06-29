@@ -237,8 +237,11 @@ export class PublicBookingRepository {
       WHERE phone_normalized IS NOT NULL
       DO UPDATE
       SET
-        name = EXCLUDED.name,
-        phone = EXCLUDED.phone,
+        -- Reúsa o cliente existente por telefone, mas NÃO sobrescreve dados de
+        -- cadastro (name/phone). Rota pública/anônima não pode corromper o
+        -- cadastro de balcão de quem souber um telefone já registrado.
+        -- Só campo neutro é tocado; o RETURNING devolve a linha existente.
+        -- Ref: BUG-028 (PR-BE-PUBLIC-CLIENT-UPSERT-NO-OVERWRITE-01).
         updated_at = now()
       RETURNING
         id,

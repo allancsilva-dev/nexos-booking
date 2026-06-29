@@ -17,8 +17,8 @@ import { AuthGuard } from "../auth/guards/auth.guard";
 import { TenantGuard } from "../auth/guards/tenant.guard";
 import { RolesGuard } from "../authorization/guards/roles.guard";
 import { Roles } from "../authorization/decorators/roles.decorator";
-import type { CreateServiceInput } from "./dto/create-service.dto";
-import type { UpdateServiceInput } from "./dto/update-service.dto";
+import { CreateServiceSchema, UpdateServiceSchema } from "@nexos/shared";
+import { parseBody } from "../common/validation/parse-body";
 
 interface TenantInfo {
   orgId: string;
@@ -53,11 +53,12 @@ export class ServicesController {
   @UseGuards(AuthGuard, TenantGuard, RolesGuard)
   @Roles("OWNER", "MANAGER")
   async create(
-    @Body() body: CreateServiceInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     const tenant = getTenant(req);
-    return this.service.create(tenant.orgId, tenant.userId, body);
+    const data = parseBody(CreateServiceSchema, body);
+    return this.service.create(tenant.orgId, tenant.userId, data);
   }
 
   @Patch(":id")
@@ -65,10 +66,11 @@ export class ServicesController {
   @Roles("OWNER", "MANAGER")
   async update(
     @Param("id") id: string,
-    @Body() body: UpdateServiceInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     const tenant = getTenant(req);
-    return this.service.update(tenant.orgId, id, tenant.userId, body);
+    const data = parseBody(UpdateServiceSchema, body);
+    return this.service.update(tenant.orgId, id, tenant.userId, data);
   }
 }

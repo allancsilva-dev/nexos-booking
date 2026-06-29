@@ -16,7 +16,12 @@ import type { Request } from "express";
 import { PublicBookingService } from "./public-booking.service";
 import { PublicTenantGuard } from "./guards/public-tenant.guard";
 import { Idempotent } from "../common/decorators/idempotent.decorator";
-import { AvailabilityQuerySchema, PublicBookingInputSchema } from "@nexos/shared";
+import {
+  AvailabilityQuerySchema,
+  PublicBookingInputSchema,
+  CancelPreviewInputSchema,
+  CancelInputSchema,
+} from "@nexos/shared";
 import type { PublicBookingInput } from "@nexos/shared";
 
 function getClientIp(req: Request): string {
@@ -109,26 +114,30 @@ export class PublicBookingController {
   @HttpCode(HttpStatus.OK)
   @Post("cancel/preview")
   async previewCancel(@Req() req: Request, @Body() body: unknown) {
-    const token: string | undefined =
-      typeof body === "object" && body !== null && "token" in body
-        ? (body as { token: string }).token
-        : undefined;
-    if (!token) {
-      validationError([{ field: "token", issue: "required" }]);
+    const parsed = CancelPreviewInputSchema.safeParse(body);
+    if (!parsed.success) {
+      validationError(
+        parsed.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          issue: issue.code === "invalid_type" ? "required" : issue.message,
+        })),
+      );
     }
-    return this.service.previewCancel(getClientIp(req), token);
+    return this.service.previewCancel(getClientIp(req), parsed.data.token);
   }
 
   @HttpCode(HttpStatus.OK)
   @Post("cancel")
   async cancelByToken(@Req() req: Request, @Body() body: unknown) {
-    const token: string | undefined =
-      typeof body === "object" && body !== null && "token" in body
-        ? (body as { token: string }).token
-        : undefined;
-    if (!token) {
-      validationError([{ field: "token", issue: "required" }]);
+    const parsed = CancelInputSchema.safeParse(body);
+    if (!parsed.success) {
+      validationError(
+        parsed.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          issue: issue.code === "invalid_type" ? "required" : issue.message,
+        })),
+      );
     }
-    return this.service.cancelByToken(getClientIp(req), token);
+    return this.service.cancelByToken(getClientIp(req), parsed.data.token);
   }
 }

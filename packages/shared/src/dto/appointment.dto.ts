@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { NAME_MAX, NOTE_MAX, PHONE_MAX } from "../limits.js";
+
 export const APPOINTMENT_STATUSES = [
   "SCHEDULED",
   "CONFIRMED",
@@ -60,8 +62,11 @@ export const CreateAppointmentSchema = z.object({
   professionalId: z.string().uuid(),
   serviceId: z.string().uuid(),
   startsAt: z.string().datetime({ offset: true }),
-  client: z.object({ name: z.string().min(1), phone: z.string().min(1) }),
-  note: z.string().max(2000).optional(),
+  client: z.object({
+    name: z.string().trim().min(1).max(NAME_MAX),
+    phone: z.string().trim().min(1).max(PHONE_MAX),
+  }),
+  note: z.string().max(NOTE_MAX).optional(),
   allowOutsideHours: z.boolean().optional().default(false),
 });
 
@@ -70,7 +75,7 @@ export type CreateAppointmentInput = z.infer<typeof CreateAppointmentSchema>;
 export const RescheduleSchema = z
   .object({
     startsAt: z.string().datetime({ offset: true }).optional(),
-    note: z.string().max(2000).optional(),
+    note: z.string().max(NOTE_MAX).optional(),
   })
   .refine((d) => d.startsAt !== undefined || d.note !== undefined, {
     message: "At least one of startsAt or note is required",

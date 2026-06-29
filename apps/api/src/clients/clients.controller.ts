@@ -18,7 +18,8 @@ import { AuthGuard } from "../auth/guards/auth.guard";
 import { TenantGuard } from "../auth/guards/tenant.guard";
 import { RolesGuard } from "../authorization/guards/roles.guard";
 import { Roles } from "../authorization/decorators/roles.decorator";
-import type { UpdateClientInput } from "@nexos/shared";
+import { UpdateClientSchema } from "@nexos/shared";
+import { parseBody } from "../common/validation/parse-body";
 
 interface TenantInfo {
   orgId: string;
@@ -80,14 +81,15 @@ export class ClientsController {
   async update(
     @Req() req: Request,
     @Param("id") id: string,
-    @Body() body: UpdateClientInput,
+    @Body() body: unknown,
   ) {
     const tenant = getTenant(req);
+    const data = parseBody(UpdateClientSchema, body);
     return this.service.updateClient(
       tenant.orgId,
       tenant.userId,
       id,
-      body,
+      data,
     );
   }
 

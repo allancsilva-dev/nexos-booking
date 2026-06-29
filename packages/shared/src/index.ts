@@ -10,20 +10,35 @@ export * from "./error-envelope.js";
 export * from "./datetime.js";
 export * from "./civil-date.js";
 export * from "./money.js";
+export * from "./limits.js";
 export {
   OrganizationSchema,
   MemberSchema,
   InvitationSchema,
+  UpdateOrganizationSchema,
+  InviteMemberSchema,
+  UpdateMemberSchema,
 } from "./dto/organization.dto.js";
 export type {
   OrganizationDTO,
   MemberDTO,
   InvitationDTO,
+  UpdateOrganizationInput,
+  InviteMemberInput,
+  UpdateMemberInput,
 } from "./dto/organization.dto.js";
 export { AcceptInviteSchema } from "./dto/accept-invite.dto.js";
 export type { AcceptInviteInput } from "./dto/accept-invite.dto.js";
-export { ProfessionalSchema } from "./dto/professional.dto.js";
-export type { ProfessionalDTO } from "./dto/professional.dto.js";
+export {
+  ProfessionalSchema,
+  CreateProfessionalSchema,
+  UpdateProfessionalSchema,
+} from "./dto/professional.dto.js";
+export type {
+  ProfessionalDTO,
+  CreateProfessionalInput,
+  UpdateProfessionalInput,
+} from "./dto/professional.dto.js";
 export {
   ProfessionalServicesInputSchema,
   ProfessionalServicesResponseSchema,
@@ -32,8 +47,16 @@ export type {
   ProfessionalServicesInput,
   ProfessionalServicesResponse,
 } from "./dto/professional-services.dto.js";
-export { ServiceSchema } from "./dto/service.dto.js";
-export type { ServiceDTO } from "./dto/service.dto.js";
+export {
+  ServiceSchema,
+  CreateServiceSchema,
+  UpdateServiceSchema,
+} from "./dto/service.dto.js";
+export type {
+  ServiceDTO,
+  CreateServiceInput,
+  UpdateServiceInput,
+} from "./dto/service.dto.js";
 export { WorkingHoursSchema, ShiftSchema } from "./dto/working-hours.dto.js";
 export type { WorkingHoursInput, ShiftDTO } from "./dto/working-hours.dto.js";
 export { AvailabilityBlockSchema, CreateBlockSchema } from "./dto/availability-block.dto.js";
@@ -54,6 +77,16 @@ export type {
   AvailabilitySlot,
   AvailabilityDay,
 } from "./dto/availability.dto.js";
+export {
+  DashboardWeekDaySchema,
+  DashboardTopServiceSchema,
+  DashboardOverviewSchema,
+} from "./dto/dashboard.dto.js";
+export type {
+  DashboardWeekDay,
+  DashboardTopService,
+  DashboardOverviewResponse,
+} from "./dto/dashboard.dto.js";
 export {
   APPOINTMENT_STATUSES,
   APPOINTMENT_TRANSITIONS,
@@ -126,10 +159,19 @@ export {
   LoginInputSchema,
   SwitchOrgInputSchema,
   MeResponseSchema,
+  passwordSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
+  PasswordChangeSchema,
+  VerifyEmailSchema,
 } from "./dto/auth.dto.js";
 export type {
   RegisterInput,
   LoginInput,
   SwitchOrgInput,
   MeResponse,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+  PasswordChangeInput,
+  VerifyEmailInput,
 } from "./dto/auth.dto.js";
