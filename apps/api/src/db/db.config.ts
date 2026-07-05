@@ -5,6 +5,15 @@ type RuntimeConnectionSettings = {
   expectedRole: string;
 };
 
+function getPostgresSslMode(): "disable" | "require" {
+  const value = process.env.POSTGRES_SSL_MODE?.trim().toLowerCase();
+  if (value === "disable" || value === "require") {
+    return value;
+  }
+
+  return process.env.NODE_ENV === "production" ? "require" : "disable";
+}
+
 function ensureRuntimeRoleIsSeparated(expectedRole: string): void {
   const adminRole = process.env.POSTGRES_USER?.trim();
   if (adminRole && expectedRole === adminRole) {
@@ -17,7 +26,7 @@ function ensureRuntimeRoleIsSeparated(expectedRole: string): void {
 }
 
 function buildRuntimeConnectionSettings(): RuntimeConnectionSettings {
-  const isProduction = process.env.NODE_ENV === "production";
+  const sslMode = getPostgresSslMode();
 
   const runtimeUrl = process.env.DATABASE_RUNTIME_URL;
   if (runtimeUrl) {
@@ -29,8 +38,8 @@ function buildRuntimeConnectionSettings(): RuntimeConnectionSettings {
       );
     }
     ensureRuntimeRoleIsSeparated(expectedRole);
-    if (isProduction && !parsed.searchParams.has("sslmode")) {
-      parsed.searchParams.set("sslmode", "require");
+    if (!parsed.searchParams.has("sslmode")) {
+      parsed.searchParams.set("sslmode", sslMode);
     }
     return {
       connectionString: parsed.toString(),
@@ -53,7 +62,7 @@ function buildRuntimeConnectionSettings(): RuntimeConnectionSettings {
     const base = `postgres://${encodeURIComponent(runtimeUser)}:${encodeURIComponent(runtimePass)}@${host}:${port}/${db}`;
     ensureRuntimeRoleIsSeparated(runtimeUser);
     return {
-      connectionString: isProduction ? `${base}?sslmode=require` : base,
+      connectionString: `${base}?sslmode=${sslMode}`,
       expectedRole: runtimeUser,
     };
   }
@@ -66,7 +75,7 @@ function buildRuntimeConnectionSettings(): RuntimeConnectionSettings {
 }
 
 function buildSslConfig(): PoolConfig["ssl"] {
-  if (process.env.NODE_ENV !== "production") {
+  if (getPostgresSslMode() === "disable") {
     return false;
   }
 

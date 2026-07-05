@@ -1,7 +1,11 @@
 .DS_Store
 .git
+.env
+.env.*
 .next
 .turbo
+*.tsbuildinfo
+backups
 dist
 node_modules
 coverage

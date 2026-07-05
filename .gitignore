@@ -9,3 +9,8 @@ node_modules
 coverage
 /.pnpm-store
 pnpm-debug.log*
+
+# Deploy VPS — segredos e artefatos gerados no servidor
+deploy/vps/.env.vps
+deploy/vps/certbot/
+backups/

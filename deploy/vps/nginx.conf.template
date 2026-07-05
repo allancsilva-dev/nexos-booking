@@ -1,0 +1,65 @@
+# Renderizado pelo entrypoint do nginx (envsubst) a partir de /etc/nginx/templates.
+# Só ${DOMAIN} é substituído; variáveis do nginx ($host, $remote_addr, ...) ficam intactas
+# porque não existem no ambiente do container.
+
+# ── HTTP :80 ── serve o desafio ACME e redireciona o resto para HTTPS
+server {
+  listen 80;
+  server_name ${DOMAIN};
+
+  # Let's Encrypt (webroot) — precisa continuar em HTTP para emissão/renovação
+  location /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+
+# ── HTTPS :443 ── entrada real da aplicação
+server {
+  listen 443 ssl;
+  server_name ${DOMAIN};
+
+  ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+  include             /etc/letsencrypt/options-ssl-nginx.conf;
+  ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+  client_max_body_size 1m;
+
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+
+  location /health {
+    proxy_pass http://api:3001/health;
+  }
+
+  location /ready {
+    proxy_pass http://api:3001/ready;
+  }
+
+  location /api/ {
+    proxy_pass http://api:3001;
+  }
+
+  location /socket.io/ {
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_pass http://api:3001;
+  }
+
+  location /appointments/ {
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_pass http://api:3001;
+  }
+
+  location / {
+    proxy_pass http://web:3000;
+  }
+}
