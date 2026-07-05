@@ -86,10 +86,6 @@ function getHeaders(
   return headers;
 }
 
-function isPostPutPatchDelete(method: string): boolean {
-  return ["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase());
-}
-
 async function parseErrorResponse(res: Response): Promise<ApiError> {
   try {
     const envelope = await res.json();
@@ -120,14 +116,8 @@ export async function apiFetch<T = unknown>(
   const { headers: initHeaders, version, ...rest } = options;
   const method = rest.method ?? "GET";
 
-  const finalHeaders: Record<string, string> = { ...initHeaders };
-
-  if (isPostPutPatchDelete(method) && !finalHeaders["Idempotency-Key"]) {
-    finalHeaders["Idempotency-Key"] = crypto.randomUUID();
-  }
-
   const makeRequest = async (): Promise<Response> => {
-    const headers = getHeaders(finalHeaders, version);
+    const headers = getHeaders(initHeaders, version);
     return fetch(path, {
       ...rest,
       method,

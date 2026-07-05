@@ -10,41 +10,42 @@ interface ConfirmationActionsProps {
   professionalName: string;
   startsAt: string;
   endsAt: string;
-  cancelToken: string;
+  cancelUrl: string;
+  timezone: string;
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, timezone: string): string {
   try {
     const d = new Date(iso);
     return d.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-      timeZone: "America/Sao_Paulo",
+      timeZone: timezone,
     });
   } catch {
     return iso;
   }
 }
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, timezone: string): string {
   try {
     const d = new Date(iso);
     return d.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: "America/Sao_Paulo",
+      timeZone: timezone,
     });
   } catch {
     return "";
   }
 }
 
-function formatGoogleDates(startsAt: string, endsAt: string): string {
+function formatGoogleDates(startsAt: string, endsAt: string, timezone: string): string {
   const toGoogle = (iso: string) => {
     const d = new Date(iso);
     const formatted = new Intl.DateTimeFormat("sv-SE", {
-      timeZone: "America/Sao_Paulo",
+      timeZone: timezone,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -63,19 +64,26 @@ export function ConfirmationActions({
   professionalName,
   startsAt,
   endsAt,
-  cancelToken,
+  cancelUrl,
+  timezone,
 }: ConfirmationActionsProps) {
   const [copied, setCopied] = useState(false);
 
-  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${serviceName} com ${professionalName}`)}&dates=${formatGoogleDates(startsAt, endsAt)}`;
+  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${serviceName} com ${professionalName}`)}&dates=${formatGoogleDates(startsAt, endsAt, timezone)}`;
+  const resolvedCancelUrl =
+    cancelUrl.startsWith("http://") || cancelUrl.startsWith("https://")
+      ? cancelUrl
+      : typeof window === "undefined"
+        ? cancelUrl
+        : new URL(cancelUrl, window.location.origin).toString();
 
   const copyToken = async () => {
     try {
-      await navigator.clipboard.writeText(cancelToken);
+      await navigator.clipboard.writeText(resolvedCancelUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
     } catch {
-      // fallback: show token text for manual copy
+      // O link continua visível abaixo como fallback de cópia manual.
     }
   };
 
@@ -108,8 +116,8 @@ export function ConfirmationActions({
       <WhatsAppLink
         serviceName={serviceName}
         professionalName={professionalName}
-        date={formatDate(startsAt)}
-        time={formatTime(startsAt)}
+        date={formatDate(startsAt, timezone)}
+        time={formatTime(startsAt, timezone)}
       />
 
       <a
@@ -121,6 +129,14 @@ export function ConfirmationActions({
       >
         <CalendarPlus className="h-4 w-4" />
         Adicionar ao calendário
+      </a>
+
+      <a
+        href={resolvedCancelUrl}
+        className={actionClass}
+        aria-label="Abrir link de cancelamento"
+      >
+        Abrir cancelamento
       </a>
     </div>
   );

@@ -13,7 +13,13 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>((set) => ({
   accessToken: null,
   savedOrgId: null,
-  setAccessToken: (token) => set({ accessToken: token }),
-  setSavedOrgId: (orgId) => set({ savedOrgId: orgId }),
-  clearAuth: () => set({ accessToken: null, savedOrgId: null }),
+  setAccessToken: (token) => {
+    set({ accessToken: token });
+  },
+  setSavedOrgId: (orgId) => {
+    set({ savedOrgId: orgId });
+  },
+  clearAuth: () => {
+    set({ accessToken: null, savedOrgId: null });
+  },
 }));

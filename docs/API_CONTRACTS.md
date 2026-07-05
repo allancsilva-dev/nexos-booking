@@ -456,7 +456,8 @@ e o `POST /appointments`, outro cliente (ou a equipe) pode ter ocupado o mesmo s
 ```
 
 - Cada slot já vem com `startsAt`/`endsAt` resolvidos (ISO-8601 com offset). `endsAt - startsAt =
-  service.durationMin`. O passo entre slots é o `slotIntervalMin` da empresa.
+  service.durationMin`. `slotIntervalMin` passa a representar o **passo efetivo usado na consulta**
+  (override de `professional_services`, senão `service.durationMin`, senão fallback legado da empresa).
 - Disponibilidade = `jornada (working_hours) − pausas − availability_blocks − appointments ativos`,
   fatiada pelo `slotIntervalMin`, respeitando a duração do serviço (PLANNING §10.2). Profissionais
   `active=false` não têm disponibilidade.
@@ -616,7 +617,7 @@ Devolve o recurso direto (sem envelope `data` — seção 2), já com `version`:
   `public_cancel_token_hash` (origem pública), o `UPDATE` seta `public_cancel_token_expires_at = novo
   startsAt`. Sem isso, remarcar para mais tarde tiraria do cliente o direito de cancelar antes do (novo)
   início, e remarcar para mais cedo deixaria o token válido além do início (schema §8.1).
-- **`startsAt` do novo horário também respeita a grade** do `slot_interval_min` (§16.1) → senão
+- **`startsAt` do novo horário também respeita a grade** do passo efetivo do serviço (§16.1) → senão
   `422 VALIDATION_ERROR`.
 - Novo slot em conflito → `409 APPOINTMENT_CONFLICT`. Fora da jornada → `422 OUTSIDE_WORKING_HOURS`.
   Dentro de bloqueio → `422 WITHIN_BLOCK`. Agendamento em estado terminal → `409 INVALID_STATUS_TRANSITION`.
@@ -703,7 +704,7 @@ via `app_resolve_org_by_slug` (ADR-017), sujeitas ao `RateLimiter` (seção 19),
     (constante no `shared`, revisável; vira config por empresa quando houver demanda — mudança
     aditiva). Sem teto, um visitante polui a agenda de anos à frente e o rate limit por hora não
     impede o acúmulo ao longo de dias.
-  - **`startsAt` na grade do `slot_interval_min`** (§16.1, âncora = início da jornada do dia — ADR-023) →
+  - **`startsAt` na grade do passo efetivo do serviço** (§16.1, âncora = início da jornada do dia — ADR-023) →
     senão `422 VALIDATION_ERROR`. A rota pública é a mais exposta a horário arbitrário; o alinhamento
     mantém a agenda fatiável.
   - **Vínculo profissional-serviço:** o backend valida que o profissional presta o serviço informado

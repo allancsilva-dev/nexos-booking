@@ -1,8 +1,18 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { apiFetch } from "@/lib/http-client";
-import type { ServiceDTO } from "@nexos/shared";
+import type {
+  ServiceDTO,
+  ProfessionalDTO,
+  ProfessionalServicesResponse,
+} from "@nexos/shared";
 import type { CreateServiceInput, UpdateServiceInput } from "@/lib/service-schemas";
 
 // ---------------------------------------------------------------------------
@@ -36,6 +46,7 @@ export function useCreateServiceMutation(activeOrgId: string) {
         name: input.name,
         durationMin: input.durationMin,
         priceCents: input.priceCents,
+        bufferAfterMin: input.bufferAfterMin ?? 0,
       };
       if (input.currency && input.currency.length === 3) {
         payload.currency = input.currency;
@@ -71,6 +82,9 @@ export function useUpdateServiceMutation(activeOrgId: string) {
       if (input.name !== undefined) payload.name = input.name;
       if (input.durationMin !== undefined) payload.durationMin = input.durationMin;
       if (input.priceCents !== undefined) payload.priceCents = input.priceCents;
+      if (input.bufferAfterMin !== undefined) {
+        payload.bufferAfterMin = input.bufferAfterMin;
+      }
       if (input.currency !== undefined && input.currency.length === 3) {
         payload.currency = input.currency;
       }
@@ -85,4 +99,42 @@ export function useUpdateServiceMutation(activeOrgId: string) {
       queryClient.invalidateQueries({ queryKey: ["services", activeOrgId] });
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Profissionais por serviço (agregado)
+//
+// Não há endpoint inverso (serviço → profissionais). Agregamos a lista de
+// vínculos de cada profissional (GET /professionals/:id/services) e contamos
+// quantos realizam cada serviço. N+1 aceitável para o tamanho de equipe do MVP.
+// Requer papel OWNER/MANAGER; para PROFESSIONAL as queries falham e o mapa
+// fica vazio (a contagem simplesmente não aparece).
+// ---------------------------------------------------------------------------
+
+export function useServiceProfessionalCounts(
+  activeOrgId: string | null | undefined,
+  professionals: ProfessionalDTO[] | undefined,
+) {
+  const list = professionals ?? [];
+
+  const results = useQueries({
+    queries: list.map((p) => ({
+      queryKey: ["professional-services", activeOrgId ?? "", p.id],
+      queryFn: () =>
+        apiFetch<ProfessionalServicesResponse>(
+          `/api/v1/professionals/${p.id}/services`,
+        ),
+      enabled: !!activeOrgId,
+    })),
+  });
+
+  return useMemo(() => {
+    const counts = new Map<string, number>();
+    results.forEach((r) => {
+      (r.data?.serviceIds ?? []).forEach((sid) =>
+        counts.set(sid, (counts.get(sid) ?? 0) + 1),
+      );
+    });
+    return counts;
+  }, [results.map((r) => r.dataUpdatedAt).join(",")]);
 }

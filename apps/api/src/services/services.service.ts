@@ -12,12 +12,17 @@ import { ServicesRepository } from "./services.repository";
 import { auditLogs } from "../../db/schema";
 import type { CreateServiceInput } from "./dto/create-service.dto";
 import type { UpdateServiceInput } from "./dto/update-service.dto";
+import {
+  normalizeBufferAfterMin,
+  validateBufferAfterMin,
+} from "../scheduling/occupied-interval.util";
 
 function mapService(row: {
   id: string;
   organization_id: string;
   name: string;
   duration_min: number;
+  buffer_after_min: number | null;
   price_cents: number;
   currency: string;
   active: boolean;
@@ -28,6 +33,7 @@ function mapService(row: {
     id: row.id,
     name: row.name,
     durationMin: row.duration_min,
+    bufferAfterMin: row.buffer_after_min,
     priceCents: row.price_cents,
     currency: row.currency,
     active: row.active,
@@ -81,10 +87,27 @@ export class ServicesService {
         );
       }
 
+      const bufferValidation = validateBufferAfterMin(input.bufferAfterMin);
+      if (!bufferValidation.valid) {
+        throw new HttpException(
+          {
+            error: {
+              code: "VALIDATION_ERROR",
+              details: {
+                field: "bufferAfterMin",
+                issue: bufferValidation.issue,
+              },
+            },
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+
       const service = await this.repo.create(tx, {
         organization_id: orgId,
         name: input.name,
         duration_min: input.durationMin,
+        buffer_after_min: normalizeBufferAfterMin(input.bufferAfterMin),
         price_cents: input.priceCents,
         active: true,
       });
@@ -144,6 +167,24 @@ export class ServicesService {
         );
       }
 
+      if (input.bufferAfterMin !== undefined) {
+        const bufferValidation = validateBufferAfterMin(input.bufferAfterMin);
+        if (!bufferValidation.valid) {
+          throw new HttpException(
+            {
+              error: {
+                code: "VALIDATION_ERROR",
+                details: {
+                  field: "bufferAfterMin",
+                  issue: bufferValidation.issue,
+                },
+              },
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+      }
+
       const changedFields: string[] = [];
 
       if (
@@ -168,6 +209,14 @@ export class ServicesService {
       }
 
       if (
+        input.bufferAfterMin !== undefined &&
+        normalizeBufferAfterMin(input.bufferAfterMin) !==
+          normalizeBufferAfterMin(service.buffer_after_min)
+      ) {
+        changedFields.push("bufferAfterMin");
+      }
+
+      if (
         input.active !== undefined &&
         input.active !== service.active
       ) {
@@ -177,6 +226,9 @@ export class ServicesService {
       const data: Record<string, unknown> = {};
       if (input.name !== undefined) data.name = input.name;
       if (input.durationMin !== undefined) data.duration_min = input.durationMin;
+      if (input.bufferAfterMin !== undefined) {
+        data.buffer_after_min = normalizeBufferAfterMin(input.bufferAfterMin);
+      }
       if (input.priceCents !== undefined) data.price_cents = input.priceCents;
       if (input.active !== undefined) data.active = input.active;
 

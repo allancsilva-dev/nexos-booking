@@ -22,6 +22,8 @@ export interface RefreshTokenPayload {
 
 const ALLOWED_ALGORITHMS = ["HS256"] as const;
 const REFRESH_TOKEN_BYTES = 64;
+// HS256 segurança = entropia do segredo. Abaixo de 32 chars é brute-forceável offline.
+const JWT_SECRET_MIN_LENGTH = 32;
 
 @Injectable()
 export class JwtService {
@@ -36,6 +38,11 @@ export class JwtService {
       const raw = process.env.JWT_SECRET;
       if (!raw) {
         throw new Error("JWT_SECRET environment variable is not set");
+      }
+      if (raw.length < JWT_SECRET_MIN_LENGTH) {
+        throw new Error(
+          `JWT_SECRET must be at least ${JWT_SECRET_MIN_LENGTH} characters (HS256 strength depends on secret entropy).`,
+        );
       }
       this.secret = new TextEncoder().encode(raw);
     }

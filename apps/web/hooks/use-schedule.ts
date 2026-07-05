@@ -52,12 +52,19 @@ export function useAppointmentsQuery(
       to ?? "",
     ],
     queryFn: async () => {
+      const search = new URLSearchParams({
+        from: from!,
+        to: to!,
+      });
+      if (professionalId) {
+        search.set("professionalId", professionalId);
+      }
       const data = await apiFetch<AppointmentListResponse>(
-        `/api/v1/appointments?from=${encodeURIComponent(from!)}&to=${encodeURIComponent(to!)}&professionalId=${encodeURIComponent(professionalId!)}`,
+        `/api/v1/appointments?${search.toString()}`,
       );
       return data.items; // envelope { items, nextCursor } isolado aqui
     },
-    enabled: !!(activeOrgId && professionalId && from && to),
+    enabled: !!(activeOrgId && from && to),
   });
 }
 

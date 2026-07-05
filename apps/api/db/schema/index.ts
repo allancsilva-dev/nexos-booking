@@ -122,6 +122,7 @@ export const services = pgTable("services", {
   organization_id: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   duration_min: integer("duration_min").notNull(),
+  buffer_after_min: integer("buffer_after_min"),
   price_cents: integer("price_cents").notNull(),
   currency: char("currency", { length: 3 }).notNull().default("BRL"),
   active: boolean("active").notNull().default(true),
@@ -137,6 +138,7 @@ export const professionalServices = pgTable("professional_services", {
   organization_id: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   professional_id: uuid("professional_id").notNull().references(() => professionals.id, { onDelete: "cascade" }),
   service_id: uuid("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+  slot_step_min: integer("slot_step_min"),
 }, (table) => [
   primaryKey({ columns: [table.professional_id, table.service_id] }),
   index("professional_services_org_idx").on(table.organization_id),
@@ -194,6 +196,7 @@ export const appointments = pgTable("appointments", {
   client_id: uuid("client_id").notNull().references(() => clients.id, { onDelete: "restrict" }),
   starts_at: timestamp("starts_at", { withTimezone: true }).notNull(),
   ends_at: timestamp("ends_at", { withTimezone: true }).notNull(),
+  occupied_until: timestamp("occupied_until", { withTimezone: true }).notNull(),
   status: text("status").notNull().default("CONFIRMED"),
   source: text("source").notNull(),
   note: text("note"),

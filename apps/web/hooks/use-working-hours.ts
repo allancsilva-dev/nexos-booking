@@ -1,12 +1,43 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/http-client";
 import type {
   WorkingHoursInput,
   CreateBlockInput,
   AvailabilityBlockDTO,
+  ShiftDTO,
 } from "@nexos/shared";
+
+type WorkingHoursApiShift = ShiftDTO & { id?: string };
+type WorkingHoursApiResponse = WorkingHoursInput | WorkingHoursApiShift[];
+
+function isShiftArray(value: unknown): value is WorkingHoursApiShift[] {
+  return Array.isArray(value);
+}
+
+function normalizeWorkingHoursResponse(
+  payload: WorkingHoursApiResponse | null | undefined,
+): WorkingHoursInput {
+  if (!payload) {
+    return { shifts: [] };
+  }
+
+  if (isShiftArray(payload)) {
+    return {
+      shifts: payload.map((shift) => ({
+        weekday: shift.weekday,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+      })),
+    };
+  }
+
+  return {
+    shifts: Array.isArray(payload.shifts) ? payload.shifts : [],
+  };
+}
 
 // ── Working Hours ─────────────────────────────────────────────────
 
@@ -16,9 +47,11 @@ export function useWorkingHoursQuery(
 ) {
   return useQuery({
     queryKey: ["working-hours", activeOrgId ?? "", professionalId ?? ""],
-    queryFn: () =>
-      apiFetch<WorkingHoursInput>(
-        `/api/v1/professionals/${professionalId}/working-hours`,
+    queryFn: async () =>
+      normalizeWorkingHoursResponse(
+        await apiFetch<WorkingHoursApiResponse>(
+          `/api/v1/professionals/${professionalId}/working-hours`,
+        ),
       ),
     enabled: !!activeOrgId && !!professionalId,
   });
@@ -30,10 +63,12 @@ export function useSetWorkingHoursMutation(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: WorkingHoursInput) =>
-      apiFetch<WorkingHoursInput>(
-        `/api/v1/professionals/${professionalId}/working-hours`,
-        { method: "PUT", body: JSON.stringify(input) },
+    mutationFn: async (input: WorkingHoursInput) =>
+      normalizeWorkingHoursResponse(
+        await apiFetch<WorkingHoursApiResponse>(
+          `/api/v1/professionals/${professionalId}/working-hours`,
+          { method: "PUT", body: JSON.stringify(input) },
+        ),
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -59,7 +94,7 @@ export function useBlocksQuery(
   activeOrgId: string | null | undefined,
   professionalId: string | null | undefined,
 ) {
-  const { from, to } = blockWindow();
+  const { from, to } = useMemo(() => blockWindow(), []);
   return useQuery({
     queryKey: ["blocks", activeOrgId ?? "", professionalId ?? "", from, to],
     queryFn: () =>
@@ -75,7 +110,6 @@ export function useCreateBlockMutation(
   professionalId: string,
 ) {
   const queryClient = useQueryClient();
-  const { from, to } = blockWindow();
   return useMutation({
     mutationFn: (input: CreateBlockInput) =>
       apiFetch<AvailabilityBlockDTO>(
@@ -84,7 +118,7 @@ export function useCreateBlockMutation(
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["blocks", activeOrgId, professionalId, from, to],
+        queryKey: ["blocks", activeOrgId, professionalId],
       });
     },
   });
@@ -95,7 +129,6 @@ export function useDeleteBlockMutation(
   professionalId: string,
 ) {
   const queryClient = useQueryClient();
-  const { from, to } = blockWindow();
   return useMutation({
     mutationFn: (blockId: string) =>
       apiFetch<void>(
@@ -104,7 +137,7 @@ export function useDeleteBlockMutation(
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["blocks", activeOrgId, professionalId, from, to],
+        queryKey: ["blocks", activeOrgId, professionalId],
       });
     },
   });

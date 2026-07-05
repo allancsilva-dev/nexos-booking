@@ -9,6 +9,7 @@ import {
   Body,
   Req,
   UseGuards,
+  HttpCode,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
@@ -118,6 +119,7 @@ export class AppointmentsController {
   }
 
   @Post(":id/cancel")
+  @HttpCode(HttpStatus.OK)
   @Idempotent()
   @UseGuards(AuthGuard, TenantGuard, RolesGuard, IfMatchGuard)
   @Roles("OWNER", "MANAGER", "PROFESSIONAL")
@@ -140,6 +142,7 @@ export class AppointmentsController {
   }
 
   @Post(":id/complete")
+  @HttpCode(HttpStatus.OK)
   @Idempotent()
   @UseGuards(AuthGuard, TenantGuard, RolesGuard, IfMatchGuard)
   @Roles("OWNER", "MANAGER", "PROFESSIONAL")
@@ -162,6 +165,7 @@ export class AppointmentsController {
   }
 
   @Post(":id/no-show")
+  @HttpCode(HttpStatus.OK)
   @Idempotent()
   @UseGuards(AuthGuard, TenantGuard, RolesGuard, IfMatchGuard)
   @Roles("OWNER", "MANAGER", "PROFESSIONAL")

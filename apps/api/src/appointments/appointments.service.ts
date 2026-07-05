@@ -27,6 +27,8 @@ import {
 import type { CreateAppointmentInput, RescheduleInput, AppointmentStatus } from "@nexos/shared";
 import type { AppointmentEventPublisher, PublishedEvent } from "../realtime/publisher.interface";
 import { appointmentEvents } from "../../db/schema";
+import { resolveEffectiveSlotStepMin } from "../scheduling/slot-step.util";
+import { computeOccupiedUntil } from "../scheduling/occupied-interval.util";
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -154,6 +156,11 @@ function mapAppointmentListItem(
     client_name: string;
     client_phone: string | null;
     professional_user_id: string | null;
+    // snapshot histórico — NOT NULL na tabela, jamais será null aqui
+    service_name_snapshot: string;
+    service_duration_min_snapshot: number;
+    service_price_cents_snapshot: number;
+    service_currency_snapshot: string;
   },
   callerRole: string,
   callerUserId: string,
@@ -176,6 +183,11 @@ function mapAppointmentListItem(
     status: row.status,
     source: row.source,
     version: row.version,
+    // campos de snapshot exigidos pelo DTO (AppointmentListItemSchema l.14-17)
+    serviceNameSnapshot: row.service_name_snapshot,
+    serviceDurationMinSnapshot: row.service_duration_min_snapshot,
+    servicePriceCentsSnapshot: row.service_price_cents_snapshot,
+    serviceCurrencySnapshot: row.service_currency_snapshot,
   };
 }
 
@@ -299,9 +311,19 @@ export class AppointmentsService {
           throw new NotFoundException("Organization not found");
         }
 
+        const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+          professionalServiceSlotStepMin: junction.slot_step_min,
+          serviceDurationMin: service.duration_min,
+          organizationSlotIntervalMin: config.slotIntervalMin,
+        });
+
         const startsAt = new Date(input.startsAt);
         const endsAt = new Date(
           startsAt.getTime() + service.duration_min * 60 * 1000,
+        );
+        const occupiedUntil = computeOccupiedUntil(
+          endsAt,
+          service.buffer_after_min,
         );
 
         const dateStr = getDateKey(startsAt, config.timezone);
@@ -328,7 +350,7 @@ export class AppointmentsService {
           const aligned = alignToSlotGrid(
             new Date(startsAt.getTime()),
             anchor,
-            config.slotIntervalMin,
+            effectiveSlotStepMin,
           );
           if (aligned.getTime() !== startsAt.getTime()) {
             throw new HttpException(
@@ -363,7 +385,7 @@ export class AppointmentsService {
           );
           if (
             startsAt.getTime() >= shiftStart.getTime() &&
-            endsAt.getTime() <= shiftEnd.getTime()
+            occupiedUntil.getTime() <= shiftEnd.getTime()
           ) {
             withinWorkingHours = true;
             break;
@@ -375,12 +397,12 @@ export class AppointmentsService {
           orgId,
           input.professionalId,
           startsAt,
-          endsAt,
+          occupiedUntil,
         );
 
         const withinBlock = blocks.some(
           (b) =>
-            b.starts_at.getTime() < endsAt.getTime() &&
+            b.starts_at.getTime() < occupiedUntil.getTime() &&
             b.ends_at.getTime() > startsAt.getTime(),
         );
 
@@ -420,6 +442,7 @@ export class AppointmentsService {
             client_id: client.id,
             starts_at: startsAt,
             ends_at: endsAt,
+            occupied_until: occupiedUntil,
             status: "CONFIRMED",
             source: "PANEL",
             note: input.note ?? null,
@@ -578,9 +601,29 @@ export class AppointmentsService {
             throw new NotFoundException("Service not found");
           }
 
+          const junction = await this.repo.findProfessionalService(
+            tx,
+            orgId,
+            appointment.professional_id,
+            appointment.service_id,
+          );
+          if (!junction) {
+            throw new ProfessionalServiceNotLinkedException();
+          }
+
+          const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+            professionalServiceSlotStepMin: junction.slot_step_min,
+            serviceDurationMin: service.duration_min,
+            organizationSlotIntervalMin: config.slotIntervalMin,
+          });
+
           const newStartsAt = new Date(input.startsAt);
           const newEndsAt = new Date(
             newStartsAt.getTime() + service.duration_min * 60 * 1000,
+          );
+          const newOccupiedUntil = computeOccupiedUntil(
+            newEndsAt,
+            service.buffer_after_min,
           );
 
           const dateStr = getDateKey(newStartsAt, config.timezone);
@@ -607,7 +650,7 @@ export class AppointmentsService {
             const aligned = alignToSlotGrid(
               new Date(newStartsAt.getTime()),
               anchor,
-              config.slotIntervalMin,
+              effectiveSlotStepMin,
             );
             if (aligned.getTime() !== newStartsAt.getTime()) {
               throw new HttpException(
@@ -637,7 +680,7 @@ export class AppointmentsService {
             );
             if (
               newStartsAt.getTime() >= shiftStart.getTime() &&
-              newEndsAt.getTime() <= shiftEnd.getTime()
+              newOccupiedUntil.getTime() <= shiftEnd.getTime()
             ) {
               withinWorkingHours = true;
               break;
@@ -649,12 +692,12 @@ export class AppointmentsService {
             orgId,
             appointment.professional_id,
             newStartsAt,
-            newEndsAt,
+            newOccupiedUntil,
           );
 
           const withinBlock = blocks.some(
             (b) =>
-              b.starts_at.getTime() < newEndsAt.getTime() &&
+              b.starts_at.getTime() < newOccupiedUntil.getTime() &&
               b.ends_at.getTime() > newStartsAt.getTime(),
           );
 
@@ -668,6 +711,7 @@ export class AppointmentsService {
 
           updateData.starts_at = newStartsAt;
           updateData.ends_at = newEndsAt;
+          updateData.occupied_until = newOccupiedUntil;
           metadata.newStartsAt = newStartsAt.toISOString();
           metadata.newEndsAt = newEndsAt.toISOString();
 

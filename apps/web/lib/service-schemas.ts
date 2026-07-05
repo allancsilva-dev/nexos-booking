@@ -18,6 +18,18 @@ export const CreateServiceSchema = z.object({
     .number({ invalid_type_error: "Preço inválido" })
     .int("Preço deve ser inteiro")
     .min(0, "Preço não pode ser negativo"),
+  bufferAfterMin: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : val),
+    z.coerce
+      .number({ invalid_type_error: "Buffer inválido" })
+      .int("Buffer deve ser inteiro")
+      .min(0, "Buffer não pode ser negativo")
+      .max(120, "Buffer deve ser no máximo 120")
+      .refine((value) => value === 0 || value % 5 === 0, {
+        message: "Buffer deve ser 0 ou múltiplo de 5",
+      })
+      .optional(),
+  ),
   currency: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
     z.string().length(3, "Moeda deve ter 3 caracteres").optional(),
@@ -38,6 +50,18 @@ export const UpdateServiceSchema = z.object({
     .int("Preço deve ser inteiro")
     .min(0, "Preço não pode ser negativo")
     .optional(),
+  bufferAfterMin: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : val),
+    z.coerce
+      .number({ invalid_type_error: "Buffer inválido" })
+      .int("Buffer deve ser inteiro")
+      .min(0, "Buffer não pode ser negativo")
+      .max(120, "Buffer deve ser no máximo 120")
+      .refine((value) => value === 0 || value % 5 === 0, {
+        message: "Buffer deve ser 0 ou múltiplo de 5",
+      })
+      .optional(),
+  ),
   currency: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
     z.string().length(3, "Moeda deve ter 3 caracteres").optional(),

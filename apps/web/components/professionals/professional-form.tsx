@@ -17,7 +17,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OperationalPanel,
+  OperationalPanelContent,
+  OperationalPanelDescription,
+  OperationalPanelHeader,
+  OperationalPanelTitle,
+} from "@/components/ui/operational/panel";
 
 const FORM_FIELDS = ["name", "slug", "active"] as const;
 
@@ -84,13 +90,16 @@ export function ProfessionalForm(props: ProfessionalFormProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">
+    <OperationalPanel variant="muted">
+      <OperationalPanelHeader>
+        <OperationalPanelTitle className="text-xl">
           {isCreate ? "Novo profissional" : "Editar profissional"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </OperationalPanelTitle>
+        <OperationalPanelDescription>
+          Defina identidade pública e status operacional deste profissional.
+        </OperationalPanelDescription>
+      </OperationalPanelHeader>
+      <OperationalPanelContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
@@ -148,7 +157,7 @@ export function ProfessionalForm(props: ProfessionalFormProps) {
             </div>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </OperationalPanelContent>
+    </OperationalPanel>
   );
 }

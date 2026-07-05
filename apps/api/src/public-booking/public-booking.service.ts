@@ -33,6 +33,8 @@ import type {
   CancelPreviewResponse,
 } from "@nexos/shared";
 import type { AppointmentStatus } from "@nexos/shared";
+import { resolveEffectiveSlotStepMin } from "../scheduling/slot-step.util";
+import { computeOccupiedUntil } from "../scheduling/occupied-interval.util";
 
 interface AvailabilityRouteQuery {
   date?: string;
@@ -252,9 +254,19 @@ export class PublicBookingService {
         throw new NotFoundException("Organization not found");
       }
 
+      const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+        professionalServiceSlotStepMin: junction.slot_step_min,
+        serviceDurationMin: service.duration_min,
+        organizationSlotIntervalMin: config.slotIntervalMin,
+      });
+
       const startsAt = new Date(input.startsAt);
       const endsAt = new Date(
         startsAt.getTime() + service.duration_min * 60 * 1000,
+      );
+      const occupiedUntil = computeOccupiedUntil(
+        endsAt,
+        service.buffer_after_min,
       );
 
       const nowMs = Date.now();
@@ -309,7 +321,7 @@ export class PublicBookingService {
       const aligned = alignToSlotGrid(
         new Date(startsAt.getTime()),
         anchor,
-        config.slotIntervalMin,
+        effectiveSlotStepMin,
       );
       if (aligned.getTime() !== startsAt.getTime()) {
         throw new ValidationException(
@@ -332,7 +344,7 @@ export class PublicBookingService {
         );
         if (
           startsAt.getTime() >= shiftStart.getTime() &&
-          endsAt.getTime() <= shiftEnd.getTime()
+          occupiedUntil.getTime() <= shiftEnd.getTime()
         ) {
           withinWorkingHours = true;
           break;
@@ -348,12 +360,12 @@ export class PublicBookingService {
         orgId,
         professional.id,
         startsAt,
-        endsAt,
+        occupiedUntil,
       );
 
       const withinBlock = blocks.some(
         (b) =>
-          b.starts_at.getTime() < endsAt.getTime() &&
+          b.starts_at.getTime() < occupiedUntil.getTime() &&
           b.ends_at.getTime() > startsAt.getTime(),
       );
 
@@ -386,6 +398,7 @@ export class PublicBookingService {
           client_id: client.id,
           starts_at: startsAt,
           ends_at: endsAt,
+          occupied_until: occupiedUntil,
           status: "CONFIRMED",
           source: "PUBLIC",
           note: null,

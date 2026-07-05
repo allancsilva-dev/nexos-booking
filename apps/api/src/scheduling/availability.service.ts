@@ -8,15 +8,18 @@ import { DbService } from "../db";
 import { withTenantContext } from "../db/tenant-context";
 import { AvailabilityRepository } from "./availability.repository";
 import { ProfessionalServiceNotLinkedException } from "../common/exceptions/domain.exception";
+import { ValidationException } from "../common/exceptions/validation.exception";
 import {
   addCivilDays,
   alignToSlotGrid,
   civilDateStartToInstant,
   formatInstantWithOffset,
-  instantToCivilDate,
   zonedDateTimeToInstant,
+  AVAILABILITY_MAX_RANGE_DAYS,
 } from "@nexos/shared";
 import type { AvailabilityQuery, AvailabilityResponse, AvailabilityDay, AvailabilitySlot } from "@nexos/shared";
+import { resolveEffectiveSlotStepMin } from "./slot-step.util";
+import { computeOccupiedUntil } from "./occupied-interval.util";
 
 const WEEKDAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -94,12 +97,18 @@ export class AvailabilityService {
         throw new NotFoundException("Organization not found");
       }
 
+      const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
+        professionalServiceSlotStepMin: junction.slot_step_min,
+        serviceDurationMin: service.duration_min,
+        organizationSlotIntervalMin: config.slotIntervalMin,
+      });
+
       if (!prof.active) {
         return {
           professionalId,
           serviceId,
           timezone: config.timezone,
-          slotIntervalMin: config.slotIntervalMin,
+          slotIntervalMin: effectiveSlotStepMin,
           days: [],
         };
       }
@@ -108,6 +117,21 @@ export class AvailabilityService {
       const toCivilDateExclusive = query.date
         ? addCivilDays(query.date, 1)
         : query.to!;
+      // Defesa em profundidade (BUG-029): o schema já limita a janela, mas o
+      // loop de slots vive aqui — recusar range gigante mesmo se chamado por
+      // dentro (ex.: rota pública monta o query antes de delegar).
+      const spanDays =
+        (Date.parse(toCivilDateExclusive) - Date.parse(fromCivilDate)) /
+        86_400_000;
+      if (spanDays > AVAILABILITY_MAX_RANGE_DAYS) {
+        throw new ValidationException("Invalid input", [
+          {
+            field: "to",
+            issue: `from..to range exceeds ${AVAILABILITY_MAX_RANGE_DAYS} days`,
+          },
+        ]);
+      }
+
       const rangeStart = civilDateStartToInstant(fromCivilDate, config.timezone);
       const rangeEnd = civilDateStartToInstant(toCivilDateExclusive, config.timezone);
 
@@ -134,8 +158,7 @@ export class AvailabilityService {
       );
 
       const now = new Date();
-      const durationMs = service.duration_min * 60 * 1000;
-      const stepMs = config.slotIntervalMin * 60 * 1000;
+      const stepMs = effectiveSlotStepMin * 60 * 1000;
       const days: AvailabilityDay[] = [];
       let dateStr = fromCivilDate;
 
@@ -165,22 +188,28 @@ export class AvailabilityService {
             const slotStart = alignToSlotGrid(
               candidate,
               anchor,
-              config.slotIntervalMin,
+              effectiveSlotStepMin,
             );
-            const slotEnd = new Date(slotStart.getTime() + durationMs);
+            const slotEnd = new Date(
+              slotStart.getTime() + service.duration_min * 60 * 1000,
+            );
+            const occupiedUntil = computeOccupiedUntil(
+              slotEnd,
+              service.buffer_after_min,
+            );
 
-            if (slotEnd.getTime() > shiftEnd.getTime()) break;
+            if (occupiedUntil.getTime() > shiftEnd.getTime()) break;
 
             if (slotStart.getTime() >= now.getTime()) {
               const blocked = blockRows.some(
                 (b) =>
-                  b.starts_at.getTime() < slotEnd.getTime() &&
+                  b.starts_at.getTime() < occupiedUntil.getTime() &&
                   b.ends_at.getTime() > slotStart.getTime(),
               );
               const hasAppointment = appointmentRows.some(
                 (a) =>
-                  a.starts_at.getTime() < slotEnd.getTime() &&
-                  a.ends_at.getTime() > slotStart.getTime(),
+                  a.starts_at.getTime() < occupiedUntil.getTime() &&
+                  a.occupied_until.getTime() > slotStart.getTime(),
               );
 
               if (!blocked && !hasAppointment) {
@@ -204,7 +233,7 @@ export class AvailabilityService {
         professionalId,
         serviceId,
         timezone: config.timezone,
-        slotIntervalMin: config.slotIntervalMin,
+        slotIntervalMin: effectiveSlotStepMin,
         days,
       };
     });

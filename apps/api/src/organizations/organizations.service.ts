@@ -8,6 +8,7 @@ import {
 import { sql } from "drizzle-orm";
 
 import { DbService } from "../db";
+import { withTenantContext } from "../db/tenant-context";
 import { OrganizationsRepository } from "./organizations.repository";
 import { SessionService } from "../auth/sessions/session.service";
 import { KickService } from "../realtime/kick.service";
@@ -44,7 +45,7 @@ export class OrganizationsService {
   }
 
   async getById(orgId: string, userId: string) {
-    return this.db.client.transaction(async (tx) => {
+    return withTenantContext(this.db, orgId, userId, async (tx) => {
       const org = await this.repo.findOrgById(tx, orgId);
       if (!org) {
         throw new NotFoundException("Organization not found");
@@ -98,7 +99,7 @@ export class OrganizationsService {
       }
     }
 
-    return this.db.client.transaction(async (tx) => {
+    return withTenantContext(this.db, orgId, userId, async (tx) => {
       const membership = await this.repo.findMembership(tx, orgId, userId);
       if (!membership || membership.status !== "ACTIVE") {
         throw new NotFoundException("Organization not found");

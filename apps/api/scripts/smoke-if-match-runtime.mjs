@@ -119,7 +119,7 @@ async function waitForApi(timeoutMs = 20_000) {
     try {
       const res = await fetchJson("/health");
       if (res.status === 200) return;
-    } catch {}
+    } catch { /* ignore */ }
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
   throw new Error("API did not start within timeout");
@@ -170,7 +170,7 @@ function startApi() {
 async function stopApi(api) {
   try {
     api.proc.kill("SIGTERM");
-  } catch {}
+  } catch { /* ignore */ }
 
   await new Promise((resolve) => {
     const timer = setTimeout(resolve, 3000);
@@ -355,7 +355,7 @@ async function main() {
     );
   } catch (error) {
     const details = error instanceof Error ? `\n--- api stderr ---\n${api.getStderr()}` : "";
-    throw new Error(`${error instanceof Error ? error.message : String(error)}${details}`);
+    throw new Error(`${error instanceof Error ? error.message : String(error)}${details}`, { cause: error });
   } finally {
     await stopApi(api);
   }

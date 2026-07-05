@@ -33,6 +33,7 @@ export class ServicesRepository {
       organization_id: string;
       name: string;
       duration_min: number;
+      buffer_after_min: number | null;
       price_cents: number;
       active: boolean;
     },
@@ -48,6 +49,7 @@ export class ServicesRepository {
     data: {
       name?: string;
       duration_min?: number;
+      buffer_after_min?: number | null;
       price_cents?: number;
       active?: boolean;
     },

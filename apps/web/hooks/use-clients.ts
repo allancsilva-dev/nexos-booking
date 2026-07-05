@@ -29,6 +29,10 @@ export function useClientsQuery(
   });
 }
 
+// ---------------------------------------------------------------------------
+// GET /clients/:id
+// ---------------------------------------------------------------------------
+
 export function useClientDetailQuery(
   activeOrgId: string | null | undefined,
   clientId: string | null | undefined,

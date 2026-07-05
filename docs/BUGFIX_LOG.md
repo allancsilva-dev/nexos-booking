@@ -65,12 +65,14 @@
 
 | ID | Data | PR/Fase | Severidade | Título | Status |
 |---|---|---|---|---|---|
+| BUG-011 | 2026-06-25 | PR-BE-FIX-REFRESH-COOKIE-DEV-01 | ALTA | Cookie de refresh saía com `Secure` fixo em dev/local HTTP | CORRIGIDO |
 | BUG-012 | a confirmar | PR-1.4 → PR-BUGFIX-1 | BLOQUEANTE | Runtime conecta como role superuser → RLS inerte (= PEND-001) | CORRIGIDO |
 | BUG-013 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | `POST /appointments` retorna 500 por `ON CONFLICT` incompatível com índice parcial de clients | CORRIGIDO |
 | BUG-014 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller | VALIDADO |
 | BUG-015 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard` | VALIDADO |
 | BUG-016 | 2026-06-24 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | ALTA | Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP | VALIDADO |
 | BUG-017 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Testes existentes de RLS/idempotência não acompanham o schema atual | PARCIALMENTE_CORRIGIDO |
+| BUG-018 | 2026-06-25 | PR-WEB-FIX-MVP-OPERABILITY-01 | ALTA | Web do MVP mantinha rotas operacionais sem navegação útil e submissões com `Idempotency-Key` instável | IMPLEMENTADO_NO_BRANCH |
 | PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
 | PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
 | PROP-E2b | 2026-06-24 | Pré-WEB-7A · PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT | ALTA | Vitrine pública relacionar serviço ↔ profissional | RATIFICADA |
@@ -85,6 +87,19 @@
 | INV-WEB2-002 | 2026-06-25 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | MÉDIA | `details[]` existe na API, mas o binding visual do campo no formulário real segue sem prova runtime | ACEITO_COMO_PENDÊNCIA |
 | INV-RLS-001 | 2026-06-23 | PR-FIX-RLS-RUNTIME-ROLE-01 · PR-REVERIFY-RLS-RUNTIME-01 | ALTA | GRANT genérico de setup regrediu hardening append-only de audit_logs | CORRIGIDO |
 | DIV-PR-4.3 | a confirmar | PR-4.3 / Fase 4 | BAIXA | Design-spec primária ausente | ACEITO_COMO_PENDÊNCIA |
+| BUG-019 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | ALTA | `GET /appointments` (lista) retorna items sem os 4 campos de snapshot do serviço | CORRIGIDO |
+| BUG-020 | 2026-06-25 | PR-BE-FIX-ORG-SETTINGS-ROUTE-01 | ALTA | `GET /organizations/:id` falha com `404` na tela de Configurações; `PATCH` não persistia `slotIntervalMin` | CORRIGIDO |
+| DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | MÉDIA | `DATABASE_SCHEMA_V2 §8.1` não lista colunas de snapshot que já existem (doc-lag) | PROPOSTA |
+| PROP-SLOT-STEP-PER-SERVICE-01 | 2026-06-26 | Emenda a ADR-023 (a confirmar) | ALTA | Passo da grade por serviço (link público oferta 30/30 ignorando duração) | CORRIGIDO |
+| PROP-BUFFER-AFTER-MIN-01 | 2026-06-26 | Pré-PR (design ratificado; implementação futura) | ALTA | Intervalo de pausa pós-atendimento (buffer) para impedir agendamentos colados | RATIFICADA |
+| BUG-021 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BLOQUEANTE | Endpoints CRUD autenticados aceitam body não validado (DTOs são interfaces TS; sem zod/ValidationPipe em runtime) | IMPLEMENTADO_NO_BRANCH |
+| BUG-022 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BLOQUEANTE | `password/reset`, `password/change`, `accept-invite` não aplicam política de senha (`min(8)` só em `register`) | IMPLEMENTADO_NO_BRANCH |
+| BUG-023 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | ALTA | Campos string de entrada (incl. booking público `client.name`/`phone`) sem `max` → risco de estouro/abuso | IMPLEMENTADO_NO_BRANCH |
+| BUG-024 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | MÉDIA | Rate-limiter apenas em memória: zera no restart e não cobre múltiplas instâncias | ACEITO_COMO_PENDÊNCIA |
+| BUG-025 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | CORS não configurado explicitamente no bootstrap; verificar topologia de deploy antes de expor | IMPLEMENTADO_NO_BRANCH |
+| BUG-026 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | Resíduo de BUG-023: `CreateAppointmentSchema`/`RescheduleSchema` (painel autenticado) sem `max` em `client.name`/`phone`/`note` | IMPLEMENTADO_NO_BRANCH |
+| BUG-027 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | `JWT_SECRET` validado só por presença; segredo curto/fraco aceito sob HS256 (brute-force offline) | IMPLEMENTADO_NO_BRANCH |
+| BUG-028 | 2026-06-29 | PR-BE-PUBLIC-CLIENT-UPSERT-NO-OVERWRITE-01 | MÉDIA | Booking público sobrescreve `clients.name`/`phone` via `ON CONFLICT DO UPDATE` — visitante anônimo corrompe cadastro de balcão sabendo um telefone já registrado na org | IMPLEMENTADO_NO_BRANCH |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
 
@@ -343,6 +358,40 @@
   de availability civil-date/timezone para não regredir BUG-016.
 - Status final: PARCIALMENTE_CORRIGIDO
 
+### BUG-011 — Cookie de refresh saía com `Secure` fixo em dev/local HTTP
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-REFRESH-COOKIE-DEV-01
+- Severidade: ALTA
+- Erro encontrado: o backend emitia e limpava `refresh_token` com `secure: true` hardcoded mesmo em `NODE_ENV=development`, o que impede persistência/envio do cookie em `http://localhost`.
+- Sintoma: login podia responder com sucesso e `/auth/me` funcionava logo após login, mas o bootstrap real por cookie após reload não se sustentava em ambiente local HTTP.
+- Causa raiz: `setRefreshCookie()` e `clearRefreshCookie()` em `apps/api/src/auth/auth.controller.ts` repetiam flags do cookie com `secure: true` fixo, sem distinguir dev/local de produção.
+- Impacto: quebrava persistência real de sessão da Web em localhost e empurrava o frontend para contornos indevidos de bootstrap.
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.controller.ts`, `apps/api/scripts/smoke-refresh-cookie-controller.mjs`.
+- Correção aplicada: extraído helper local único `getRefreshCookieOptions()` para compartilhar flags de `set` e `clear`; regra final ficou `process.env.NODE_ENV === "production"` → `secure: true`, caso contrário `secure: false`, sempre preservando `httpOnly: true`, `sameSite: "strict"` e `path: "/api/v1/auth/refresh"`.
+- Teste/validação executado:
+  `pnpm --filter @nexos/api build` → `PASS`;
+  `pnpm --filter @nexos/api test:runtime-role` → `PASS` (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`);
+  `node apps/api/scripts/smoke-refresh-cookie-controller.mjs` → `PASS`, com prova runtime focada de controller/guard: em `development`, `register`, `login` e `refresh` emitiram `refresh_token` com `HttpOnly`, `SameSite=strict`, `Path=/api/v1/auth/refresh`, `Max-Age=2592000000` e `secure=false`; `refresh` sem `X-CSRF: 1` retornou `403`; `logout` preservou `204` e limpou cookie com mesmas flags; em `production`, `login` emitiu `refresh_token` com `secure=true`.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: manter smoke focado cobrindo dev/prod e garantir que qualquer mudança futura em cookie reuse helper único para `set`/`clear`.
+- Status final: CORRIGIDO
+- Observação: prova pré-fix foi por inspeção do hardcode `secure: true`; prova pós-fix foi runtime focada via harness de controller/guard porque bootstrap HTTP integral da API nesta worktree continua bloqueado por dependência pré-existente fora do escopo deste PR.
+
+### BUG-018 — Web do MVP mantinha rotas operacionais sem navegação útil e submissões com `Idempotency-Key` instável
+- Data: 2026-06-25
+- PR/Fase: PR-WEB-FIX-MVP-OPERABILITY-01
+- Severidade: ALTA
+- Erro encontrado: a Web expunha páginas operacionais existentes, mas a sidebar mantinha links críticos desabilitados, o dashboard tinha CTA sem ação, jornada/bloqueios não era acessível por clique, e os fluxos de criação no painel/público geravam nova `Idempotency-Key` por tentativa técnica em vez de mantê-la estável por submissão lógica.
+- Sintoma: o usuário autenticado não conseguia navegar por clique para agenda/serviços/equipe/configurações; a rota de jornada dependia de URL manual; retries de criação podiam sair com chave diferente; a confirmação pública copiava apenas o token de cancelamento, não uma URL útil; a confirmação também fixava `America/Sao_Paulo` em vez da timezone da org.
+- Causa raiz: drifts locais no frontend: navegação marcada como `disabled`, CTA placeholder, ausência de link para jornada dentro da listagem de profissionais, injeção automática/efêmera de `Idempotency-Key` no client e form handlers sem ciclo explícito de rotação por submissão lógica; action de confirmação pública derivada de token em vez de `cancelUrl`.
+- Impacto: bloqueava a operabilidade real do MVP Web por clique, especialmente nos marcos A/B/C/D do roadmap, e enfraquecia o contrato de idempotência exigido para agenda e booking público.
+- Arquivo(s) afetado(s): `apps/web/components/shell/sidebar.tsx`, `apps/web/app/(authenticated)/dashboard/page.tsx`, `apps/web/app/(authenticated)/professionals/page.tsx`, `apps/web/app/(authenticated)/schedule/page.tsx`, `apps/web/components/schedule/create-appointment-form.tsx`, `apps/web/components/public/booking-flow.tsx`, `apps/web/components/public/confirmation-screen.tsx`, `apps/web/components/public/confirmation-actions.tsx`, `apps/web/lib/http-client.ts`, `apps/web/hooks/use-stable-idempotency-key.ts`.
+- Correção aplicada: habilitados links reais da sidebar para rotas já existentes; CTA `Começar` passou a navegar para configurações; jornada/bloqueios ficou acessível por clique a partir de profissionais; a geração automática de `Idempotency-Key` foi removida do client e substituída por um hook estável por submissão lógica, com rotação explícita após sucesso/erro terminal/nova intenção; agenda passou a refazer availability em conflito e a expor erros de carregamento de availability/agendamentos; confirmação pública passou a usar a timezone da org e a copiar/abrir a `cancelUrl` completa.
+- Teste/validação executado: `pnpm --filter @nexos/web build` (PASS, fora do sandbox por limitação do Turbopack); `pnpm --filter @nexos/api build` (PASS); `pnpm --filter @nexos/api test:runtime-role` (PASS, `current_user=app_runtime`); smoke HTTP em runtime local com tenant descartável: register `201`, `/auth/me` `200`, services `201`, professionals `201`, working-hours `200`, professional-services `200`, availability painel `200`, appointment painel `201`, cancel painel `201`, vitrine pública `200`, availability pública `200`, booking público `201`, cancel preview `200`, cancel público `200`. Prova de navegador ficou parcial: páginas reais abriram no Safari em `http://localhost:3000/login` e `http://localhost:3000/register`, mas a automação de clique foi bloqueada pelo ambiente (`Allow JavaScript from Apple Events` desabilitado e `System Events` sem permissão para teclas), então os cliques reais ficaram `NÃO EXECUTADO` nesta sessão.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: manter `Idempotency-Key` sob controle explícito do fluxo de submissão; preservar links reais para rotas já implementadas; repetir a validação browser com harness ou permissões de automação antes do commit final.
+- Status final: IMPLEMENTADO_NO_BRANCH (commit `4e1fa5d fix(web): restore MVP operability flows` no branch `fix/appointments-list-snapshot`). Código no disco, compilado sem erro. **Pendência crítica: prova de clique/automação NÃO EXECUTADA** (Safari bloqueou automação de teclas; harness de navegador faltando). **CI provisoriamente deferida (D10 conforme ARCHITECTURE_DECISIONS § decisão de infraestrutura)** — a passada final de CI será executada quando dono autorizar re-entrada. Reenquadramento: a agenda será retomada como reconciliação do aceite WEB-5A (visão diária/semanal), após o fix de backend de snapshots na lista (PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01). Para fechar: (1) prova de clique real das 4 ações (navegação sidebar, CTA dashboard, jornada/bloqueios em profissionais, submissão em agenda/público com `Idempotency-Key` estável); (2) CI rodada + report de passing tests.
+
 ### PROP-E1 — Snapshot de preço no agendamento (proposta — muda canônico)
 - Data: a confirmar na fonte
 - PR/Fase: pré-PR de backend da camada web (`PR-BE-SNAPSHOT`), gate antes de WEB-5B/WEB-7B
@@ -538,6 +587,125 @@
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: revisão de DTO de lista em cada PR-WEB (gate transversal).
 - Status final: ACEITO_COMO_PENDÊNCIA (deferida; restrição transversal ativa)
+
+### PROP-SLOT-STEP-PER-SERVICE-01 — Passo da grade por serviço (emenda ADR-023 ratificada localmente; aguardando implementação)
+- Data: 2026-06-26
+- PR/Fase: emenda ao ADR-023 ratificada em `docs/ARCHITECTURE_DECISIONS.md` → implementação em `PR-BE-SERVICE-SLOT-STEP-01`
+- Severidade: ALTA
+- Erro encontrado: no link público de agendamento os horários ofertados aparecem fixos de 30 em 30 min,
+  ignorando a `duration_min` do serviço. Empresa com serviços de durações distintas (ex.: corte 50,
+  barba 30) não consegue ofertar horários coerentes com cada serviço.
+- Sintoma: `GET /public/:orgSlug/professionals/:slug/availability` emite slots espaçados por
+  `organizations.slot_interval_min` (default 30), não pela duração do serviço escolhido. Observado por
+  dono ao reconstruir o link externo.
+- Causa raiz: por **decisão de ADR-023**, o passo da grade (`alignToSlotGrid(..., slotIntervalMin)`) é
+  `organizations.slot_interval_min` — config **única por empresa** e **independente da duração do
+  serviço**. ADR-023 rejeitou "grade = duração" no código (para preservar a alavanca de ocupação:
+  passo menor que a duração gera mais pontos de início) e **registrou** "grade por serviço (cada serviço
+  com seu passo)" como **futuro aditivo, pós-MVP**, junto de buffers/overrides em `professional_services`
+  (PLANNING §10.2; ADR-023 § Consequências, linha ~677).
+- Impacto: usabilidade real do MVP multi-empresa. A config global única força a mesma cadência para todos
+  os serviços da empresa; inviável quando a empresa tem serviços de durações diferentes (caso do dono, que
+  já vai colocar 2+ empresas/profissionais em uso). **Muda canônico:** ADR-023, PLANNING §10.2/§16,
+  API §15/§16.1 (resposta de availability), `packages/shared` (DTO) e possível migração aditiva em
+  `professional_services`/`services`.
+- Arquivo(s) afetado(s): `apps/api/db/migrations/0009_professional_service_slot_step.sql`,
+  `apps/api/db/schema/index.ts`, `apps/api/src/scheduling/slot-step.util.ts`,
+  `apps/api/src/scheduling/availability.service.ts`, `apps/api/src/public-booking/public-booking.service.ts`,
+  `apps/api/src/appointments/appointments.service.ts`, `apps/api/scripts/smoke-service-slot-step-runtime.mjs`,
+  `packages/shared/src/dto/availability.dto.ts`, `packages/shared/src/slot-grid.ts`,
+  `docs/API_CONTRACTS.md`, `docs/DATABASE_SCHEMA_V2.md`, este ledger.
+- Correção aplicada:
+  1. ledger sincronizado com a emenda do ADR-023 já ratificada localmente;
+  2. adicionada coluna aditiva `professional_services.slot_step_min integer null` com constraint
+     `NULL OR (>= 5 AND <= 240 AND % 5 = 0)`;
+  3. criado helper backend único `resolveEffectiveSlotStepMin()` com regra:
+     `professional_services.slot_step_min ?? services.duration_min ?? organizations.slot_interval_min`;
+  4. availability, POST público, create staff e reschedule passaram a reutilizar o mesmo cálculo de grade,
+     preservando a mesma âncora/jornada/timezone do ADR-023;
+  5. `AvailabilityResponse.slotIntervalMin` foi mantido por compatibilidade, agora retornando o passo
+     efetivo usado na consulta;
+  6. duração do atendimento permaneceu em `services.duration_min`; o passo só define a cadência dos
+     horários ofertados/validados.
+- Pontos a decidir na ratificação:
+  1. Onde mora o passo por serviço: coluna nova (ex.: `services.slot_step_min` ou em
+     `professional_services`) **ou** derivar passo = `duration_min` quando não houver override.
+  2. Preservar a alavanca de ocupação de ADR-023: permitir passo **menor** que a duração (override
+     explícito), com fallback `passo = duration_min`. Não fixar cegamente "grade = duração".
+  3. Manter a âncora única e o **gate de coerência POST↔availability sob DST** de ADR-023 (o passo muda;
+     a âncora = início da jornada e o utilitário único **não** mudam de semântica).
+  4. `slot_interval_min` da empresa: mantém-se como default/fallback ou é aposentado? (decisão de contrato
+     — api-contract-guardian).
+  5. Compatibilidade do DTO `slotIntervalMin` na resposta de availability (campo informativo hoje;
+     web renderiza `days/slots` direto, não usa o campo para render).
+- Teste/validação executado:
+  * `pnpm --filter @nexos/shared build` → PASS
+  * `pnpm --filter @nexos/api build` → PASS
+  * `pnpm --filter @nexos/api test:runtime-role` → PASS
+    (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`)
+  * `pnpm --filter @nexos/api migrate:fresh -- --database nexos_service_slot_step_20260626` → PASS
+  * `POSTGRES_DB=nexos_service_slot_step_20260626 node apps/api/scripts/smoke-service-slot-step-runtime.mjs`
+    → PASS, com as seguintes provas:
+    - serviço 30min: `09:00`, `09:30`, `10:00`
+    - serviço 45min: `09:00`, `09:45`, `10:30`
+    - serviço 50min: `09:00`, `09:50`, `10:40`
+    - override 25 para duração 50: `09:00`, `09:25`, `09:50`
+    - público: slot emitido por availability foi aceito por `POST /api/v1/public/:orgSlug/appointments` → `201`
+    - staff create: slot emitido por availability foi aceito por `POST /api/v1/appointments` → `201`
+    - reschedule: slot alinhado → `200`; slot off-grid → `422 VALIDATION_ERROR`
+    - cross-company: org A serviço 50 ficou com passo 50; org B serviço 30 seguiu com passo 30
+    - migration/constraint: `slot_step_min=7` foi rejeitado pela constraint
+- Branch/commit relacionado: `PR-BE-SERVICE-SLOT-STEP-01`
+- Prevenção de regressão: estender o gate de coerência de ADR-023 (todo slot do availability passa no POST)
+  para o passo por serviço; teste multi-serviço/multi-empresa de cadência.
+- Status final: CORRIGIDO
+
+### PROP-BUFFER-AFTER-MIN-01 — Intervalo de pausa pós-atendimento (buffer) para impedir agendamentos colados (proposta — exige ratificação)
+- Data: 2026-06-26
+- PR/Fase: pré-PR (design já ratificado pelo humano em sessão de engenharia; implementação futura `PR-BE-BUFFER-AFTER-MIN-01`)
+- Severidade: ALTA
+- Erro encontrado: agendamentos podem ser criados consecutivamente (ex.: fim de um às 14:30, início do próximo às 14:31), sem intervalo de buffer para assuntos administrativos, limpeza ou descanso entre atendimentos. O ADR-022 registra o buffer como **decisão estratégica pós-MVP**, mas o humano ratificou incorporá-lo ao MVP quando da emenda de ADR-023 (padrão de grade por serviço).
+- Sintoma: latente até a implementação. Operacionalmente, usuário agenda dois serviços de 30 min consecutivos às 14:00 e 14:30, sem pausa de descanso entre eles — experiência ruim para profissional.
+- Causa raiz: arquitetura de availability (ADR-023) e agendamento (DATABASE_SCHEMA_V2 §8/§14) não incorpora intervalo pós-atendimento. As constraint de conflito (`no_overlap`) e a validação de grade ignoram buffer.
+- Impacto: **usabilidade operacional do MVP.** Sem buffer, profissional fica esgotado em dias cheios. O sistema aceita agendamentos que violam práticas reais de negócio. **Muda canônico:** migration aditiva em `services` (ou `professional_services`), ADR-023, PLANNING §10.2/§16, API_CONTRACTS §15/§16.1 (comportamento de availability), constraint de banco (`no_overlap` → cobertura estendida) e `packages/shared` (DTO de services, behavior de slot picker).
+- Arquivo(s) afetado(s): previstos como afetados (sem toque nesta entrada):
+  - `apps/api/db/schema/index.ts` (tabela `services`, coluna `buffer_after_min`).
+  - Nova migration aditiva forward-only (próximo número após 0009).
+  - `apps/api/db/migrations/0003` (constraint `no_overlap` — estratégia de cobertura será ratificada).
+  - `apps/api/src/scheduling/availability.service.ts` (gerador de slots).
+  - `apps/api/src/scheduling/slot-step.util.ts` (helper de alinhamento de grade — interação com passo por serviço).
+  - `apps/api/src/appointments/appointments.service.ts` (validação de criação).
+  - `apps/api/src/public-booking/public-booking.service.ts` (validação de booking público).
+  - `packages/shared/src/dto/service.dto.ts` (field `buffer_after_min`).
+  - `docs/API_CONTRACTS.md §15/§16.1` (especificação de comportamento de availability com buffer).
+  - `docs/DATABASE_SCHEMA_V2.md §8.1` (coluna de `services`).
+- Correção aplicada: **nenhuma** — as **5 decisões de design foram ratificadas pelo humano (2026-06-26)** e a **PROPOSTA está RATIFICADA pelo humano Allan Carvalho em 2026-06-26** com sign-off formal. Os **3 pontos de detalhamento técnico (5a–5e) abaixo seguem para escrutínio de db-guardian + design-auditor** durante implementação (não são bloqueadores de ratificação). Implementação prevista para `PR-BE-BUFFER-AFTER-MIN-01` (não iniciado).
+- Decisões ratificadas (humano, 2026-06-26):
+  1. **Granularidade:** coluna `services.buffer_after_min` (não `professional_services.buffer_after_min`). Buffer é **universal do serviço**, sem override por profissional nesta fase. **Divergência deliberada do canônico:** `IMPLEMENTATION_ROADMAP.md §6 (linhas 388–398)`, `ADR-023 § Consequências (linhas ~677-680)` e `POST_MVP_PRODUCT_ROADMAP.md` registravam buffer em `professional_services`; a decisão humana o centraliza em `services` para simplificar o MVP (sem efeito colateral de override), preservando a evolução futura para override granular.
+  2. **Enforcement:** enforcement **no banco (obrigatório)**, não advisory/app-level. Quando um appointment é criado, o intervalo persistido para a constraint `no_overlap` (EXCLUDE gist) **INCLUI o buffer** — ex.: atendimento real 14:00–14:30, buffer 15min → intervalo persistido de conflito 14:00–14:45. A constraint barraagendamentos que overlap nesse intervalo. **Detalhe técnico a ratificar pelo db-guardian (5b):** desenho exato — nova coluna `occupied_until` (fim com buffer)? expressão na constraint? como `availability.service.ts` e o banco convergem para semântica única?
+  3. **Buffer ultrapassa turno (ADR-022):** se `slotEnd + buffer_after_min` ultrapassa o fim do expediente, o slot **NÃO é oferecido** em availability. Pausa sempre garantida — último atendimento do dia deve terminar com buffer dentro da jornada.
+  4. **Campo único:** `services.buffer_after_min` (integer nullable). **NULL ou 0 = buffer desligado** (comportamento atual preservado). **>0 = buffer ativo** (em minutos; múltiplo de 5, range [5, 120] TBD). **SEM campo boolean separado** — NULL/0 é a flag de desligamento.
+  5. **Fora de escopo MVP (registrado explícito para impedir antecipação):** `buffer_before_min` e `processing_time` — deferidos ao pós-MVP. Apenas buffer pós-atendimento, não pré/middle.
+- Pontos a decidir e a ratificar por db-guardian + design-auditor:
+  1. **5a — Persistência do intervalo de conflito:** a constraint `no_overlap` (migration 0003, linhas ~106–115) valida `EXCLUDE gist (organization_id WITH =, tstzrange(starts_at, ends_at) WITH &&)`. Quando `buffer_after_min` é ativo, como o intervalo `[starts_at, ends_at]` incorpora buffer sem corromper `ends_at` (fim real/de exibição)? Opções:
+     - Nova coluna `occupied_until` (ou `blocked_until`): persistence do `ends_at + buffer`; a constraint usa `tstzrange(starts_at, occupied_until)` para validação; `ends_at` permanece canônico para cliente.
+     - Expressão na constraint: `occupied_until := CASE WHEN buffer_after_min IS NULL THEN ends_at ELSE ends_at + (buffer_after_min || ' min')::interval END`; sem nova coluna, apenas storage de lógica na constraint.
+     - Semântica: qual é consultada por `availability.service.ts` para calcular conflitos? a constraint valida criação; o serviço precisa da mesma lógica para não oferecer slots colados.
+     - Desafio: `appointments` já tem migrations anteriores (`0007_pg_trgm`, `0008_service_snapshot`, `0009_professional_service_slot_step`); nova coluna buffer pode ser aditiva (migration **`0010`**). **Decisão arquitetural central** que impacta DB schema, availability picker, appointments service, teste de coerência POST↔availability. Deixar explícito o desenho antes de build.
+  2. **5b — Composição com slot_step_min:** dois campos independentes em tabelas diferentes (`services.buffer_after_min` e `professional_services.slot_step_min`, implementado em PROP-SLOT-STEP-PER-SERVICE-01 commit 6fb34a7) atuam no mesmo fluxo de cálculo (`availability.service.ts` + `slot-step.util.ts`). Sequência final:
+     - (A) passo de grade via `resolveEffectiveSlotStepMin()` (já existe).
+     - (B) geração de slots com esse passo.
+     - (C) filtragem de conflitos via `no_overlap` (vai incluir buffer).
+     - (D) filtragem de "buffer ultrapassa turno".
+     - A ordem de (C) e (D) será definida aqui; a composição de lógica fica explícita no `availability.service.ts` e validada no smoke.
+  3. **5c — Constraint 0003 e coberência de migration forward-only:** a migration 0003 é de 2026-05-XX (anterior a buffer) e define `no_overlap` com EXCLUDE. Buffer é aditivo (nova coluna ou expressão gerada). Migration nova (ex.: 0010) será **forward-only** (sem down), adicionando coluna e **atualizando** a constraint. Ou a expressão é embutida (sem nova coluna, apenas constraint redefinida)? Decisão de DDL e schema safety.
+  4. **5d — DTO e contrato:** `ServiceDTO`/`ServiceCreateInput` devem expor `buffer_after_min`. Será field obrigatório (sempre retornado na vitrine/settings) ou opcional (nullable no DTO)?
+  5. **5e — Smoke e prova de coerência POST↔availability:** testes a definir: criar 2 agendamentos colados com buffer>0 → segundo rejeitado com `409 APPOINTMENT_CONFLICT` (enforcement banco); availability não oferece slot cujo `slotEnd+buffer` ultrapasse turno; `buffer_after_min` NULL/0 preserva comportamento atual (nenhuma pausa).
+- Teste/validação executado: **NÃO EXECUTADO** (proposta apenas). Decisões de design validadas em sessão humana; implementação futura rodará os smokes/prova acima.
+- Branch/commit relacionado: não se aplica (proposta).
+- Prevenção de regressão: após 5a-5e serem ratificados, smoke adiciona testes para: (1) buffer bloqueia agendamentos colados; (2) último slot do dia com buffer < cobertura; (3) NULL/0 preserva atual; (4) interação com slot_step_min comprovada.
+- Status final: **RATIFICADA** (Allan Carvalho, 2026-06-26) — as **5 decisões de design são ratificadas**. Os **3 pontos de detalhamento técnico (5a-5e)** seguem para escrutínio de db-guardian + design-auditor **durante implementação** (não bloqueiam a ratificação). Implementação prevista para `PR-BE-BUFFER-AFTER-MIN-01` (não iniciado).
+- Dependências satisfeitas: RLS runtime (BUG-012/PEND-001) **CORRIGIDO**; PROP-E1 (snapshot) **RATIFICADA**; note D10 (CI provisoriamente deferida) — a CI passada final será executada pelo humano após build completo. Nenhuma bloqueio funcional para iniciar a implementação, apenas decisão de risco técnico (5a-5e) que impacta banco/schema.
 
 ### INV-WEB-001 — Slug público inexistente retorna 500
 - Data: 2026-06-23
@@ -794,6 +962,274 @@
 - Prevenção de regressão: `smoke-auth-register-runtime.mjs` cobre o caminho ponta-a-ponta sob
   `app_runtime`, incluindo isolamento cross-tenant e rollback atômico.
 - Status final: CORRIGIDO
+
+### BUG-019 — `GET /appointments` (lista) retorna items sem os 4 campos de snapshot do serviço
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01
+- Severidade: ALTA
+- Erro encontrado: o endpoint `GET /api/v1/appointments` retornava listagem de agendamentos sem preencher os 4 campos de snapshot do serviço (`serviceNameSnapshot`, `serviceDurationMinSnapshot`, `servicePriceCentsSnapshot`, `serviceCurrencySnapshot`), apesar de serem obrigatórios no DTO (`packages/shared/src/dto/appointment-list.dto.ts:14-17`).
+- Sintoma: a Web caía no fallback "Snapshot do serviço indisponível" (`apps/web/components/schedule/appointment-list.tsx:L~42`), impedindo a agenda operacional de renderizar serviço/duração/preço de forma confiável. Mensagens de erro ou tela branca, conforme o fallback. O caminho single (`GET /api/v1/appointments/:id`) e a criação (`POST /api/v1/appointments`) já retornavam os snapshots corretamente, deixando o bug isolado à listagem.
+- Causa raiz: **dois pontos no backend:** (1) `apps/api/src/appointments/appointments.repository.ts` — o método `findAppointments` (~linhas 313-332) usava `.select({...})` que **não incluía nenhuma das 4 colunas** `service_*_snapshot`; (2) `apps/api/src/appointments/appointments.service.ts` — o método `mapAppointmentListItem` (~linhas 144-180) **não declarava os 4 campos camelCase no tipo** retornado, nem os emitia do resultado do repository. Resultado: lista vazia para snapshots. O `mapAppointment` (single) e `mapAppointmentFromCreate` (POST) já estavam corretos, revelando negligência isolada ao refatorar findAppointments.
+- Impacto: bloqueava a operação da agenda Web (WEB-5B) — marcos de renderização de serviço/preço/duração perdidos; fallback de "indisponível" afetava confiabilidade e UX. O snapshot é crítico por ser imutável (PROP-E1, ratificada): alterações futuros de preço/nome não devem retroceder o histórico de agendamentos.
+- Arquivo(s) afetado(s): `apps/api/src/appointments/appointments.repository.ts` (select das 4 colunas), `apps/api/src/appointments/appointments.service.ts` (mapper dos 4 campos), `docs/BUGFIX_LOG.md` (esta entrada).
+- Correção aplicada: (1) adicionadas as 4 colunas `service_name_snapshot`, `service_duration_min_snapshot`, `service_price_cents_snapshot`, `service_currency_snapshot` ao `.select({...})` de `findAppointments`; (2) adicionados os 4 campos camelCase no tipo de retorno e na declaração de atributos de `mapAppointmentListItem`. Nenhuma mudança de schema, migration, RLS, policy, DTO ou contrato — as colunas já existiam (PROP-E1/migration 0008); o DTO já declarava obrigatoriedade (§14-17 já estava correto no shared). Apenas foram ligados os pontos do repository + service.
+- Teste/validação executado:
+  * `pnpm --filter @nexos/api build` → PASS (tsc exit 0).
+  * `pnpm --filter @nexos/api test:runtime-role` → PASS (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`).
+  * Smoke focado na listagem (banco descartável `nexos_appointments_list_snapshot_20260625`, migrado 0001→0008):
+    - `GET /api/v1/appointments` com tenant correto → `200` com 4 snapshots preenchidos para cada item (`serviceNameSnapshot="Servico Original"`, `serviceDurationMinSnapshot=30`, `servicePriceCentsSnapshot=9900`, `serviceCurrencySnapshot="BRL"`).
+    - Prova de snapshot **imutável (histórico):** após criar appointment com serviço de preço X, editar o serviço para preço Y+nome diferente, `GET /appointments` continuou retornando o snapshot original. Imutabilidade confirmada.
+    - Prova de RLS Marco C: tenant cruzado → `items: []` vazio; sem auth → `401`; tenant correto e autenticado → vê seus appointments com snapshots preenchidos.
+  * Ressalva: smoke amplo `test-appointments-list.mjs` falha em `findSlot` (etapa PRÉ-EXISTENTE e **FORA DO ESCOPO** deste PR) — availability agora exige civil date `YYYY-MM-DD` conforme BUG-016, não datetime. Não corrigido aqui (pertence ao escopo de availability, não de snapshot).
+- Branch/commit relacionado: não se aplica (PR sem commit no momento do registro).
+- Prevenção de regressão: teste automatizado de `GET /appointments` incluindo asserção de presença e imutabilidade dos 4 snapshots; teste de mutação de preço do serviço confirmando que appointments passados preservam snapshot original.
+- Status final: CORRIGIDO
+
+### DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 — Schema canônico não lista colunas de snapshot que já existem (doc-lag)
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 (documentação)
+- Severidade: MÉDIA
+- Erro encontrado: **não é contradição de intenção, é documentação defasada.** `docs/DATABASE_SCHEMA_V2.md §8.1` (CREATE TABLE `appointments`) **NÃO lista as 4 colunas de snapshot** (`service_name_snapshot`, `service_duration_min_snapshot`, `service_price_cents_snapshot`, `service_currency_snapshot`), apesar de:
+  - Existirem no schema executável (`apps/api/db/schema/index.ts:202-205`).
+  - Estarem na migration 0008 (ratificada por PROP-E1).
+  - Serem DTO-obrigatórias em appointment/list (`packages/shared/src/dto/appointment-list.dto.ts:14-17`).
+- Sintoma: leitor do `DATABASE_SCHEMA_V2.md` §8.1 **não vê as colunas** documentadas, mas o schema executável/migration e o DTO as declaram. Divergência apenas de documentação, não de intenção/schema.
+- **Também constatado:** `docs/API_CONTRACTS.md §16` não tem bloco JSON explícito do response de `GET /appointments` (listagem) descrevendo os snapshots. `§16.2` (POST response) e o DTO shared já os declaram, deixando a leitura fragmentada.
+- Causa raiz: após PROP-E1 ser ratificada (2026-06-24) e a migration 0008 + DTO serem implementados, a documentação canônica do schema e do contrato **não foram sincronizadas**. É doc-lag, não contradição de decisão.
+- Impacto: **NENHUM impacto funcional** — a implementação está correta (BUG-019 prova). Impacto documental: leitor novo do projeto não encontra os 4 campos no §8.1 e pode questionar/reivindicar ou executar com DTO desatualizado. Hierarquia de autoridade resolve: **ADR/decisão ratificada + schema executável + DTO ratificado prevalecem sobre documentação desatualizada.** PROP-E1 foi ratificada, migration 0008 existe, DTO obriga; §8.1 é o documento que deve acompanhar, não o inverso.
+- Arquivo(s) afetado(s): **NÃO ALTERADOS NESTE PR.** Apenas registrado para rastreabilidade:
+  - `docs/DATABASE_SCHEMA_V2.md §8.1` (candidato a update).
+  - `docs/API_CONTRACTS.md §16` (candidato a update).
+- Correção aplicada: **NENHUMA NESTE PR.** Esta é uma **PROPOSTA** de sincronização documental, não uma correção aplicada. Os canônicos (schema/contrato) permanecem inalterados conforme disciplina de docs-reporter. Recomendação: atualizar §8.1 para listar as 4 colunas com tipo/default; atualizar §16 response para incluir o bloco JSON dos snapshots (similar ao §16.2 POST).
+- Teste/validação executado: **NÃO EXECUTADO**. Inspeção manual de: `apps/api/db/schema/index.ts` confirmando colunas; `apps/api/db/migrations/0008.sql` confirmando criação; `packages/shared/src/dto/appointment-list.dto.ts` confirmando DTO obrigatórios; `docs/DATABASE_SCHEMA_V2.md` confirmando que **não lista as colunas**; `docs/API_CONTRACTS.md §16` confirmando que **não descreve snapshots na listagem**.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: ao próximo update de `DATABASE_SCHEMA_V2.md` ou `API_CONTRACTS.md`, validador deve cruzar contra schema executável/DTO e asserir presença de todos os campos obrigatórios.
+- Status final: PROPOSTA / PENDENTE de aprovação do dono documental. **Justificativa de bloqueio:** NÃO BLOQUEOU a correção (BUG-019) porque a hierarquia de autoridade (ADR + decisão ratificada + schema executável > documentação) é clara no `MVP_EXECUTION_PLAN.md`. O fix foi validado contra o que é executável, não contra o que está escrito em §8.1 desatualizado. Aberto como proposta para que a documentação canônica siga a realidade ratificada.
+
+### BUG-020 — `GET /organizations/:id` falha com `404` na tela de Configurações; `PATCH` não persistia `slotIntervalMin`
+- Data: 2026-06-25
+- PR/Fase: PR-BE-FIX-ORG-SETTINGS-ROUTE-01
+- Severidade: ALTA
+- Erro encontrado: `GET /api/v1/organizations/:id` retornava `404 NOT_FOUND` mesmo para tenant correto na tela de Configurações da organização. Durante prova de regressão mínima, também ficou evidente que `PATCH /api/v1/organizations/:id` respondia `200`, mas não persistia `slotIntervalMin`.
+- Sintoma: Web autenticada conseguia entrar no painel, mas `/settings/organization` não carregava dados básicos da empresa; update de grade/fuso podia aparentar sucesso parcial, com `slotIntervalMin` permanecendo no valor anterior.
+- Causa raiz: dois defeitos no backend de `organizations/settings`:
+  1. `apps/api/src/organizations/organizations.service.ts`: `getById()` e `update()` abriam `db.client.transaction(...)` sem `withTenantContext`. Com RLS ativa, leituras de `organizations`/`organization_users` rodavam sem GUC tenant efetivo e negavam acesso, virando `404`.
+  2. `apps/api/src/organizations/organizations.repository.ts`: `updateOrg()` fazia `.set({ ...data })` com chave camelCase `slotIntervalMin`, mas coluna real é `slot_interval_min`; PATCH retornava `200` sem atualizar esse campo.
+- Impacto: bloqueava WEB-1 / organization settings. Usuário membro não conseguia ler dados contratados da org ativa (`id`, `name`, `slug`, `timezone`, `slotIntervalMin`, `currency`) e a edição de `slotIntervalMin` ficava inconsistente.
+- Arquivo(s) afetado(s): `apps/api/src/organizations/organizations.service.ts`, `apps/api/src/organizations/organizations.repository.ts`, `apps/api/scripts/smoke-org-settings-route.mjs`, `docs/BUGFIX_LOG.md`.
+- Correção aplicada:
+  1. `getById()` e `update()` passaram a usar `withTenantContext(this.db, orgId, userId, ...)`, seguindo padrão canônico já usado em módulos tenant-scoped do repo.
+  2. `updateOrg()` passou a mapear explicitamente `slotIntervalMin -> slot_interval_min` no `.set(...)`, preservando demais campos contratados.
+  3. Adicionado smoke focado `apps/api/scripts/smoke-org-settings-route.mjs` para prova runtime de GET/PATCH + tenant + RLS.
+- Teste/validação executado:
+  * `pnpm --filter @nexos/api build` → PASS.
+  * `pnpm --filter @nexos/api test:runtime-role` → PASS (`current_user=app_runtime`, `rolsuper=false`, `rolbypassrls=false`).
+  * `pnpm --filter @nexos/api migrate:fresh -- --database nexos_org_settings_route_20260625` → PASS.
+  * `POSTGRES_DB=nexos_org_settings_route_20260625 node apps/api/scripts/smoke-org-settings-route.mjs` → PASS.
+    - Tenant correto: `GET /api/v1/organizations/:id` → `200`; shape contratado presente (`id`, `name`, `slug`, `timezone`, `slotIntervalMin`, `currency`).
+    - Regressão mínima PATCH: `PATCH /api/v1/organizations/:id` → `200`; retorno pós-update com `name` atualizado, `timezone="America/Sao_Paulo"`, `slotIntervalMin=45`, `currency="BRL"`.
+    - Negativos: `timezone` inválido → `422`; `slotIntervalMin=3` → `422`; id inexistente → `404`; tenant cruzado no GET/PATCH → `404`; sem auth → `401`.
+    - RLS: consulta SQL sem contexto → `0` linhas; com tenant errado → `0` linhas; com tenant correto → `1` linha.
+- Branch/commit relacionado: não se aplica (sem commit no momento do registro).
+- Prevenção de regressão: manter smoke focado de settings route cobrindo GET/PATCH, tenant cruzado e consulta SQL sem contexto.
+- Status final: CORRIGIDO
+
+---
+
+### BUG-021 — Endpoints CRUD autenticados aceitam body não validado
+- Data: 2026-06-29
+- PR/Fase: PR-BE-FIX-SECURITY-HARDENING-01 / Hardening pré-VPS
+- Severidade: BLOQUEANTE
+- Erro encontrado: controllers de escrita recebem `@Body() body: XInput` onde `XInput` é **interface TypeScript** (ex.: `CreateProfessionalInput`, `CreateServiceInput`, `UpdateOrganizationInput`, `UpdateClientInput`, `CreateBlockInput`, `WorkingHoursInput`). Tipos TS são apagados em runtime e não há `ValidationPipe` global + `class-validator`, nem `safeParse` zod nesses handlers. Logo, o body **não é validado**.
+- Sintoma: payload arbitrário aceito em endpoints autenticados — `name` de tamanho ilimitado, `durationMin`/`priceCents` negativos ou não-numéricos, campos extras. Sem rejeição `422`.
+- Causa raiz: padrão de validação zod (`safeParse` + `ValidationException`) existe em `auth.controller.ts` (register/login) mas **não foi aplicado** aos demais módulos; DTOs de entrada ficaram como interfaces.
+- Impacto: integridade de dados e superfície de abuso em todo o tenant autenticado; risco de estouro de colunas e estados inválidos persistidos. Bloqueia exposição segura.
+- Arquivo(s) afetado(s): `apps/api/src/professionals/professionals.controller.ts`, `apps/api/src/services/services.controller.ts`, `apps/api/src/organizations/organizations.controller.ts`, `apps/api/src/clients/clients.controller.ts`, `apps/api/src/scheduling/**`, DTOs de entrada correspondentes e schemas em `packages/shared/src/dto/**`.
+- Correção aplicada: criados/estendidos schemas zod de entrada em `packages/shared` (`CreateProfessionalSchema`, `UpdateProfessionalSchema`, `CreateServiceSchema`, `UpdateServiceSchema`, `UpdateOrganizationSchema`, `InviteMemberSchema`, `UpdateMemberSchema`) + helper `apps/api/src/common/validation/parse-body.ts`. Controllers (`professionals`, `services`, `organizations`, `clients`) trocaram `@Body() body: XInput` por `@Body() body: unknown` + `parseBody(Schema, body)` → `422 VALIDATION_ERROR` com `details[]`. Blocos e working-hours passaram a validar via `CreateBlockSchema`/`WorkingHoursSchema` do shared.
+- Teste/validação executado: `pnpm --filter @nexos/shared build` PASS; `pnpm --filter @nexos/api build` PASS; `node apps/api/scripts/smoke-conformance.mjs` → 36/36 (sem regressão de contrato); `node apps/api/scripts/smoke-security-hardening.mjs` → 13/13 (body lixo/over-limit → `422`).
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch; commit é gate humano).
+- Prevenção de regressão: `apps/api/scripts/smoke-security-hardening.mjs`; convenção "controller de escrita = `parseBody` obrigatório".
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-022 — Reset/change/accept-invite não aplicam política de senha
+- Data: 2026-06-29
+- PR/Fase: PR-BE-FIX-SECURITY-HARDENING-01 / Hardening pré-VPS
+- Severidade: BLOQUEANTE
+- Erro encontrado: `POST /auth/password/reset`, `/auth/password/change` e `/auth/accept-invite` recebem a nova senha via interfaces TS (`ResetPasswordInput`, `PasswordChangeInput`, `AcceptInviteInput`) sem validação. A regra `password: z.string().min(8)` existe **somente** em `RegisterInputSchema`.
+- Sintoma: é possível definir senha de 1 caractere (ou vazia) via fluxo de reset/troca/convite, contornando a política aplicada no cadastro.
+- Causa raiz: validação de força de senha não centralizada; ausente nos fluxos de redefinição.
+- Impacto: contas com senha trivial em produção; enfraquece autenticação apesar do hash forte (Argon2id).
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.controller.ts`, `apps/api/src/auth/dto/reset-password.dto.ts`, `apps/api/src/auth/dto/password-change.dto.ts`, `apps/api/src/auth/dto/accept-invite.dto.ts`, schemas no shared.
+- Correção aplicada: `passwordSchema = z.string().min(8).max(128)` único em `packages/shared/src/dto/auth.dto.ts`, reutilizado por `RegisterInputSchema`, `ResetPasswordSchema`, `PasswordChangeSchema` e `AcceptInviteSchema`. `auth.controller.ts` passou a validar `password/reset`, `password/change`, `accept-invite`, `password/forgot` e `verify-email` via `parseBody(...)`.
+- Teste/validação executado: `node apps/api/scripts/smoke-security-hardening.mjs` → `password/reset` senha `< 8` → `422`; `password/change` senha `< 8` → `422`; `password/forgot` email inválido → `422`; `register` senha `< 8` → `422`; baseline válido → `201`.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: schema único de senha compartilhado entre register e reset/change/invite; smoke de hardening.
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-023 — Campos string de entrada sem limite máximo
+- Data: 2026-06-29
+- PR/Fase: PR-BE-FIX-SECURITY-HARDENING-01 / Hardening pré-VPS
+- Severidade: ALTA
+- Erro encontrado: strings de entrada validadas só com `min(1)` e sem `max`. Caso crítico: `PublicBookingInputSchema.client.name: z.string().min(1)` e `client.phone: z.string().min(1)` — endpoint **público/anônimo**. Idem nomes de serviço/profissional/organização no caminho autenticado.
+- Sintoma: aceita nome/telefone arbitrariamente longos (até o limite de body de 100KB), permitindo estouro de coluna e abuso por tráfego anônimo.
+- Causa raiz: schemas focaram presença (`min(1)`) mas não teto; mitigação parcial só pelo `BODY_LIMIT_BYTES=102400`.
+- Impacto: integridade de dados e abuso na vitrine pública; um único campo pode carregar ~100KB.
+- Arquivo(s) afetado(s): `packages/shared/src/dto/public-booking.dto.ts` e demais DTOs de entrada com string sem `max`.
+- Correção aplicada: limites centralizados em `packages/shared/src/limits.ts` (`NAME_MAX=120`, `PHONE_MAX=32`, `SLUG_MAX=64`, `PASSWORD_MIN/MAX`, `SERVICE_DURATION_MAX_MIN`, `PRICE_CENTS_MAX`). `.max()` aplicado a toda string de entrada, incluindo `PublicBookingInputSchema.client.name`/`phone`/`professionalSlug`.
+- Teste/validação executado: `node apps/api/scripts/smoke-security-hardening.mjs` → booking público com nome > max → `422`; `POST services`/`professionals`/`PATCH organizations` com nome > max → `422`; `POST /public/cancel*` com token > max / ausente → `422` (ajuste pós-auditoria: rotas anônimas de cancel passaram a validar `token` via `CancelInputSchema`/`CancelPreviewInputSchema` `min(1).max(512)`).
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: regra de revisão "string de entrada exige `max` explícito"; smoke cobre limite na vitrine pública.
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-024 — Rate-limiter apenas em memória
+- Data: 2026-06-29
+- PR/Fase: PR-BE-FIX-SECURITY-HARDENING-01 / Hardening pré-VPS
+- Severidade: MÉDIA
+- Erro encontrado: `auth.service.ts` instancia `MemoryRateLimiter`. Contadores de brute-force (login/forgot/reset/register) vivem só em memória do processo.
+- Sintoma: reinício do processo zera os limites; com múltiplas instâncias, cada uma conta isolada, reduzindo a proteção efetiva.
+- Causa raiz: implementação in-memory adequada a single-node, sem store compartilhado.
+- Impacto: brute-force parcialmente mitigado em VPS single-node; vira lacuna real ao escalar ou em restarts frequentes.
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.service.ts`, `apps/api/src/auth/rate-limit/**`.
+- Correção aplicada: **não corrigir neste PR.** Aceito como pendência: aceitável para VPS single-node de MVP. Migrar a store persistente/compartilhada (ex.: Redis) quando houver multi-instância.
+- Teste/validação executado: não se aplica (pendência consciente).
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: revisitar ao introduzir segunda instância/auto-scaling.
+- Status final: ACEITO_COMO_PENDÊNCIA
+
+### BUG-025 — CORS não configurado explicitamente no bootstrap
+- Data: 2026-06-29
+- PR/Fase: PR-BE-FIX-SECURITY-HARDENING-01 / Hardening pré-VPS
+- Severidade: BAIXA
+- Erro encontrado: `apps/api/src/main.ts` não chama `app.enableCors(...)`. Não há allowlist de origem definida.
+- Sintoma: se a web for servida em domínio distinto da API, o browser bloqueia as chamadas; se exposta sem critério, falta allowlist explícita.
+- Causa raiz: topologia de deploy (same-origin via proxy vs. domínios separados) ainda não fixada.
+- Impacto: baixo enquanto same-origin; precisa ser resolvido conforme o provisionamento do VPS.
+- Arquivo(s) afetado(s): `apps/api/src/main.ts`.
+- Correção aplicada: `apps/api/src/main.ts` ganhou bloco CORS por allowlist via `CORS_ORIGINS` (CSV), `credentials: true`, métodos e headers do contrato (`X-Request-Id`, `Idempotency-Key`, `If-Match`, `X-CSRF`, `Authorization`), `exposedHeaders: [X-Request-Id, ETag]`. Sem `CORS_ORIGINS`, mantém comportamento same-origin.
+- Teste/validação executado: `pnpm --filter @nexos/api build` PASS; `smoke-conformance.mjs` 36/36 sem CORS habilitado (default same-origin preservado). **Pendência operacional:** confirmar `CORS_ORIGINS` no provisionamento do VPS conforme topologia.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: documentar `CORS_ORIGINS` no guia de deploy.
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-026 — Resíduo de BUG-023: input de agendamento do painel sem `max`
+- Data: 2026-06-29
+- PR/Fase: PR-BE-FIX-SECURITY-HARDENING-01 / Hardening pré-VPS (auditoria de fechamento)
+- Severidade: BAIXA
+- Erro encontrado: BUG-023 declarou `.max()` em "toda string de entrada", mas escapou o caminho autenticado de agendamento do painel: `CreateAppointmentSchema.client.name`/`phone` com `z.string().min(1)` sem `max`, e `note` (em `CreateAppointmentSchema` e `RescheduleSchema`) com `max(2000)` mágico fora de `limits.ts`.
+- Sintoma: `POST /appointments` e `PATCH /appointments/:id` aceitam `client.name`/`phone` arbitrariamente longos (até o teto de body de 100KB), divergindo de `PublicBookingInputSchema` que já aplica `NAME_MAX`/`PHONE_MAX`.
+- Causa raiz: locus distinto do mesmo defeito de classe do BUG-023 (string de entrada exige `max` explícito); a varredura original cobriu booking público + CRUD de cadastro, mas não o DTO de agendamento.
+- Impacto: integridade de dados em rota autenticada (mitigada por `BODY_LIMIT_BYTES=102400` e RLS de tenant; sem exposição anônima). Baixo.
+- Arquivo(s) afetado(s): `packages/shared/src/dto/appointment.dto.ts`.
+- Correção aplicada: `client.name = z.string().trim().min(1).max(NAME_MAX)`, `phone = z.string().trim().min(1).max(PHONE_MAX)` (alinhado a `PublicBookingInputSchema`); `note` passou a usar `NOTE_MAX` de `limits.ts` em ambos os schemas, eliminando o `2000` mágico.
+- Teste/validação executado: `pnpm --filter @nexos/shared build` PASS; `pnpm --filter @nexos/api build` PASS. Pendente: estender `smoke-security-hardening.mjs` com caso `POST /appointments` nome > `NAME_MAX` → `422`.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: mesma regra de revisão do BUG-023 ("string de entrada exige `max` explícito"), agora cobrindo o DTO de agendamento; magic numbers de tamanho centralizados em `limits.ts`.
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-027 — `JWT_SECRET` sem validação de força mínima
+- Data: 2026-06-29
+- PR/Fase: PR-BE-FIX-SECURITY-HARDENING-01 / Hardening pré-VPS (auditoria de fechamento)
+- Severidade: BAIXA
+- Erro encontrado: `JwtService.getSecret()` validava apenas presença de `JWT_SECRET` (`if (!raw) throw`), sem piso de comprimento. Sob `HS256` a segurança do token = entropia do segredo; um segredo curto/fraco é aceito e fica brute-forceável offline a partir de qualquer token emitido.
+- Sintoma: boot bem-sucedido com segredo fraco; nenhum erro visível em runtime (risco silencioso, análogo ao perfil do BUG-012).
+- Causa raiz: hardening de JWT focou em allowlist de algoritmo (`HS256`) e claims (`iss`/`aud`/`exp`), mas não na qualidade do material de chave.
+- Impacto: confidencialidade/integridade de toda sessão se o segredo de produção for fraco. Mitigado na prática pelo `.env` real (41 chars); risco é configuração futura/ambiente.
+- Arquivo(s) afetado(s): `apps/api/src/auth/jwt/jwt.service.ts`, `.env.example`, `apps/api/.env.example`.
+- Correção aplicada: piso `JWT_SECRET_MIN_LENGTH=32`; `getSecret()` agora lança se `raw.length < 32` ("HS256 strength depends on secret entropy"). Placeholders dos `.env.example` passaram a `<JWT_SECRET_MIN_32_CHARS>` para sinalizar o requisito.
+- Teste/validação executado: `pnpm --filter @nexos/api build` PASS; `.env` de dev confirmado em 41 chars (boot preservado). Pendente: caso de boot com segredo < 32 → erro, no smoke.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: validação fail-fast no boot impede o retorno; placeholder instrutivo no `.env.example`.
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-028 — Booking público sobrescreve nome de cliente existente (upsert por telefone)
+- Data: 2026-06-29
+- PR/Fase: PR-BE-PUBLIC-CLIENT-UPSERT-NO-OVERWRITE-01 / Fechamento do fluxo público (auditoria pré-VPS)
+- Severidade: MÉDIA
+- Erro encontrado: `PublicBookingRepository.upsertClientByPhone` usa `INSERT ... ON CONFLICT (organization_id, phone_normalized) DO UPDATE SET name = EXCLUDED.name, phone = EXCLUDED.phone, updated_at = now()`. No caminho de booking **público/anônimo**, ao agendar com um telefone já cadastrado na org, o `name` informado pelo visitante **sobrescreve** o nome do cliente existente.
+- Sintoma: nome de cliente de balcão muda sem ação do operador. Qualquer visitante que conheça um telefone já registrado naquela empresa cria um agendamento e altera o `clients.name` correspondente.
+- Causa raiz: o upsert tratava "reutilizar cliente por telefone" e "atualizar cadastro" como a mesma operação; o `DO UPDATE SET name/phone` aplica dados não confiáveis de rota anônima ao cadastro tenant-scoped.
+- Impacto: integridade/qualidade de dado e confiança operacional do cadastro de clientes. **Sem cross-tenant** — `organization_id` no INSERT + RLS `WITH CHECK` + índice único parcial por org confinam tudo à mesma empresa. Não é falha de autorização; é corrupção de dado interno via rota pública.
+- Arquivo(s) afetado(s): `apps/api/src/public-booking/public-booking.repository.ts` (`upsertClientByPhone`).
+- Correção aplicada: `DO UPDATE` passou a tocar **apenas campo neutro** (`updated_at = now()`), preservando `name`/`phone` existentes. Mantém a reutilização do `client.id` por telefone (RETURNING devolve a linha existente no conflito) e a criação de cliente novo quando o telefone não existe na org. Unicidade parcial (`organization_id, phone_normalized WHERE phone_normalized IS NOT NULL`) intacta.
+- Teste/validação executado: `pnpm --filter @nexos/api build` PASS. Pendente (a rodar): mesmo telefone com nome diferente → cliente reutilizado, `name` **inalterado**, agendamento ainda criado; cross-tenant negado; anonimização e índice único parcial intactos.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: regra "rota pública não sobrescreve cadastro tenant-scoped"; comentário âncora no SQL referenciando este BUG; teste de upsert público com nome divergente a ser adicionado ao smoke público.
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-029 — Janela de `availability` sem teto → DoS público (event loop)
+- Data: 2026-06-29
+- PR/Fase: PR-SECURITY-DB-SANITY-AUDIT-01 / Saneamento pré-online
+- Severidade: ALTA
+- Erro encontrado: `AvailabilityQuerySchema` validava `from < to` mas **sem span máximo**; o loop `while (dateStr < toCivilDateExclusive)` em `availability.service.ts` monta o array de dias sem limite.
+- Sintoma: `GET /api/v1/public/:orgSlug/professionals/:slug/availability?from=2000-01-01&to=2999-12-31` (rota **anônima**) — e a equivalente autenticada — iteram ~365k dias de forma síncrona, travando o event loop do Node (single-thread); o timeout de 30s nem dispara porque o loop é síncrono. Um request derruba a API.
+- Causa raiz: validação focou ordenação/presença de `from`/`to`, não a amplitude; rate limit (60/min) não protege request único caríssimo.
+- Impacto: **DoS trivial explorável online por visitante não autenticado** — disponibilidade de todo o serviço.
+- Arquivo(s) afetado(s): `packages/shared/src/dto/availability.dto.ts`, `packages/shared/src/limits.ts`, `apps/api/src/scheduling/availability.service.ts`.
+- Correção aplicada: `AVAILABILITY_MAX_RANGE_DAYS=62` em `limits.ts`; `superRefine` rejeita `from..to` > 62 dias (422); defesa em profundidade no service recusa o range antes do loop (vale também para a rota pública que monta o query e delega). Modo `date` único e janelas normais (semana/mês) intactos.
+- Teste/validação executado: `pnpm --filter @nexos/shared build` + `pnpm --filter @nexos/api build` PASS. Smoke do schema: `from=2000-01-01&to=2999-12-31` → `false` ("from..to range exceeds 62 days"); `2026-01-01..2026-02-15` (45d) → `true`.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: teto centralizado em `limits.ts`; regra de revisão "endpoint que itera por dia exige janela máxima"; adicionar caso ao smoke público.
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-030 — Arrays de entrada sem `max` (resíduo de classe do BUG-023)
+- Data: 2026-06-29
+- PR/Fase: PR-SECURITY-DB-SANITY-AUDIT-01 / Saneamento pré-online
+- Severidade: MÉDIA
+- Erro encontrado: BUG-023 cobriu strings, mas dois arrays de entrada ficaram sem teto: `WorkingHoursSchema.shifts: z.array(ShiftSchema)` (PUT working-hours) e `ProfessionalServicesInputSchema.serviceIds: z.array(uuid())` (PUT pro/services).
+- Sintoma: arrays arbitrariamente grandes (até o limite de body 100KB) disparando escrita/replace em lote sem teto semântico.
+- Causa raiz: validação de array focou tipo dos itens, não cardinalidade; mitigação só pelo `BODY_LIMIT_BYTES`.
+- Impacto: abuso de payload e escrita em lote (autenticado, escopo org). Risco menor que BUG-029, mas mesma classe de campo sem limite.
+- Arquivo(s) afetado(s): `packages/shared/src/dto/working-hours.dto.ts`, `packages/shared/src/dto/professional-services.dto.ts`, `packages/shared/src/limits.ts`.
+- Correção aplicada: `WORKING_HOURS_MAX_SHIFTS=50` e `PROFESSIONAL_SERVICES_MAX=200` em `limits.ts`; `.max()` aplicado a ambos os arrays (422 ao exceder).
+- Teste/validação executado: builds PASS; smoke do schema: 60 shifts → `false`; 300 serviceIds → `false`.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: regra "array de entrada exige `max` explícito" (irmã da regra de strings do BUG-023).
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-031 — `AuthService` instanciava rate-limiter próprio (2ª instância in-memory)
+- Data: 2026-06-29
+- PR/Fase: PR-SECURITY-DB-SANITY-AUDIT-01 / Saneamento pré-online
+- Severidade: BAIXA
+- Erro encontrado: `auth.service.ts` fazia `new MemoryRateLimiter()` no construtor — limiter separado do provider `"RateLimiter"` usado pelo `public-booking`. Mesmo num único processo, auth e booking contavam em mapas distintos, e o `new` hardcoded impedia troca por DI.
+- Sintoma: dois contadores in-memory paralelos; ponto único de troca para store compartilhada (Redis) inexistente no caminho do auth.
+- Causa raiz: limiter acoplado por `new` em vez de injeção.
+- Impacto: baixo (single-node MVP); dificultava a futura migração para store distribuída.
+- Arquivo(s) afetado(s): `apps/api/src/auth/auth.service.ts`, `apps/api/src/auth/auth.module.ts`.
+- Correção aplicada: `AuthModule` passou a prover `{ provide: "RateLimiter", useClass: MemoryRateLimiter }`; `AuthService` injeta `@Inject("RateLimiter")`. Remove o `new` e centraliza a troca futura por módulo. **A natureza in-memory/single-node permanece pendência aceita (BUG-024)** — esta correção trata só a duplicação in-process.
+- Teste/validação executado: `pnpm --filter @nexos/api build` PASS (DI resolve).
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: proibir `new MemoryRateLimiter()` fora de provider de módulo.
+- Status final: IMPLEMENTADO_NO_BRANCH (parte distribuída segue em BUG-024)
+
+### BUG-032 — HSTS enviado incondicionalmente (inclusive em dev/HTTP)
+- Data: 2026-06-29
+- PR/Fase: PR-SECURITY-DB-SANITY-AUDIT-01 / Saneamento pré-online
+- Severidade: BAIXA
+- Erro encontrado: `main.ts` configurava `helmet({ hsts: {...} })` sempre, independente de TLS/ambiente.
+- Sintoma: header `Strict-Transport-Security` emitido em dev — pode fixar `localhost` em HTTPS no navegador e atrapalhar o desenvolvimento; em produção é desejável.
+- Causa raiz: HSTS não condicionado ao ambiente.
+- Impacto: baixo; inofensivo atrás de TLS, ruído/atrito em dev.
+- Arquivo(s) afetado(s): `apps/api/src/main.ts`.
+- Correção aplicada: `hsts` só quando `NODE_ENV === "production"`; caso contrário `false`.
+- Teste/validação executado: `pnpm --filter @nexos/api build` PASS.
+- Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
+- Prevenção de regressão: revisão "headers dependentes de TLS condicionados a produção".
+- Status final: IMPLEMENTADO_NO_BRANCH
+
+### BUG-033 — Tabelas globais sem RLS (`users`, `refresh_sessions`, `verification_tokens`)
+- Data: 2026-06-29
+- PR/Fase: PR-SECURITY-DB-SANITY-AUDIT-01 / Saneamento pré-online
+- Severidade: BAIXA
+- Erro encontrado: as três tabelas globais não têm RLS; `app_runtime` tem CRUD completo. O escopo por `user_id` é garantido só em nível de aplicação.
+- Sintoma: nenhum em runtime — comportamento por design (tabelas globais, usuário é multi-org).
+- Causa raiz: modelo de dados intencionalmente global para identidade/sessão.
+- Impacto: aceitável; um bug de query no caminho de auth poderia tocar dados de outro usuário, sem backstop de RLS.
+- Arquivo(s) afetado(s): `apps/api/db/schema/index.ts`, `apps/api/db/migrations/0006_functions_and_rls.sql` (referência).
+- Correção aplicada: **não corrigir** — aceito como pendência consciente. Reforço defensivo recomendado: testes de escopo por `user_id` no caminho de sessão/refresh; reavaliar RLS por usuário se o modelo evoluir.
+- Teste/validação executado: provado via catálogo (`pg_class.relrowsecurity=f` nas três); não se aplica correção.
+- Branch/commit relacionado: não se aplica.
+- Prevenção de regressão: suíte de escopo de sessão; checklist de RLS ao adicionar coluna sensível a tabela global.
+- Status final: ACEITO_COMO_PENDÊNCIA
 
 ---
 

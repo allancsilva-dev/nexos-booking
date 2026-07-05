@@ -5,12 +5,13 @@ import {
   useOrganizationQuery,
   useUpdateOrganizationMutation,
 } from "@/hooks/use-organization";
-import { OrgSettingsForm } from "@/components/settings/org-settings-form";
+import { OrgSettingsTabs } from "@/components/settings/org-settings-tabs";
 import { LoadingState } from "@/components/loading-state";
 import { ErrorDisplay } from "@/components/error-display";
 import { ApiError } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
 import type { UpdateOrgInput } from "@/lib/org-schemas";
+import { PageChrome } from "@/components/shell/page-chrome";
 
 export default function OrgSettingsPage() {
   const { data: meData } = useMeQuery();
@@ -67,18 +68,14 @@ export default function OrgSettingsPage() {
   // ---- data ----
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--color-foreground)]">
-          Configurações
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          Gerencie os dados da sua empresa
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-[920px]">
+      <PageChrome
+        title="Configurações"
+        subtitle="Dados do estabelecimento e da página pública"
+      />
 
       {org && (
-        <OrgSettingsForm
+        <OrgSettingsTabs
           org={org}
           isPending={updateMutation.isPending}
           onSubmit={handleUpdate}

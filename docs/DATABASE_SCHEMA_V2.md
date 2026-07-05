@@ -445,6 +445,14 @@ CREATE TABLE professional_services (
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   professional_id uuid NOT NULL,
   service_id      uuid NOT NULL,
+  slot_step_min   int  NULL CHECK (
+    slot_step_min IS NULL
+    OR (
+      slot_step_min >= 5
+      AND slot_step_min <= 240
+      AND slot_step_min % 5 = 0
+    )
+  ),
   PRIMARY KEY (professional_id, service_id)
 );
 

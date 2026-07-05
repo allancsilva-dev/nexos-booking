@@ -16,7 +16,6 @@ import { PasswordService } from "./password/password.service";
 import { JwtService } from "./jwt/jwt.service";
 import { SessionService } from "./sessions/session.service";
 import { AuthRepository } from "./auth.repository";
-import { MemoryRateLimiter } from "./rate-limit/rate-limiter.memory";
 import type { RateLimiter } from "./rate-limit/rate-limiter.interface";
 import { ResendSender } from "./notifications/resend-sender";
 import type { RegisterInput } from "./dto/register.dto";
@@ -49,8 +48,6 @@ async function setCurrentUserContext(
 
 @Injectable()
 export class AuthService {
-  private readonly rateLimiter: RateLimiter;
-
   constructor(
     @Inject(DbService) private readonly db: DbService,
     @Inject(PasswordService) private readonly password: PasswordService,
@@ -60,9 +57,11 @@ export class AuthService {
     @Inject(ResendSender) private readonly notification: ResendSender,
     @Inject(forwardRef(() => InvitationsService))
     private readonly invitations: InvitationsService,
-  ) {
-    this.rateLimiter = new MemoryRateLimiter();
-  }
+    // Limiter via DI (BUG-031): provider único por módulo, sem `new` hardcoded.
+    // A natureza in-memory/single-node segue sendo pendência aceita (BUG-024) —
+    // trocar por store compartilhada (Redis) num único ponto ao escalar.
+    @Inject("RateLimiter") private readonly rateLimiter: RateLimiter,
+  ) {}
 
   async register(
     input: RegisterInput,

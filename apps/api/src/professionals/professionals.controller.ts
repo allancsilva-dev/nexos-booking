@@ -11,6 +11,7 @@ import {
   Query,
   Req,
   UseGuards,
+  HttpCode,
   NotFoundException,
   HttpException,
   HttpStatus,
@@ -24,11 +25,14 @@ import { AuthGuard } from "../auth/guards/auth.guard";
 import { TenantGuard } from "../auth/guards/tenant.guard";
 import { RolesGuard } from "../authorization/guards/roles.guard";
 import { Roles } from "../authorization/decorators/roles.decorator";
-import type { CreateProfessionalInput } from "./dto/create-professional.dto";
-import type { UpdateProfessionalInput } from "./dto/update-professional.dto";
-import type { SetServicesInput } from "./dto/set-services.dto";
-import type { WorkingHoursInput } from "@nexos/shared";
-import type { CreateBlockInput } from "../scheduling/dto/create-block.dto";
+import {
+  CreateProfessionalSchema,
+  UpdateProfessionalSchema,
+  ProfessionalServicesInputSchema,
+  WorkingHoursSchema,
+  CreateBlockSchema,
+} from "@nexos/shared";
+import { parseBody } from "../common/validation/parse-body";
 
 interface TenantInfo {
   orgId: string;
@@ -67,11 +71,12 @@ export class ProfessionalsController {
   @UseGuards(AuthGuard, TenantGuard, RolesGuard)
   @Roles("OWNER", "MANAGER")
   async create(
-    @Body() body: CreateProfessionalInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     const tenant = getTenant(req);
-    return this.service.create(tenant.orgId, tenant.userId, body);
+    const data = parseBody(CreateProfessionalSchema, body);
+    return this.service.create(tenant.orgId, tenant.userId, data);
   }
 
   @Patch(":id")
@@ -79,11 +84,12 @@ export class ProfessionalsController {
   @Roles("OWNER", "MANAGER")
   async update(
     @Param("id") id: string,
-    @Body() body: UpdateProfessionalInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     const tenant = getTenant(req);
-    return this.service.update(tenant.orgId, id, tenant.userId, body);
+    const data = parseBody(UpdateProfessionalSchema, body);
+    return this.service.update(tenant.orgId, id, tenant.userId, data);
   }
 
   @Get(":id/services")
@@ -102,11 +108,12 @@ export class ProfessionalsController {
   @Roles("OWNER", "MANAGER")
   async setServices(
     @Param("id") id: string,
-    @Body() body: SetServicesInput,
+    @Body() body: unknown,
     @Req() req: Request,
   ) {
     const tenant = getTenant(req);
-    return this.service.setServices(tenant.orgId, id, tenant.userId, body);
+    const data = parseBody(ProfessionalServicesInputSchema, body);
+    return this.service.setServices(tenant.orgId, id, tenant.userId, data);
   }
 
   @Get(":professionalId/working-hours")
@@ -146,13 +153,15 @@ export class ProfessionalsController {
   async createBlock(
     @Req() req: Request,
     @Param("professionalId") professionalId: string,
-    @Body() body: CreateBlockInput,
+    @Body() body: unknown,
   ) {
     const tenant = getTenant(req);
-    return this.blocksService.createBlock(tenant.orgId, professionalId, tenant.userId, body);
+    const data = parseBody(CreateBlockSchema, body);
+    return this.blocksService.createBlock(tenant.orgId, professionalId, tenant.userId, data);
   }
 
   @Delete(":professionalId/blocks/:blockId")
+  @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AuthGuard, TenantGuard, RolesGuard)
   @Roles("OWNER", "MANAGER")
   async deleteBlock(
@@ -170,14 +179,15 @@ export class ProfessionalsController {
   async setWorkingHours(
     @Req() req: Request,
     @Param("professionalId") professionalId: string,
-    @Body() body: WorkingHoursInput,
+    @Body() body: unknown,
   ) {
     const tenant = getTenant(req);
+    const data = parseBody(WorkingHoursSchema, body);
     return this.workingHoursService.setWorkingHours(
       tenant.orgId,
       professionalId,
       tenant.userId,
-      body,
+      data,
     );
   }
 }
