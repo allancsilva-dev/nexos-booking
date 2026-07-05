@@ -6,6 +6,7 @@ import {
   formatHourLabel,
   getInitials,
   getMinutesInTimeZone,
+  getOperationalEndIso,
   type WorkingWindow,
 } from "@/components/schedule/schedule-utils";
 import { ScheduleAppointmentCard } from "@/components/schedule/schedule-appointment-card";
@@ -76,7 +77,7 @@ export function ScheduleProfessionalColumn({
 
         {appointments.map((appointment) => {
           const startMin = getMinutesInTimeZone(appointment.startsAt, timezone);
-          const endMin = getMinutesInTimeZone(appointment.endsAt, timezone);
+          const endMin = getMinutesInTimeZone(getOperationalEndIso(appointment), timezone);
           const top = ((startMin - globalStartMin) * pxPerHour) / 60;
           const height = ((endMin - startMin) * pxPerHour) / 60;
 

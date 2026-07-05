@@ -544,6 +544,7 @@ try {
     assert.equal(res.json.serviceCurrencySnapshot, "BRL");
     assert.ok(res.json.startsAt, "should have startsAt");
     assert.ok(res.json.endsAt, "should have endsAt");
+    assert.ok(res.json.occupiedUntil, "should have occupiedUntil");
 
     const persisted = execPsql(
       `SELECT organization_id, service_name_snapshot, service_duration_min_snapshot, service_price_cents_snapshot, service_currency_snapshot FROM appointments WHERE id = '${res.json.id}'`,

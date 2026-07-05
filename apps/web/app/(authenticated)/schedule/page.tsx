@@ -34,6 +34,7 @@ import {
   addDaysToCivilDate,
   getCivilDateInTimeZone,
   getMinutesInTimeZone,
+  getOperationalEndIso,
   getStartOfWeek,
   getWeekDates,
   getWeekdayFromCivilDate,
@@ -277,7 +278,7 @@ export default function SchedulePage() {
     if (allAppointments.length > 0) {
       const mins = allAppointments.flatMap((appointment) => [
         getMinutesInTimeZone(appointment.startsAt, timezone),
-        getMinutesInTimeZone(appointment.endsAt, timezone),
+        getMinutesInTimeZone(getOperationalEndIso(appointment), timezone),
       ]);
       startMin = Math.min(startMin, Math.floor(Math.min(...mins) / 60) * 60);
       endMin = Math.max(endMin, Math.ceil(Math.max(...mins) / 60) * 60);

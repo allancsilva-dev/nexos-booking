@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   clamp,
   formatTimeInTimeZone,
+  getOperationalEndIso,
 } from "@/components/schedule/schedule-utils";
 
 interface ScheduleAppointmentCardProps {
@@ -55,12 +56,30 @@ export function ScheduleAppointmentCard({
 }: ScheduleAppointmentCardProps) {
   const palette = getPalette(appointment.serviceNameSnapshot);
   const range = `${formatTimeInTimeZone(appointment.startsAt, timezone)}–${formatTimeInTimeZone(appointment.endsAt, timezone)}`;
+  const operationalEndIso = getOperationalEndIso(appointment);
+  const occupiedUntilLabel = formatTimeInTimeZone(operationalEndIso, timezone);
   const visualHeight = clamp(height, 48, 9999);
+  const serviceMs = Math.max(
+    0,
+    new Date(appointment.endsAt).getTime() -
+      new Date(appointment.startsAt).getTime(),
+  );
+  const occupiedMs = Math.max(
+    serviceMs,
+    new Date(operationalEndIso).getTime() -
+      new Date(appointment.startsAt).getTime(),
+  );
+  const bufferMs = Math.max(0, occupiedMs - serviceMs);
+  const hasBuffer = bufferMs > 0;
+  const bufferHeight = hasBuffer
+    ? clamp(Math.round((bufferMs / occupiedMs) * visualHeight), 8, visualHeight - 36)
+    : 0;
+  const showBufferLabel = bufferHeight >= 24 && visualHeight >= 72;
 
   return (
     <article
       className={cn(
-        "absolute overflow-hidden rounded-xl border px-4 py-3 shadow-[var(--shadow-operational-card)]",
+        "absolute overflow-hidden rounded-xl border shadow-[var(--shadow-operational-card)]",
         appointment.status === "CANCELLED" && "opacity-60",
       )}
       style={{
@@ -72,7 +91,10 @@ export function ScheduleAppointmentCard({
         borderColor: palette.border,
       }}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div
+        className="flex items-start justify-between gap-3 px-4 py-3"
+        style={{ height: hasBuffer ? visualHeight - bufferHeight : visualHeight }}
+      >
         <div className="min-w-0">
           <p className="truncate text-[13px] font-bold leading-tight" style={{ color: palette.text }}>
             {appointment.serviceNameSnapshot}
@@ -96,7 +118,10 @@ export function ScheduleAppointmentCard({
       </div>
 
       {appointment.status === "CONFIRMED" && onCancel ? (
-        <div className="absolute bottom-2 right-2">
+        <div
+          className="absolute right-2"
+          style={{ bottom: hasBuffer ? bufferHeight + 4 : 8 }}
+        >
           <Button
             variant="ghost"
             size="icon"
@@ -106,6 +131,18 @@ export function ScheduleAppointmentCard({
           >
             {isCancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
           </Button>
+        </div>
+      ) : null}
+
+      {hasBuffer ? (
+        <div
+          className="absolute inset-x-0 bottom-0 flex items-center border-t border-[var(--color-border-strong)] bg-[var(--color-operational-overlay)] px-3 text-[10px] font-semibold text-[var(--color-muted-foreground)]"
+          style={{ height: bufferHeight }}
+          title={`Pausa operacional até ${occupiedUntilLabel}`}
+        >
+          {showBufferLabel ? (
+            <span className="truncate">Pausa até {occupiedUntilLabel}</span>
+          ) : null}
         </div>
       ) : null}
     </article>

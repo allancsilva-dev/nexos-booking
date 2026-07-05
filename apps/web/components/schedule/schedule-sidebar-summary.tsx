@@ -1,7 +1,11 @@
 "use client";
 
 import type { AppointmentListItemDTO } from "@nexos/shared";
-import { formatCurrency, formatTimeInTimeZone } from "@/components/schedule/schedule-utils";
+import {
+  formatCurrency,
+  formatTimeInTimeZone,
+  getOperationalEndIso,
+} from "@/components/schedule/schedule-utils";
 import { OperationalMetricCard } from "@/components/ui/operational/metric-card";
 
 interface ScheduleSidebarSummaryProps {
@@ -34,7 +38,7 @@ export function ScheduleSidebarSummary({
   const activeAppointments = appointments.filter(isActiveAppointment);
   const occupiedMinutes = activeAppointments.reduce((sum, appointment) => {
     const start = new Date(appointment.startsAt).getTime();
-    const end = new Date(appointment.endsAt).getTime();
+    const end = new Date(getOperationalEndIso(appointment)).getTime();
     return sum + Math.max(0, (end - start) / 60000);
   }, 0);
   const occupancy = totalWindowMinutes > 0

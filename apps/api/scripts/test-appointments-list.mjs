@@ -173,7 +173,7 @@ function daysFromNow(offset) {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
   d.setUTCDate(d.getUTCDate() + offset);
-  return d.toISOString();
+  return d.toISOString().slice(0, 10);
 }
 
 function idempotencyKey() {
@@ -689,6 +689,7 @@ try {
     assert.ok(item.id, "should have id");
     assert.ok(item.startsAt, "should have startsAt");
     assert.ok(item.endsAt, "should have endsAt");
+    assert.ok(item.occupiedUntil, "should have occupiedUntil");
     assert.ok(item.status, "should have status");
     assert.ok(item.professionalId, "should have professionalId");
     assert.ok(item.serviceId, "should have serviceId");

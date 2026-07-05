@@ -97,6 +97,7 @@ function mapAppointment(
     client_id: string;
     starts_at: Date;
     ends_at: Date;
+    occupied_until: Date;
     status: string;
     source: string;
     note: string | null;
@@ -130,6 +131,7 @@ function mapAppointment(
     clientPhone: phone,
     startsAt: row.starts_at.toISOString(),
     endsAt: row.ends_at.toISOString(),
+    occupiedUntil: row.occupied_until.toISOString(),
     status: row.status,
     source: row.source,
     note: row.note,
@@ -150,6 +152,7 @@ function mapAppointmentListItem(
     service_id: string;
     starts_at: Date;
     ends_at: Date;
+    occupied_until: Date;
     status: string;
     source: string;
     version: number;
@@ -180,6 +183,7 @@ function mapAppointmentListItem(
     clientPhone: phone,
     startsAt: row.starts_at.toISOString(),
     endsAt: row.ends_at.toISOString(),
+    occupiedUntil: row.occupied_until.toISOString(),
     status: row.status,
     source: row.source,
     version: row.version,
@@ -314,6 +318,7 @@ export class AppointmentsService {
         const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
           professionalServiceSlotStepMin: junction.slot_step_min,
           serviceDurationMin: service.duration_min,
+          serviceBufferAfterMin: service.buffer_after_min,
           organizationSlotIntervalMin: config.slotIntervalMin,
         });
 
@@ -614,6 +619,7 @@ export class AppointmentsService {
           const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
             professionalServiceSlotStepMin: junction.slot_step_min,
             serviceDurationMin: service.duration_min,
+            serviceBufferAfterMin: service.buffer_after_min,
             organizationSlotIntervalMin: config.slotIntervalMin,
           });
 

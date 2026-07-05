@@ -1,6 +1,7 @@
 interface ResolveEffectiveSlotStepInput {
   professionalServiceSlotStepMin: number | null | undefined;
   serviceDurationMin: number | null | undefined;
+  serviceBufferAfterMin?: number | null | undefined;
   organizationSlotIntervalMin: number | null | undefined;
 }
 
@@ -14,6 +15,7 @@ export function resolveEffectiveSlotStepMin(
   const {
     professionalServiceSlotStepMin,
     serviceDurationMin,
+    serviceBufferAfterMin,
     organizationSlotIntervalMin,
   } = input;
 
@@ -30,7 +32,14 @@ export function resolveEffectiveSlotStepMin(
   }
 
   if (isPositiveInteger(serviceDurationMin)) {
-    return serviceDurationMin;
+    const bufferAfterMin = serviceBufferAfterMin ?? 0;
+    if (
+      !Number.isInteger(bufferAfterMin) ||
+      bufferAfterMin < 0
+    ) {
+      throw new Error("Invalid services.buffer_after_min configuration");
+    }
+    return serviceDurationMin + bufferAfterMin;
   }
 
   if (isPositiveInteger(organizationSlotIntervalMin)) {

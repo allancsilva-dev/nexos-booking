@@ -404,6 +404,31 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
     }
   }
 
+  const daysWithSlots = availability?.days ?? [];
+  const activeDay = daysWithSlots.find((d) => d.date === selectedDate) ?? null;
+
+  // ---- calendário mensal (janela de 7 dias: só os dias buscados são clicáveis) ----
+  const availableDates = useMemo(
+    () =>
+      new Set(
+        daysWithSlots.filter((d) => d.slots.length > 0).map((d) => d.date),
+      ),
+    [daysWithSlots],
+  );
+  const [calMonth, setCalMonth] = useState<string | null>(null);
+  // Recentraliza o calendário sempre que a disponibilidade muda (novo pro/serviço).
+  useEffect(() => {
+    setCalMonth(null);
+  }, [availability]);
+  const visibleMonth =
+    calMonth ??
+    getMonthKey(
+      selectedDate ??
+        daysWithSlots.find((d) => d.slots.length > 0)?.date ??
+        getCivilDateInTimeZone(new Date(), vitrine.timezone),
+    );
+  const monthCells = useMemo(() => buildMonthGrid(visibleMonth), [visibleMonth]);
+
   if (step === "done" && bookingResult) {
     return (
       <ConfirmationScreen
@@ -431,31 +456,6 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
       />
     );
   }
-
-  const daysWithSlots = availability?.days ?? [];
-  const activeDay = daysWithSlots.find((d) => d.date === selectedDate) ?? null;
-
-  // ---- calendário mensal (janela de 7 dias: só os dias buscados são clicáveis) ----
-  const availableDates = useMemo(
-    () =>
-      new Set(
-        daysWithSlots.filter((d) => d.slots.length > 0).map((d) => d.date),
-      ),
-    [daysWithSlots],
-  );
-  const [calMonth, setCalMonth] = useState<string | null>(null);
-  // Recentraliza o calendário sempre que a disponibilidade muda (novo pro/serviço).
-  useEffect(() => {
-    setCalMonth(null);
-  }, [availability]);
-  const visibleMonth =
-    calMonth ??
-    getMonthKey(
-      selectedDate ??
-        daysWithSlots.find((d) => d.slots.length > 0)?.date ??
-        getCivilDateInTimeZone(new Date(), vitrine.timezone),
-    );
-  const monthCells = useMemo(() => buildMonthGrid(visibleMonth), [visibleMonth]);
 
   return (
     <div

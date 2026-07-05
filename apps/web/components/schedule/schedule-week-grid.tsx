@@ -10,6 +10,7 @@ import {
   formatHourLabel,
   formatWeekdayLabel,
   getMinutesInTimeZone,
+  getOperationalEndIso,
   mergeWorkingWindows,
   type WorkingWindow,
 } from "@/components/schedule/schedule-utils";
@@ -51,7 +52,7 @@ function buildAppointmentLanes(
 
   for (const appointment of sorted) {
     const startMin = getMinutesInTimeZone(appointment.startsAt, timezone);
-    const endMin = getMinutesInTimeZone(appointment.endsAt, timezone);
+    const endMin = getMinutesInTimeZone(getOperationalEndIso(appointment), timezone);
     let laneIndex = laneEnds.findIndex((laneEnd) => laneEnd <= startMin);
 
     if (laneIndex === -1) {
@@ -189,7 +190,7 @@ export function ScheduleWeekGrid({
 
                   {lanes.map(({ appointment, lane, laneCount }) => {
                     const startMin = getMinutesInTimeZone(appointment.startsAt, timezone);
-                    const endMin = getMinutesInTimeZone(appointment.endsAt, timezone);
+                    const endMin = getMinutesInTimeZone(getOperationalEndIso(appointment), timezone);
                     const top = ((startMin - globalStartMin) * pxPerHour) / 60;
                     const height = ((endMin - startMin) * pxPerHour) / 60;
                     const laneWidth = `calc(${100 / laneCount}% - 10px)`;

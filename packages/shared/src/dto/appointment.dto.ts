@@ -44,6 +44,7 @@ export const AppointmentSchema = z.object({
   clientPhone: z.string().nullable(),
   startsAt: z.string(),
   endsAt: z.string(),
+  occupiedUntil: z.string(),
   status: z.enum(APPOINTMENT_STATUSES),
   source: z.enum(["PANEL", "PUBLIC"]),
   note: z.string().nullable(),

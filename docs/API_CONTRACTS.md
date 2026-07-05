@@ -457,7 +457,9 @@ e o `POST /appointments`, outro cliente (ou a equipe) pode ter ocupado o mesmo s
 
 - Cada slot já vem com `startsAt`/`endsAt` resolvidos (ISO-8601 com offset). `endsAt - startsAt =
   service.durationMin`. `slotIntervalMin` passa a representar o **passo efetivo usado na consulta**
-  (override de `professional_services`, senão `service.durationMin`, senão fallback legado da empresa).
+  (override de `professional_services`, senão `service.durationMin + service.bufferAfterMin`, senão
+  fallback legado da empresa). `endsAt` é fim real do atendimento; `occupiedUntil` é fim operacional
+  quando há pausa/buffer.
 - Disponibilidade = `jornada (working_hours) − pausas − availability_blocks − appointments ativos`,
   fatiada pelo `slotIntervalMin`, respeitando a duração do serviço (PLANNING §10.2). Profissionais
   `active=false` não têm disponibilidade.
@@ -585,6 +587,7 @@ Devolve o recurso direto (sem envelope `data` — seção 2), já com `version`:
   "clientId": "uuid",
   "startsAt": "2026-06-10T09:00:00-03:00",
   "endsAt": "2026-06-10T09:50:00-03:00",
+  "occupiedUntil": "2026-06-10T10:00:00-03:00",
   "status": "CONFIRMED",
   "source": "PANEL",
   "version": 1,
@@ -724,6 +727,7 @@ via `app_resolve_org_by_slug` (ADR-017), sujeitas ao `RateLimiter` (seção 19),
   "id": "uuid",
   "startsAt": "2026-06-10T09:00:00-03:00",
   "endsAt": "2026-06-10T09:50:00-03:00",
+  "occupiedUntil": "2026-06-10T10:00:00-03:00",
   "status": "CONFIRMED",
   "professional": { "name": "Zé" },
   "service": {

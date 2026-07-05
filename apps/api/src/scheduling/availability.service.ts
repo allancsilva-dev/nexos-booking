@@ -100,6 +100,7 @@ export class AvailabilityService {
       const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
         professionalServiceSlotStepMin: junction.slot_step_min,
         serviceDurationMin: service.duration_min,
+        serviceBufferAfterMin: service.buffer_after_min,
         organizationSlotIntervalMin: config.slotIntervalMin,
       });
 

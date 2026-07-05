@@ -22,6 +22,7 @@ export const PublicBookingResponseSchema = z.object({
   id: z.string().uuid(),
   startsAt: z.string(),
   endsAt: z.string(),
+  occupiedUntil: z.string(),
   status: z.string(),
   professional: z.object({ name: z.string() }),
   service: z.object({

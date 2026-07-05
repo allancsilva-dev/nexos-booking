@@ -318,6 +318,7 @@ export class AppointmentsRepository {
         service_id: appointments.service_id,
         starts_at: appointments.starts_at,
         ends_at: appointments.ends_at,
+        occupied_until: appointments.occupied_until,
         status: appointments.status,
         source: appointments.source,
         version: appointments.version,

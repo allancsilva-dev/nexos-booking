@@ -91,6 +91,13 @@ export function getMinutesInTimeZone(iso: string, timeZone: string): number {
   return hour * 60 + minute;
 }
 
+export function getOperationalEndIso(appointment: {
+  endsAt: string;
+  occupiedUntil?: string | null;
+}): string {
+  return appointment.occupiedUntil ?? appointment.endsAt;
+}
+
 export function formatTimeInTimeZone(iso: string, timeZone: string): string {
   return getFormatter("pt-BR", timeZone, {
     hour: "2-digit",

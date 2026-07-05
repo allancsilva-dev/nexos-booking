@@ -208,6 +208,7 @@ async function main() {
   const professionalId = randomUUID();
   const bufferedServiceId = randomUUID();
   const plainServiceId = randomUUID();
+  const fiftyWithBufferServiceId = randomUUID();
   const ownerEmail = `owner-buffer-${ts}@example.com`;
   const orgSlug = `buffer-org-${ts}`;
   const professionalSlug = `buffer-prof-${ts}`;
@@ -229,15 +230,19 @@ async function main() {
     INSERT INTO services (id, organization_id, name, duration_min, buffer_after_min, price_cents, currency, active)
     VALUES
       ('${bufferedServiceId}', '${orgId}', 'Corte com buffer', 30, 10, 5000, 'BRL', true),
-      ('${plainServiceId}', '${orgId}', 'Corte sem buffer', 30, 0, 4500, 'BRL', true);
+      ('${plainServiceId}', '${orgId}', 'Corte sem buffer', 30, 0, 4500, 'BRL', true),
+      ('${fiftyWithBufferServiceId}', '${orgId}', 'Corte 50 com pausa', 50, 10, 6500, 'BRL', true);
 
     INSERT INTO professional_services (organization_id, professional_id, service_id, slot_step_min)
     VALUES
       ('${orgId}', '${professionalId}', '${bufferedServiceId}', 30),
       ('${orgId}', '${professionalId}', '${plainServiceId}', 30);
 
+    INSERT INTO professional_services (organization_id, professional_id, service_id)
+    VALUES ('${orgId}', '${professionalId}', '${fiftyWithBufferServiceId}');
+
     INSERT INTO working_hours (organization_id, professional_id, weekday, start_time, end_time)
-    VALUES ('${orgId}', '${professionalId}', ${weekday}, '09:00', '11:00');
+    VALUES ('${orgId}', '${professionalId}', ${weekday}, '09:00', '12:00');
   `);
 
   const api = startApi();
@@ -259,7 +264,7 @@ async function main() {
       ) ?? [];
     assert.deepEqual(
       bufferedStarts,
-      ["09:00", "09:30", "10:00"],
+      ["09:00", "09:30", "10:00", "10:30", "11:00"],
       "buffered service should hide only the last slot that overruns working hours",
     );
 
@@ -277,8 +282,31 @@ async function main() {
       ) ?? [];
     assert.deepEqual(
       plainStarts,
-      ["09:00", "09:30", "10:00", "10:30"],
+      ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30"],
       "service without buffer should preserve current end-of-day behavior",
+    );
+
+    const fiftyWithBufferAvailability = await fetchJson(
+      `/api/v1/public/${orgSlug}/professionals/${professionalSlug}/availability?date=${date}&serviceId=${fiftyWithBufferServiceId}`,
+    );
+    assert.equal(
+      fiftyWithBufferAvailability.status,
+      200,
+      `expected 50-minute buffered availability 200, got ${fiftyWithBufferAvailability.status}: ${fiftyWithBufferAvailability.body}`,
+    );
+    assert.equal(
+      fiftyWithBufferAvailability.json?.slotIntervalMin,
+      60,
+      "50-minute service with 10-minute buffer should default cadence to duration + buffer",
+    );
+    const fiftyWithBufferStarts =
+      fiftyWithBufferAvailability.json?.days?.[0]?.slots?.map((slot) =>
+        slot.startsAt.slice(11, 16),
+      ) ?? [];
+    assert.deepEqual(
+      fiftyWithBufferStarts,
+      ["09:00", "10:00", "11:00"],
+      "50-minute service with 10-minute buffer should expose the next start at 10:00",
     );
 
     const booking = await fetchJson(`/api/v1/public/${orgSlug}/appointments`, {
@@ -311,6 +339,13 @@ async function main() {
       "09:40",
       "occupied_until should persist end + buffer",
     );
+    assert.equal(
+      (new Date(booking.json?.occupiedUntil).getTime() -
+        new Date(booking.json?.endsAt).getTime()) /
+        60000,
+      10,
+      "public booking response should expose occupiedUntil",
+    );
 
     const login = await fetchJson("/api/v1/auth/login", {
       method: "POST",
@@ -327,6 +362,21 @@ async function main() {
     );
     const token = login.json?.accessToken;
     assert.ok(token, "login should return accessToken");
+
+    const list = await fetchJson(
+      `/api/v1/appointments?from=${encodeURIComponent(`${date}T00:00:00-03:00`)}&to=${encodeURIComponent(`${date}T23:59:59-03:00`)}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    assert.equal(
+      list.status,
+      200,
+      `expected appointments list 200, got ${list.status}: ${list.body}`,
+    );
+    assert.equal(
+      list.json?.items?.find((item) => item.id === booking.json.id)?.occupiedUntil,
+      booking.json.occupiedUntil,
+      "appointments list should expose occupiedUntil",
+    );
 
     const conflict = await fetchJson("/api/v1/appointments", {
       method: "POST",
@@ -368,7 +418,7 @@ async function main() {
       ) ?? [];
     assert.deepEqual(
       afterBookingStarts,
-      ["10:00"],
+      ["10:00", "10:30", "11:00"],
       "availability should remove slot that overlaps occupied interval after booking",
     );
 

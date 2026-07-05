@@ -257,6 +257,7 @@ export class PublicBookingService {
       const effectiveSlotStepMin = resolveEffectiveSlotStepMin({
         professionalServiceSlotStepMin: junction.slot_step_min,
         serviceDurationMin: service.duration_min,
+        serviceBufferAfterMin: service.buffer_after_min,
         organizationSlotIntervalMin: config.slotIntervalMin,
       });
 
@@ -432,6 +433,7 @@ export class PublicBookingService {
           id: appointment.id,
           startsAt: appointment.starts_at.toISOString(),
           endsAt: appointment.ends_at.toISOString(),
+          occupiedUntil: appointment.occupied_until.toISOString(),
           status: appointment.status,
           professional: { name: professional.name },
           service: {

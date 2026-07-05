@@ -4,6 +4,7 @@ export const AppointmentListItemSchema = z.object({
   id: z.string().uuid(),
   startsAt: z.string(),
   endsAt: z.string(),
+  occupiedUntil: z.string(),
   status: z.enum(["SCHEDULED", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]),
   professionalId: z.string().uuid(),
   serviceId: z.string().uuid(),
