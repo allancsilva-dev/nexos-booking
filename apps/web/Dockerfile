@@ -28,6 +28,6 @@ RUN pnpm --filter @nexos/shared build && pnpm --filter @nexos/web build
 
 WORKDIR /app/apps/web
 
-EXPOSE 3000
+EXPOSE 3020
 
-CMD ["pnpm", "start", "--hostname", "0.0.0.0", "--port", "3000"]
+CMD ["pnpm", "start", "--hostname", "0.0.0.0", "--port", "3020"]

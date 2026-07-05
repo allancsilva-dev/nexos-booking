@@ -10,14 +10,14 @@ Arquivos:
 
 ## Containers
 
-- `booking-web`: Next.js, porta interna `3000`.
-- `booking-api`: NestJS, porta interna `3001`.
-- `booking-postgres`: PostgreSQL 17, volume `postgres_data`.
-- `booking-nginx`: entrada pública `80`/`443`, proxy para API/WEB/WebSocket + TLS.
-- `booking-certbot`: renovação automática do certificado Let's Encrypt (loop a cada 12h).
-- `booking-postgres-backup`: `pg_dump -Fc` diário em `./backups/postgres`.
+- `NexosBooking-Web`: Next.js, porta interna `3020`, host `3020`.
+- `NexosBooking-Api`: NestJS, porta interna `3001`, host `3023`.
+- `dbnexos-booking`: PostgreSQL 17, volume `dbnexos-booking_postgres_data`.
+- `NexosBooking-Nginx`: entrada pública `80`/`443`, proxy para API/WEB/WebSocket + TLS.
+- `NexosBooking-Certbot`: renovação automática do certificado Let's Encrypt (loop a cada 12h).
+- `NexosBooking-Postgres-Backup`: `pg_dump -Fc` diário em `./backups/postgres`.
 
-Redis não é necessário para um único container de API. WebSocket atual usa Socket.IO em memória. Redis passa a ser necessário se escalar `booking-api` para mais de 1 réplica ou mover eventos para fila distribuída.
+Redis não é necessário para um único container de API. WebSocket atual usa Socket.IO em memória. Redis passa a ser necessário se escalar `NexosBooking-Api` para mais de 1 réplica ou mover eventos para fila distribuída.
 
 ## Pré-requisito de DNS
 
@@ -83,6 +83,8 @@ Abrir:
 - `22/tcp`: SSH.
 - `80/tcp`: HTTP/Nginx (redireciona para HTTPS + serve o desafio ACME).
 - `443/tcp`: HTTPS/Nginx (entrada real da aplicação).
+- `3020/tcp`: Web direto, quando usado sem Nginx.
+- `3023/tcp`: API direta, quando usada sem Nginx.
 
 Não expor `5432`, `3000`, `3001`.
 

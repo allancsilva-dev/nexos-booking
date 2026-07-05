@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: booking-postgres
+    container_name: dbnexos-booking
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -20,7 +20,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: booking-api
+    container_name: NexosBooking-Api
     restart: unless-stopped
     depends_on:
       postgres:
@@ -45,8 +45,8 @@ services:
       PUBLIC_CANCEL_BASE_URL: ${PUBLIC_CANCEL_BASE_URL}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-}
-    expose:
-      - "3001"
+    ports:
+      - "3023:3001"
     healthcheck:
       test:
         [
@@ -65,24 +65,24 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_INTERNAL_API_BASE_URL: http://api:3001
-    container_name: booking-web
+    container_name: NexosBooking-Web
     restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 3020
       NEXT_INTERNAL_API_BASE_URL: http://api:3001
-    expose:
-      - "3000"
+    ports:
+      - "3020:3020"
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3020/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 5s
@@ -90,7 +90,7 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: booking-nginx
+    container_name: NexosBooking-Nginx
     restart: unless-stopped
     depends_on:
       web:
@@ -109,7 +109,7 @@ services:
 
   certbot:
     image: certbot/certbot
-    container_name: booking-certbot
+    container_name: NexosBooking-Certbot
     restart: unless-stopped
     volumes:
       - ./deploy/vps/certbot/conf:/etc/letsencrypt
@@ -118,7 +118,7 @@ services:
 
   postgres-backup:
     image: postgres:17-alpine
-    container_name: booking-postgres-backup
+    container_name: NexosBooking-Postgres-Backup
     restart: unless-stopped
     depends_on:
       postgres:
@@ -145,3 +145,4 @@ services:
 
 volumes:
   postgres_data:
+    name: dbnexos-booking_postgres_data
