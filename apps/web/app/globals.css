@@ -58,7 +58,13 @@
   --cat-5-ink: #ddd6fe;
 }
 
+:root,
+.dark {
+  color-scheme: dark;
+}
+
 .light {
+  color-scheme: only light;
   --color-background: #fafafa;
   --color-foreground: #09090b;
   --color-card: #ffffff;
