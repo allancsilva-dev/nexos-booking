@@ -18,6 +18,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps apps
 COPY packages packages
 
+RUN pnpm install --frozen-lockfile --offline --force
+
 RUN pnpm --filter @nexos/shared build && pnpm --filter @nexos/api build
 
 WORKDIR /app/apps/api

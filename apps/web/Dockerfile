@@ -24,6 +24,8 @@ COPY packages packages
 ARG NEXT_INTERNAL_API_BASE_URL=http://api:3001
 ENV NEXT_INTERNAL_API_BASE_URL=${NEXT_INTERNAL_API_BASE_URL}
 
+RUN pnpm install --frozen-lockfile --offline --force
+
 RUN pnpm --filter @nexos/shared build && pnpm --filter @nexos/web build
 
 WORKDIR /app/apps/web
