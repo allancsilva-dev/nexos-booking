@@ -465,7 +465,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
       )}
     >
       {/* header */}
-      <div className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[radial-gradient(120%_130%_at_0%_0%,#0e2230_0%,#0b1019_60%)] px-4 py-5 sm:gap-4 sm:px-7 sm:py-7">
+      <div className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[radial-gradient(120%_130%_at_0%_0%,#0e2230_0%,#0b1019_60%)] px-3 py-4 sm:gap-4 sm:px-7 sm:py-7">
         <div
           style={{ background: "var(--gradient-accent)" }}
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] text-[var(--color-primary-foreground)] shadow-[0_10px_24px_rgba(8,145,178,0.4)] sm:h-[60px] sm:w-[60px] sm:rounded-[16px]"
@@ -485,7 +485,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_330px]">
         {/* ---- steps ---- */}
-        <div className="flex flex-col gap-6 p-4 sm:p-6 lg:gap-7 lg:p-7">
+        <div className="flex flex-col gap-5 p-3 sm:gap-6 sm:p-6 lg:gap-7 lg:p-7">
           {/* PASSO 1 — profissional */}
           <section>
             <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-accent-strong)]">
@@ -494,7 +494,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
             <h2 className="mb-3.5 mt-1 text-[15px] font-extrabold text-[var(--color-foreground)]">
               Escolha o profissional
             </h2>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(132px,1fr))] gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(104px,1fr))] gap-2 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-4">
               {vitrine.professionals.map((pro, i) => {
                 const active = pro.slug === selectedProfessionalSlug;
                 const v = CAT_VARS[i % CAT_VARS.length];
@@ -504,19 +504,19 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                     type="button"
                     onClick={() => handleSelectProfessional(pro.slug)}
                     className={cn(
-                      "flex min-h-28 flex-col items-center rounded-[13px] border px-2.5 py-3.5 text-center transition-colors",
+                      "flex min-h-20 flex-col items-center rounded-[12px] border px-2 py-2.5 text-center transition-colors sm:min-h-28 sm:rounded-[13px] sm:px-2.5 sm:py-3.5",
                       active
                         ? "border-[var(--color-primary)] bg-[var(--color-accent-soft)]"
                         : "border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] hover:border-[var(--color-accent-strong)]",
                     )}
                   >
                     <span
-                      className="flex h-[42px] w-[42px] items-center justify-center rounded-[12px] text-[14px] font-bold"
+                      className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[12px] font-bold sm:h-[42px] sm:w-[42px] sm:rounded-[12px] sm:text-[14px]"
                       style={{ background: `var(--cat-${v}-bg)`, color: `var(--cat-${v}-ink)` }}
                     >
                       {getInitials(pro.name)}
                     </span>
-                    <span className="mt-2 line-clamp-2 text-[12.5px] font-bold leading-snug text-[var(--color-foreground)]">
+                    <span className="mt-1.5 line-clamp-2 text-[11.5px] font-bold leading-snug text-[var(--color-foreground)] sm:mt-2 sm:text-[12.5px]">
                       {pro.name}
                     </span>
                   </button>
@@ -614,7 +614,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
               </p>
             ) : (
               <>
-                <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-3 sm:p-4">
+                <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-2 sm:p-4">
                   <div className="mb-3.5 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <span className="block truncate text-sm font-extrabold capitalize text-[var(--color-foreground)]">
@@ -644,7 +644,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
                     {CAL_WEEKDAYS.map((w, i) => (
                       <div
                         key={i}
@@ -655,7 +655,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                     ))}
                   </div>
 
-                  <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+                  <div className="mt-1.5 grid grid-cols-7 gap-1 sm:gap-1.5">
                     {monthCells.map((cell) => {
                       const available = availableDates.has(cell.date);
                       const active = available && cell.date === selectedDate;
@@ -671,7 +671,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                           }}
                           style={active ? { background: "var(--gradient-accent)" } : undefined}
                           className={cn(
-                            "flex min-h-10 items-center justify-center rounded-[8px] text-[13px] font-bold transition-colors sm:aspect-square",
+                            "flex min-h-11 items-center justify-center rounded-[8px] text-[13px] font-bold transition-colors sm:aspect-square sm:min-h-10",
                             active
                               ? "text-[var(--color-primary-foreground)]"
                               : available
@@ -693,7 +693,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                   Horários disponíveis
                 </div>
                 {activeDay && activeDay.slots.length > 0 ? (
-                  <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                  <div className="mt-2.5 grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-2 sm:grid-cols-4 lg:grid-cols-6">
                     {activeDay.slots.map((slot) => {
                       const active = selectedSlot?.startsAt === slot.startsAt;
                       return (
