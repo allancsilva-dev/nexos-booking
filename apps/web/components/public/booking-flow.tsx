@@ -460,20 +460,20 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)]",
+        "w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)]",
         className,
       )}
     >
       {/* header */}
-      <div className="flex items-center gap-4 border-b border-[var(--color-border)] bg-[radial-gradient(120%_130%_at_0%_0%,#0e2230_0%,#0b1019_60%)] px-7 py-7">
+      <div className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[radial-gradient(120%_130%_at_0%_0%,#0e2230_0%,#0b1019_60%)] px-4 py-5 sm:gap-4 sm:px-7 sm:py-7">
         <div
           style={{ background: "var(--gradient-accent)" }}
-          className="flex h-[60px] w-[60px] items-center justify-center rounded-[16px] text-[var(--color-primary-foreground)] shadow-[0_10px_24px_rgba(8,145,178,0.4)]"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] text-[var(--color-primary-foreground)] shadow-[0_10px_24px_rgba(8,145,178,0.4)] sm:h-[60px] sm:w-[60px] sm:rounded-[16px]"
         >
-          <Scissors className="h-[30px] w-[30px]" strokeWidth={2.3} />
+          <Scissors className="h-6 w-6 sm:h-[30px] sm:w-[30px]" strokeWidth={2.3} />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[23px] font-extrabold tracking-[-0.02em] text-[var(--color-foreground)]">
+          <div className="break-words text-[20px] font-extrabold leading-tight tracking-[-0.02em] text-[var(--color-foreground)] sm:text-[23px]">
             {vitrine.name}
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--color-muted-foreground)]">
@@ -485,7 +485,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_330px]">
         {/* ---- steps ---- */}
-        <div className="flex flex-col gap-7 p-7">
+        <div className="flex flex-col gap-6 p-4 sm:p-6 lg:gap-7 lg:p-7">
           {/* PASSO 1 — profissional */}
           <section>
             <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-accent-strong)]">
@@ -494,7 +494,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
             <h2 className="mb-3.5 mt-1 text-[15px] font-extrabold text-[var(--color-foreground)]">
               Escolha o profissional
             </h2>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(132px,1fr))] gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
               {vitrine.professionals.map((pro, i) => {
                 const active = pro.slug === selectedProfessionalSlug;
                 const v = CAT_VARS[i % CAT_VARS.length];
@@ -504,7 +504,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                     type="button"
                     onClick={() => handleSelectProfessional(pro.slug)}
                     className={cn(
-                      "flex flex-col items-center rounded-[13px] border px-2 py-3.5 text-center transition-colors",
+                      "flex min-h-28 flex-col items-center rounded-[13px] border px-2.5 py-3.5 text-center transition-colors",
                       active
                         ? "border-[var(--color-primary)] bg-[var(--color-accent-soft)]"
                         : "border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] hover:border-[var(--color-accent-strong)]",
@@ -516,7 +516,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                     >
                       {getInitials(pro.name)}
                     </span>
-                    <span className="mt-2 truncate text-[12.5px] font-bold text-[var(--color-foreground)]">
+                    <span className="mt-2 line-clamp-2 text-[12.5px] font-bold leading-snug text-[var(--color-foreground)]">
                       {pro.name}
                     </span>
                   </button>
@@ -550,7 +550,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                       type="button"
                       onClick={() => handleSelectService(svc.id)}
                       className={cn(
-                        "flex items-center gap-3.5 rounded-[12px] border px-3.5 py-3 text-left transition-colors",
+                        "flex min-h-14 items-start gap-3 rounded-[12px] border px-3.5 py-3 text-left transition-colors",
                         active
                           ? "border-[var(--color-primary)] bg-[var(--color-accent-soft)]"
                           : "border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] hover:border-[var(--color-accent-strong)]",
@@ -567,14 +567,14 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                         ) : null}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-bold text-[var(--color-foreground)]">
+                        <span className="block break-words text-[13.5px] font-bold leading-snug text-[var(--color-foreground)]">
                           {svc.name}
                         </span>
                         <span className="block text-[11.5px] text-[var(--color-muted-foreground)]">
                           {svc.durationMin} min
                         </span>
                       </span>
-                      <span className="text-[14px] font-extrabold text-[var(--color-foreground)]">
+                      <span className="shrink-0 pt-0.5 text-[13.5px] font-extrabold text-[var(--color-foreground)]">
                         {formatPrice(svc.priceCents, svc.currency)}
                       </span>
                     </button>
@@ -614,17 +614,17 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
               </p>
             ) : (
               <>
-                <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-4">
-                  <div className="mb-3.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-sm font-extrabold capitalize text-[var(--color-foreground)]">
+                <div className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-3 sm:p-4">
+                  <div className="mb-3.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="block truncate text-sm font-extrabold capitalize text-[var(--color-foreground)]">
                         {getMonthLabel(visibleMonth)}
                       </span>
-                      <span className="rounded-full bg-[var(--cat-1-bg)] px-2.5 py-[3px] text-[11px] font-bold text-[var(--cat-1-ink)]">
+                      <span className="mt-1 inline-flex rounded-full bg-[var(--cat-1-bg)] px-2.5 py-[3px] text-[11px] font-bold text-[var(--cat-1-ink)] sm:mt-0 sm:ml-2">
                         Esta semana
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-[var(--color-muted-foreground)]">
+                    <div className="flex shrink-0 items-center gap-1 text-[var(--color-muted-foreground)]">
                       <button
                         type="button"
                         aria-label="Mês anterior"
@@ -671,7 +671,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                           }}
                           style={active ? { background: "var(--gradient-accent)" } : undefined}
                           className={cn(
-                            "flex aspect-square items-center justify-center rounded-[8px] text-[13px] font-bold transition-colors",
+                            "flex min-h-10 items-center justify-center rounded-[8px] text-[13px] font-bold transition-colors sm:aspect-square",
                             active
                               ? "text-[var(--color-primary-foreground)]"
                               : available
@@ -693,7 +693,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                   Horários disponíveis
                 </div>
                 {activeDay && activeDay.slots.length > 0 ? (
-                  <div className="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                  <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                     {activeDay.slots.map((slot) => {
                       const active = selectedSlot?.startsAt === slot.startsAt;
                       return (
@@ -709,7 +709,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                           }
                           style={active ? { background: "var(--gradient-accent)" } : undefined}
                           className={cn(
-                            "rounded-[10px] py-2.5 text-center text-[12.5px] font-bold transition-colors",
+                            "min-h-11 rounded-[10px] py-2.5 text-center text-[12.5px] font-bold transition-colors",
                             active
                               ? "text-[var(--color-primary-foreground)]"
                               : "border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] text-[var(--color-foreground)] hover:border-[var(--color-accent-strong)]",
@@ -734,7 +734,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
         </div>
 
         {/* ---- summary sidebar ---- */}
-        <div className="flex flex-col border-t border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-6 lg:border-l lg:border-t-0">
+        <div className="flex flex-col border-t border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-4 sm:p-6 lg:border-l lg:border-t-0">
           <div className="mb-4 text-sm font-extrabold text-[var(--color-foreground)]">
             Seu agendamento
           </div>
@@ -763,7 +763,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
           <div className="my-5 h-px bg-[var(--color-border)]" />
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-[13px] font-semibold text-[var(--color-muted-foreground)]">
               Total
             </span>
@@ -868,7 +868,7 @@ function SummaryRow({
         <div className="text-[10.5px] font-semibold text-[var(--color-muted-foreground)]">
           {label}
         </div>
-        <div className="truncate text-[13px] font-bold text-[var(--color-foreground)]">{value}</div>
+        <div className="break-words text-[13px] font-bold leading-snug text-[var(--color-foreground)]">{value}</div>
       </div>
     </div>
   );

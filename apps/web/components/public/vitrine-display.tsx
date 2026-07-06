@@ -36,9 +36,9 @@ export function VitrineDisplay({
   const interactive = typeof onSelectProfessional === "function";
 
   return (
-    <div className={cn("space-y-8", className)}>
+    <div className={cn("space-y-6 sm:space-y-8", className)}>
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-[var(--color-foreground)]">
+        <h1 className="break-words text-2xl font-bold leading-tight text-[var(--color-foreground)] sm:text-3xl">
           {data.name}
         </h1>
         <p className="text-sm text-[var(--color-muted-foreground)]">
@@ -84,7 +84,7 @@ export function VitrineDisplay({
                     <button
                       type="button"
                       className={cn(
-                        "w-full text-left p-4 rounded-[var(--radius-card)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
+                        "w-full rounded-[var(--radius-card)] p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] sm:p-4",
                         !hasProfessionals && "cursor-not-allowed opacity-70"
                       )}
                       onClick={() => hasProfessionals && onSelectService?.(service.id)}
@@ -97,16 +97,16 @@ export function VitrineDisplay({
                       }
                       disabled={!hasProfessionals}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <span className="text-sm font-medium text-[var(--color-foreground)]">
+                      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                        <div className="min-w-0">
+                          <span className="block break-words text-sm font-medium leading-snug text-[var(--color-foreground)]">
                             {service.name}
                           </span>
-                          <span className="ml-2 text-xs text-[var(--color-muted-foreground)]">
+                          <span className="mt-0.5 block text-xs text-[var(--color-muted-foreground)] sm:inline sm:ml-2 sm:mt-0">
                             {service.durationMin}min
                           </span>
                         </div>
-                        <span className="text-sm font-semibold text-[var(--color-foreground)]">
+                        <span className="shrink-0 text-sm font-semibold text-[var(--color-foreground)]">
                           {formatPrice(service.priceCents, service.currency)}
                         </span>
                       </div>
@@ -120,18 +120,18 @@ export function VitrineDisplay({
                       {/* Pré-visualização dos profissionais (chips). No modo flow,
                           escondida quando o card está expandido para dar lugar à escolha. */}
                       {hasProfessionals && !isExpanded && (
-                        <div className="mt-2 flex flex-wrap gap-1">
+                        <div className="mt-2 flex flex-wrap gap-1.5">
                           {professionals.map((pro) => (
                             <span
                               key={pro.slug}
-                              className="inline-flex items-center gap-1 rounded-[var(--radius-control)] bg-[var(--color-muted)] px-2 py-0.5 text-xs text-[var(--color-muted-foreground)]"
+                              className="inline-flex max-w-full items-center gap-1 rounded-[var(--radius-control)] bg-[var(--color-muted)] px-2 py-1 text-xs text-[var(--color-muted-foreground)]"
                             >
                               <span
                                 className="h-1.5 w-1.5 rounded-full"
                                 style={{ background: "var(--gradient-accent)" }}
                                 aria-hidden="true"
                               />
-                              {pro.name}
+                              <span className="truncate">{pro.name}</span>
                             </span>
                           ))}
                         </div>
