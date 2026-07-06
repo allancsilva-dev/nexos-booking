@@ -12,7 +12,7 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar />
-            <main className="nb-scroll flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-28 lg:pb-6">
+            <main className="nb-scroll flex-1 overflow-y-auto px-[max(1rem,env(safe-area-inset-left))] py-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:px-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:py-6 sm:pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:pb-6">
               {children}
             </main>
           </div>

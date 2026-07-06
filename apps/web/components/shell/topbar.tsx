@@ -35,8 +35,8 @@ export function Topbar() {
   const resolvedSubtitle = subtitle || route?.subtitle || "";
 
   return (
-    <header className="flex h-16 flex-none items-center gap-2.5 border-b border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] px-4 sm:gap-3.5 sm:px-6">
-      <div className="min-w-0">
+    <header className="flex min-h-16 flex-none items-center gap-2.5 border-b border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] px-[max(1rem,env(safe-area-inset-left))] pb-2 pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:gap-3.5 sm:px-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
+      <div className="min-w-0 flex-1">
         <div className="truncate text-[17px] font-extrabold leading-tight tracking-[-0.01em] text-[var(--color-foreground)]">
           {resolvedTitle}
         </div>
@@ -47,10 +47,9 @@ export function Topbar() {
         ) : null}
       </div>
 
-      <div className="flex-1" />
-
       <button
         type="button"
+        aria-label="Buscar"
         className="hidden items-center gap-2 rounded-[var(--radius-nav)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] px-3 py-2 text-xs font-semibold text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] sm:flex"
       >
         <Search className="h-3.5 w-3.5" />
@@ -68,7 +67,7 @@ export function Topbar() {
         </Link>
       ) : null}
 
-      {action}
+      {action ? <div className="flex shrink-0 items-center">{action}</div> : null}
     </header>
   );
 }

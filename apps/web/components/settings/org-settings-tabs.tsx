@@ -40,11 +40,10 @@ export function OrgSettingsTabs({ org, isPending, onSubmit }: Props) {
 
   return (
     <div className="flex flex-col">
-      {/* Segmented tab switcher (prototype: padding:4px pill row) */}
       <div
         role="tablist"
         aria-label="Seções de configuração"
-        className="mb-[22px] flex w-full gap-1 overflow-x-auto rounded-[11px] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-1 sm:w-max"
+        className="nb-scroll mb-[18px] flex w-full gap-1 overflow-x-auto rounded-[11px] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-1 sm:mb-[22px] sm:w-max"
       >
         {TABS.map((t) => {
           const active = tab === t.key;
@@ -59,7 +58,7 @@ export function OrgSettingsTabs({ org, isPending, onSubmit }: Props) {
                 active ? { background: "var(--gradient-accent)" } : undefined
               }
               className={cn(
-                "shrink-0 rounded-[7px] px-[15px] py-[7px] text-[12.5px] font-bold transition-colors",
+                "flex min-h-11 shrink-0 items-center justify-center rounded-[7px] px-[15px] py-[7px] text-[12.5px] font-bold transition-colors",
                 active
                   ? "text-[var(--color-primary-foreground)]"
                   : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]",
@@ -100,12 +99,12 @@ function SettingsCard({
   return (
     <section
       className={cn(
-        "rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-[22px]",
+        "rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-4 sm:p-[22px]",
         className,
       )}
     >
-      <div className="mb-[18px] flex items-start justify-between gap-3">
-        <div>
+      <div className="mb-[18px] flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-sm font-extrabold text-[var(--color-foreground)]">
             {title}
           </h2>
@@ -165,8 +164,8 @@ const fieldInput =
 /** Read-only / not-yet-wired field rendered as a disabled input look-alike. */
 function PlaceholderInput({ value }: { value: string }) {
   return (
-    <div className="flex h-[46px] items-center rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] px-3.5 text-sm text-[var(--color-muted-foreground)]">
-      {value}
+    <div className="flex h-[46px] min-w-0 items-center rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] px-3.5 text-sm text-[var(--color-muted-foreground)]">
+      <span className="truncate">{value}</span>
     </div>
   );
 }
@@ -244,12 +243,12 @@ function EmpresaTab({ org, isPending, onSubmit }: Props) {
     >
       <SettingsCard title="Identidade">
         {/* Logo (placeholder) */}
-        <div className="mb-[22px] flex items-center gap-[18px]">
-          <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[18px] border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] text-[var(--color-muted-foreground)]">
+        <div className="mb-[22px] flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-[18px]">
+          <div className="flex h-16 w-16 flex-none items-center justify-center rounded-[16px] border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] text-[var(--color-muted-foreground)] sm:h-[72px] sm:w-[72px] sm:rounded-[18px]">
             <ImageIcon className="h-6 w-6" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <p className="text-[13px] font-bold text-[var(--color-foreground)]">
                 Logo do estabelecimento
               </p>
@@ -258,7 +257,7 @@ function EmpresaTab({ org, isPending, onSubmit }: Props) {
             <p className="my-1 text-xs text-[var(--color-muted-foreground)]">
               PNG ou SVG, mínimo 256×256px
             </p>
-            <span className="mt-1 inline-flex cursor-not-allowed rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] px-3.5 py-[7px] text-[12.5px] font-bold text-[var(--color-muted-foreground)] opacity-60">
+            <span className="mt-1 inline-flex min-h-11 cursor-not-allowed items-center rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] px-3.5 py-[7px] text-[12.5px] font-bold text-[var(--color-muted-foreground)] opacity-60">
               Enviar logo
             </span>
           </div>
@@ -335,15 +334,16 @@ function EmpresaTab({ org, isPending, onSubmit }: Props) {
         </div>
       </SettingsCard>
 
-      <div className="flex justify-end gap-2.5">
+      <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
         <ActionButton
           variant="ghost"
+          className="w-full sm:w-auto"
           onClick={() => reset()}
           disabled={isPending || !isDirty}
         >
           Cancelar
         </ActionButton>
-        <ActionButton type="submit" disabled={isPending || !isDirty}>
+        <ActionButton className="w-full sm:w-auto" type="submit" disabled={isPending || !isDirty}>
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           Salvar alterações
         </ActionButton>
@@ -377,7 +377,7 @@ function JornadaTab() {
         {JOURNEY.map((j) => (
           <div
             key={j.day}
-            className="flex flex-wrap items-center gap-3 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0 sm:gap-4"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:gap-4"
           >
             <div className="flex w-[130px] items-center gap-3">
               <Toggle on={j.open} />
@@ -394,7 +394,7 @@ function JornadaTab() {
             </div>
             <div
               className={cn(
-                "flex-1 text-[13px] font-semibold",
+                "text-[13px] font-semibold sm:min-w-0",
                 j.open
                   ? "text-[var(--color-foreground)]"
                   : "text-[var(--color-muted-foreground)]",
@@ -403,7 +403,7 @@ function JornadaTab() {
               {j.hours}
             </div>
             {j.pause && (
-              <div className="text-xs font-semibold text-[var(--color-muted-foreground)]">
+              <div className="col-span-2 text-xs font-semibold text-[var(--color-muted-foreground)] sm:col-span-1">
                 {j.pause}
               </div>
             )}
@@ -470,8 +470,8 @@ function PublicaTab({ slug }: { slug: string }) {
               {slug}
             </span>
           </div>
-          <div className="flex gap-2.5">
-            <ActionButton variant="ghost" onClick={handleCopy}>
+          <div className="grid gap-2.5 sm:flex">
+            <ActionButton className="w-full sm:w-auto" variant="ghost" onClick={handleCopy}>
               {copied ? (
                 <Check className="h-[15px] w-[15px]" />
               ) : (
@@ -483,7 +483,7 @@ function PublicaTab({ slug }: { slug: string }) {
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-[var(--radius-nav)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] px-4 py-2 text-[13px] font-bold text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-nav)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] px-4 py-2 text-[13px] font-bold text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] sm:w-auto"
             >
               <ExternalLink className="h-[15px] w-[15px]" />
               Abrir
@@ -512,9 +512,9 @@ function PublicaTab({ slug }: { slug: string }) {
           {PUB_RULES.map((r) => (
             <div
               key={r.title}
-              className="flex flex-wrap items-center gap-3 border-t border-[var(--color-operational-line)] py-4 first:border-t-0 sm:gap-4"
+              className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-2 border-t border-[var(--color-operational-line)] py-4 first:border-t-0 sm:gap-4"
             >
-              <div className="flex-1">
+              <div className="min-w-0">
                 <div className="text-[13.5px] font-bold text-[var(--color-foreground)]">
                   {r.title}
                 </div>
@@ -523,7 +523,7 @@ function PublicaTab({ slug }: { slug: string }) {
                 </div>
               </div>
               {r.value && (
-                <div className="text-[13px] font-bold text-[var(--color-foreground)]">
+                <div className="text-[13px] font-bold text-[var(--color-foreground)] sm:text-right">
                   {r.value}
                 </div>
               )}

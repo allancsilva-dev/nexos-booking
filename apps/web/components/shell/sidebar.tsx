@@ -41,7 +41,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden h-screen w-[var(--spacing-sidebar)] flex-none flex-col items-center gap-1.5 border-r border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] py-[18px] lg:flex">
+    <aside className="hidden h-dvh w-[var(--spacing-sidebar)] flex-none flex-col items-center gap-1.5 border-r border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] pb-[max(18px,env(safe-area-inset-bottom))] pt-[max(18px,env(safe-area-inset-top))] lg:flex">
       <div
         style={{ background: "var(--gradient-accent)" }}
         className="mb-3 flex h-9 w-9 items-center justify-center rounded-[11px] text-[var(--color-primary-foreground)] shadow-[0_6px_16px_rgba(8,145,178,0.35)]"
@@ -131,7 +131,7 @@ export function MobileNavigation() {
       {moreOpen ? (
         <div
           id="mobile-more-menu"
-          className="fixed inset-x-3 bottom-[84px] z-50 rounded-[var(--radius-card)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-2 shadow-[var(--shadow-operational-ambient)] lg:hidden"
+          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] z-50 rounded-[var(--radius-card)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-2 shadow-[var(--shadow-operational-ambient)] lg:hidden"
         >
           <div className="mb-1 flex items-center justify-between px-2 py-1">
             <span className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--color-muted-foreground)]">
@@ -175,7 +175,7 @@ export function MobileNavigation() {
         </div>
       ) : null}
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_rgba(2,6,23,0.28)] lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_rgba(2,6,23,0.28)] lg:hidden">
         <div className="grid grid-cols-4 gap-1">
           {primaryMobileItems.map((item) => {
             const Icon = item.icon;
