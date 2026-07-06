@@ -110,5 +110,5 @@
   border: 2px solid var(--color-surface-operational);
 }
 ::placeholder {
-  color: color-mix(in srgb, var(--color-muted-foreground) 70%, transparent);
+  color: var(--color-muted-foreground);
 }

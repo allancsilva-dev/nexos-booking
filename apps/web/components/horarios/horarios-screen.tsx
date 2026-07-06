@@ -220,7 +220,7 @@ export function HorariosScreen({ orgId }: Props) {
                     onClick={() => handleDelete(b)}
                     disabled={deletingId === b.id}
                     title="Remover bloqueio"
-                    className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-destructive)] disabled:opacity-50"
+                    className="flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-nav)] text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-operational-chip)] hover:text-[var(--color-destructive)] disabled:opacity-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -250,7 +250,7 @@ export function HorariosScreen({ orgId }: Props) {
               return (
                 <div
                   key={row.professional.id}
-                  className="flex items-center gap-3.5 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0"
+                  className="flex flex-wrap items-center gap-3.5 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0"
                 >
                   <div
                     className="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-[11px] text-xs font-bold"
@@ -265,12 +265,12 @@ export function HorariosScreen({ orgId }: Props) {
                     <div className="truncate text-[13px] font-bold text-[var(--color-foreground)]">
                       {row.professional.name}
                     </div>
-                    <div className="truncate text-[11.5px] text-[var(--color-muted-foreground)]">
+                    <div className="text-[11.5px] text-[var(--color-muted-foreground)] sm:truncate">
                       {hours}
                     </div>
                   </div>
                   {off && (
-                    <span className="flex-none text-[11px] font-semibold text-[var(--color-muted-foreground)]">
+                    <span className="flex-none rounded-full bg-[var(--color-operational-chip)] px-2 py-1 text-[11px] font-semibold text-[var(--color-muted-foreground)]">
                       {off}
                     </span>
                   )}

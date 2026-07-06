@@ -71,7 +71,7 @@ export function ConfirmationScreen({
             <span className="font-medium text-[var(--color-foreground)]">{professionalName}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-[var(--color-muted-foreground)]">Servico</span>
+            <span className="text-[var(--color-muted-foreground)]">Serviço</span>
             <span className="font-medium text-[var(--color-foreground)]">{serviceName}</span>
           </div>
           <div className="flex justify-between text-sm">

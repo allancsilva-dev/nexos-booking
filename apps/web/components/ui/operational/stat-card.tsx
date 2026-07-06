@@ -35,7 +35,7 @@ export function OperationalStatCard({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-[18px]",
+        "rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-4 sm:p-[18px]",
         className,
       )}
     >
@@ -50,7 +50,7 @@ export function OperationalStatCard({
           {mock ? <MockTag /> : null}
         </div>
       </div>
-      <div className="mt-3.5 text-[27px] font-extrabold tracking-[-0.02em] text-[var(--color-foreground)]">
+      <div className="mt-3.5 break-words text-[24px] font-extrabold tracking-[-0.02em] text-[var(--color-foreground)] sm:text-[27px]">
         {value}
       </div>
       <div className="mt-0.5 text-[12.5px] font-semibold text-[var(--color-muted-foreground)]">

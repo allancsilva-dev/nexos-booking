@@ -29,8 +29,8 @@ export function ScheduleHeader({
   const heading = formatScheduleHeading(date, timeZone, viewMode);
 
   return (
-    <header className="flex flex-col gap-4 px-4 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-      <div className="flex items-center gap-4">
+    <header className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex items-center rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-1">
           <Button variant="ghost" size="icon" className="h-10 w-10 text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)]" onClick={onPrev}>
             <ChevronLeft className="h-4 w-4" />
@@ -48,8 +48,8 @@ export function ScheduleHeader({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-1">
+      <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
+        <div className="grid grid-cols-2 rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-1 sm:flex sm:items-center">
           <button
             type="button"
             className={cn(
@@ -78,7 +78,7 @@ export function ScheduleHeader({
 
         <Button
           size="lg"
-          className="h-12 rounded-2xl bg-[var(--color-primary)] px-6 text-base font-semibold text-[var(--color-primary-foreground)] hover:bg-[var(--color-accent)]"
+          className="h-12 w-full rounded-2xl bg-[var(--color-primary)] px-6 text-base font-semibold text-[var(--color-primary-foreground)] hover:bg-[var(--color-accent)] sm:w-auto"
           onClick={onOpenCreate}
         >
           <Plus className="h-5 w-5" />

@@ -136,7 +136,7 @@ export function SlotPicker({
   if (days.length === 0 && !loading) {
     return (
       <p className="py-8 text-center text-sm text-[var(--color-muted-foreground)]">
-        Nenhum horario disponivel no periodo.
+        Nenhum horário disponível no período.
       </p>
     );
   }
@@ -153,9 +153,9 @@ export function SlotPicker({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-9 w-9"
+              className="h-11 w-11 sm:h-9 sm:w-9"
               onClick={() => setVisibleMonth((current) => shiftMonth(current, -1))}
-              aria-label="Mes anterior"
+              aria-label="Mês anterior"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -163,9 +163,9 @@ export function SlotPicker({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-9 w-9"
+              className="h-11 w-11 sm:h-9 sm:w-9"
               onClick={() => setVisibleMonth((current) => shiftMonth(current, 1))}
-              aria-label="Proximo mes"
+              aria-label="Próximo mês"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -173,14 +173,14 @@ export function SlotPicker({
         </div>
 
         <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--color-muted-foreground)]">
-          {["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"].map((label) => (
+          {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((label) => (
             <span key={label} className="py-0">
               {label}
             </span>
           ))}
         </div>
 
-        <div className="mt-1 grid grid-cols-7 gap-0.5" role="grid" aria-label="Calendario de disponibilidade">
+        <div className="mt-1 grid grid-cols-7 gap-0.5" role="grid" aria-label="Calendário de disponibilidade">
           {monthCells.map((cell) => {
             const isSelected = selectedDate === cell.date;
             const hasSlots = slotsByDate.has(cell.date);
@@ -214,22 +214,22 @@ export function SlotPicker({
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-[var(--color-foreground)]">
-              Escolha o horario
+              Escolha o horário
             </h3>
             <p className="text-xs capitalize text-[var(--color-muted-foreground)]">
               {selectedDate
                 ? formatSelectedDate(selectedDate, timezone)
-                : "Escolha um dia no calendario para ver os horarios."}
+                : "Escolha um dia no calendário para ver os horários."}
             </p>
           </div>
           <span className="rounded-full bg-[var(--color-muted)] px-2.5 py-1 text-xs font-medium text-[var(--color-muted-foreground)]">
-            {selectedDaySlots.length} disponiveis
+            {selectedDaySlots.length} disponíveis
           </span>
         </div>
 
         {selectedDaySlots.length === 0 ? (
           <p className="py-6 text-sm text-[var(--color-muted-foreground)]">
-            Escolha um dia destacado para ver horarios disponiveis.
+            Escolha um dia destacado para ver horários disponíveis.
           </p>
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

@@ -247,7 +247,7 @@ export function ClientsScreen({ orgId }: Props) {
           <>
             {/* header card */}
             <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-[22px]">
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <Avatar id={detail.id} name={detail.name} size={60} />
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-[19px] font-extrabold tracking-tight text-[var(--color-foreground)]">
@@ -262,7 +262,7 @@ export function ClientsScreen({ orgId }: Props) {
                   type="button"
                   disabled
                   title="Agendamento direto pela ficha — em breve"
-                  className="inline-flex cursor-not-allowed items-center gap-2 rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] px-3.5 py-2 text-[13px] font-bold text-[var(--color-muted-foreground)] opacity-70"
+                  className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] px-3.5 py-2 text-[13px] font-bold text-[var(--color-muted-foreground)] opacity-70"
                 >
                   <Plus className="h-[15px] w-[15px]" />
                   Agendar
@@ -270,7 +270,7 @@ export function ClientsScreen({ orgId }: Props) {
                 </button>
               </div>
 
-              <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <StatTile
                   value={String(detail.appointments.length)}
                   label="Visitas"
@@ -304,7 +304,7 @@ export function ClientsScreen({ orgId }: Props) {
                     return (
                       <div
                         key={h.id}
-                        className="flex items-center gap-3.5 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0"
+                        className="flex flex-wrap items-center gap-3.5 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0"
                       >
                         <span
                           className="h-[34px] w-1 flex-none rounded-[3px]"

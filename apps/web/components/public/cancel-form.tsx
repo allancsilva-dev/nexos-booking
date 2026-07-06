@@ -135,7 +135,7 @@ export function CancelForm({
       <div className={cn(className)}>
         <ErrorFeedback
           code={error.code}
-          message={isCancelToken ? "Este link de cancelamento nao e mais valido." : error.message}
+          message={isCancelToken ? "Este link de cancelamento não é mais válido." : error.message}
           requestId={error.requestId}
           retryAfterSeconds={error.retryAfterSeconds}
           onRetry={isCancelToken ? undefined : handleBack}
@@ -163,7 +163,7 @@ export function CancelForm({
             Agendamento cancelado
           </h2>
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            Seu horario foi liberado. Obrigado por avisar!
+            Seu horário foi liberado. Obrigado por avisar!
           </p>
         </div>
         <Button variant="outline" onClick={handleBack}>
@@ -188,7 +188,7 @@ export function CancelForm({
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-[var(--color-muted-foreground)]">Servico</span>
+              <span className="text-[var(--color-muted-foreground)]">Serviço</span>
               <span className="font-medium text-[var(--color-foreground)]">
                 {preview.serviceName}
               </span>

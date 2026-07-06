@@ -125,7 +125,7 @@ export function ScheduleAppointmentCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full bg-black/10 text-[var(--color-foreground)]/90 hover:bg-black/20"
+            className="h-11 w-11 rounded-full bg-black/10 text-[var(--color-foreground)]/90 hover:bg-black/20 lg:h-9 lg:w-9"
             onClick={() => onCancel(appointment.id, appointment.version)}
             disabled={isCancelling}
           >

@@ -51,11 +51,11 @@ export function VitrineDisplay({
           id="services-heading"
           className="text-lg font-semibold text-[var(--color-foreground)] mb-4"
         >
-          Servicos
+          Serviços
         </h2>
         {data.services.length === 0 ? (
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            Nenhum servico disponivel no momento.
+            Nenhum serviço disponível no momento.
           </p>
         ) : (
           <ul className="grid gap-3" role="list">

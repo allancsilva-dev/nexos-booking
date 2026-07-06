@@ -82,7 +82,7 @@ interface EditProps {
 export type ServiceFormProps = CreateProps | EditProps;
 
 const BUFFER_HELP_TEXT =
-  "Tempo de pausa entre um atendimento e o proximo para este servico. Exemplo: se o servico dura 50 minutos e o intervalo for 10, o proximo horario ficara disponivel 60 minutos depois do inicio. Use 0 para nao adicionar pausa.";
+  "Tempo de pausa entre um atendimento e o próximo para este serviço. Exemplo: se o serviço dura 50 minutos e o intervalo for 10, o próximo horário ficará disponível 60 minutos depois do início. Use 0 para não adicionar pausa.";
 
 export function ServiceForm(props: ServiceFormProps) {
   const isCreate = props.mode === "create";
@@ -226,7 +226,7 @@ export function ServiceForm(props: ServiceFormProps) {
                         <button
                           type="button"
                           aria-label="Explicar intervalo entre atendimentos"
-                          className="relative inline-flex h-4 w-4 items-center justify-center rounded-full text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]"
+                          className="relative inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-operational-chip)] hover:text-[var(--color-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]"
                           onMouseEnter={() => setBufferHelpOpen(true)}
                           onMouseLeave={() => setBufferHelpOpen(false)}
                           onClick={() => setBufferHelpOpen((open) => !open)}
@@ -236,7 +236,7 @@ export function ServiceForm(props: ServiceFormProps) {
                         </button>
                       </FormLabel>
                       {bufferHelpOpen ? (
-                        <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-xs leading-5 text-[var(--color-foreground)] shadow-lg">
+                        <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-3 text-xs leading-5 text-[var(--color-foreground)] shadow-lg">
                           {BUFFER_HELP_TEXT}
                         </div>
                       ) : null}
@@ -282,7 +282,7 @@ export function ServiceForm(props: ServiceFormProps) {
                           type="checkbox"
                           checked={field.value ?? true}
                           onChange={field.onChange}
-                          className="h-4 w-4 rounded border-[var(--color-border)] bg-[var(--color-background)]"
+                          className="h-5 w-5 rounded border-[var(--color-border)] bg-[var(--color-background)]"
                         />
                       </FormControl>
                       <FormLabel className="!mt-0 cursor-pointer">

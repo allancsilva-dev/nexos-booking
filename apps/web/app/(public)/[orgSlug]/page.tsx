@@ -68,7 +68,7 @@ export default function VitrinePage({ params }: { params: Promise<{ orgSlug: str
     return (
       <LoadingState
         variant="skeleton"
-        message="Carregando servicos..."
+        message="Carregando serviços..."
       />
     );
   }
@@ -113,8 +113,8 @@ export default function VitrinePage({ params }: { params: Promise<{ orgSlug: str
   if (!data) {
     return (
       <EmptyState
-        title="Empresa nao encontrada"
-        description="Nao foi possivel carregar os dados desta empresa."
+        title="Empresa não encontrada"
+        description="Não foi possível carregar os dados desta empresa."
       />
     );
   }

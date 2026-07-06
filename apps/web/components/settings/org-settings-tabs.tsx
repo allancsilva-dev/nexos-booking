@@ -44,7 +44,7 @@ export function OrgSettingsTabs({ org, isPending, onSubmit }: Props) {
       <div
         role="tablist"
         aria-label="Seções de configuração"
-        className="mb-[22px] flex w-max gap-1 rounded-[11px] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-1"
+        className="mb-[22px] flex w-full gap-1 overflow-x-auto rounded-[11px] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-1 sm:w-max"
       >
         {TABS.map((t) => {
           const active = tab === t.key;
@@ -59,7 +59,7 @@ export function OrgSettingsTabs({ org, isPending, onSubmit }: Props) {
                 active ? { background: "var(--gradient-accent)" } : undefined
               }
               className={cn(
-                "rounded-[7px] px-[15px] py-[7px] text-[12.5px] font-bold transition-colors",
+                "shrink-0 rounded-[7px] px-[15px] py-[7px] text-[12.5px] font-bold transition-colors",
                 active
                   ? "text-[var(--color-primary-foreground)]"
                   : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]",
@@ -377,7 +377,7 @@ function JornadaTab() {
         {JOURNEY.map((j) => (
           <div
             key={j.day}
-            className="flex items-center gap-4 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0"
+            className="flex flex-wrap items-center gap-3 border-t border-[var(--color-operational-line)] py-3.5 first:border-t-0 sm:gap-4"
           >
             <div className="flex w-[130px] items-center gap-3">
               <Toggle on={j.open} />
@@ -497,7 +497,7 @@ function PublicaTab({ slug }: { slug: string }) {
         description="Até onde no futuro o cliente pode marcar pela página pública."
         action={<SoonBadge />}
       >
-        <div className="flex w-max gap-1 rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-1 opacity-70">
+        <div className="flex w-full gap-1 overflow-x-auto rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-operational-muted)] p-1 opacity-70 sm:w-max">
           <span className="rounded-[7px] px-3.5 py-1.5 text-[12.5px] font-bold text-[var(--color-muted-foreground)]">
             Esta semana
           </span>
@@ -512,7 +512,7 @@ function PublicaTab({ slug }: { slug: string }) {
           {PUB_RULES.map((r) => (
             <div
               key={r.title}
-              className="flex items-center gap-4 border-t border-[var(--color-operational-line)] py-4 first:border-t-0"
+              className="flex flex-wrap items-center gap-3 border-t border-[var(--color-operational-line)] py-4 first:border-t-0 sm:gap-4"
             >
               <div className="flex-1">
                 <div className="text-[13.5px] font-bold text-[var(--color-foreground)]">

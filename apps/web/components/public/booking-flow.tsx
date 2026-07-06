@@ -206,7 +206,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
         } else {
           setError({
             code: INTERNAL_ERROR,
-            message: "Erro ao buscar horarios disponiveis.",
+            message: "Erro ao buscar horários disponíveis.",
             requestId: "",
           });
         }
@@ -629,7 +629,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                         type="button"
                         aria-label="Mês anterior"
                         onClick={() => setCalMonth(shiftMonth(visibleMonth, -1))}
-                        className="flex h-7 w-7 items-center justify-center rounded-[8px] transition-colors hover:bg-[var(--color-surface-operational-strong)] hover:text-[var(--color-foreground)]"
+                        className="flex h-11 w-11 items-center justify-center rounded-[8px] transition-colors hover:bg-[var(--color-surface-operational-strong)] hover:text-[var(--color-foreground)] sm:h-9 sm:w-9"
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </button>
@@ -637,7 +637,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
                         type="button"
                         aria-label="Próximo mês"
                         onClick={() => setCalMonth(shiftMonth(visibleMonth, 1))}
-                        className="flex h-7 w-7 items-center justify-center rounded-[8px] transition-colors hover:bg-[var(--color-surface-operational-strong)] hover:text-[var(--color-foreground)]"
+                        className="flex h-11 w-11 items-center justify-center rounded-[8px] transition-colors hover:bg-[var(--color-surface-operational-strong)] hover:text-[var(--color-foreground)] sm:h-9 sm:w-9"
                       >
                         <ChevronRight className="h-4 w-4" />
                       </button>
@@ -774,6 +774,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
 
           <div className="mt-5 flex flex-col gap-2.5">
             <Input
+              aria-label="Seu nome"
               placeholder="Seu nome"
               value={client.name}
               autoComplete="name"
@@ -793,6 +794,7 @@ export function BookingFlow({ orgSlug, vitrine, className }: BookingFlowProps) {
               <p className="text-xs text-[var(--color-destructive)]">{clientErrors.name}</p>
             ) : null}
             <Input
+              aria-label="Telefone WhatsApp"
               type="tel"
               inputMode="tel"
               maxLength={PHONE_MAX_LENGTH}

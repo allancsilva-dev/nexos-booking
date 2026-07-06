@@ -114,13 +114,13 @@ export function ServiceLinkEditor({ activeOrgId, professionalId, professionalNam
             {services.map((svc) => (
               <label
                 key={svc.id}
-                className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] px-3 py-3 transition-colors hover:bg-[var(--color-accent-soft)]"
+                className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-muted)] px-3 py-3 transition-colors hover:bg-[var(--color-accent-soft)]"
               >
                 <input
                   type="checkbox"
                   checked={selected.has(svc.id)}
                   onChange={() => toggle(svc.id)}
-                  className="mt-0.5 h-4 w-4 rounded border-[var(--color-border)]"
+                  className="mt-0.5 h-5 w-5 rounded border-[var(--color-border)]"
                 />
                 <span className="min-w-0">
                   <span

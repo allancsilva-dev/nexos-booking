@@ -137,7 +137,7 @@ export function ProfessionalForm(props: ProfessionalFormProps) {
                         type="checkbox"
                         checked={field.value ?? true}
                         onChange={field.onChange}
-                        className="h-4 w-4 rounded border-[var(--color-border)]"
+                        className="h-5 w-5 rounded border-[var(--color-border)]"
                       />
                     </FormControl>
                     <FormLabel className="!mt-0 cursor-pointer">Ativo</FormLabel>

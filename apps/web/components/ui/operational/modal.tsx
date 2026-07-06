@@ -50,7 +50,7 @@ export function OperationalModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
       <button
         type="button"
         aria-label="Fechar modal"
@@ -63,7 +63,7 @@ export function OperationalModal({
         aria-labelledby="operational-modal-title"
         aria-describedby={description ? "operational-modal-description" : undefined}
         className={cn(
-          "relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-[var(--radius-panel)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational)] text-[var(--color-foreground)] shadow-[var(--shadow-operational-ambient)]",
+          "relative z-10 flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[var(--radius-panel)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational)] text-[var(--color-foreground)] shadow-[var(--shadow-operational-ambient)] sm:rounded-[var(--radius-panel)]",
           className,
         )}
       >
@@ -85,13 +85,13 @@ export function OperationalModal({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 shrink-0 rounded-full text-[var(--color-muted-foreground)] hover:bg-white/5"
+            className="h-11 w-11 shrink-0 rounded-full text-[var(--color-muted-foreground)] hover:bg-white/5"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div className="max-h-[min(72vh,720px)] overflow-y-auto px-5 py-5 sm:px-6">
+        <div className="overflow-y-auto px-5 py-5 sm:max-h-[min(72vh,720px)] sm:px-6">
           {children}
         </div>
         {footer ? (

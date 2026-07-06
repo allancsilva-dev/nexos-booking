@@ -63,11 +63,11 @@ export function ScheduleSidebarSummary({
   );
 
   return (
-    <div className="space-y-6 p-5">
+    <div className="space-y-5 p-4 sm:space-y-6 sm:p-5">
       {children}
 
       <div className="space-y-1">
-        <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-foreground)]">
+        <h2 className="text-xl font-extrabold tracking-tight text-[var(--color-foreground)] sm:text-3xl">
           {title}
         </h2>
         <p className="text-sm text-[var(--color-muted-foreground)]">
@@ -75,7 +75,7 @@ export function ScheduleSidebarSummary({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <OperationalMetricCard
           label="Atendimentos"
           value={activeAppointments.length}
@@ -125,12 +125,12 @@ export function ScheduleSidebarSummary({
               >
                 <div className="h-11 w-1 rounded-full bg-[var(--color-timeline-now)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xl font-bold text-[var(--color-foreground)]">{appointment.clientName}</p>
+                  <p className="truncate text-base font-bold text-[var(--color-foreground)] sm:text-xl">{appointment.clientName}</p>
                   <p className="truncate text-sm text-[var(--color-muted-foreground)]">
                     {appointment.serviceNameSnapshot}
                   </p>
                 </div>
-                <div className="text-lg font-bold text-[var(--color-foreground)]">
+                <div className="text-base font-bold text-[var(--color-foreground)] sm:text-lg">
                   {formatTimeInTimeZone(appointment.startsAt, timezone)}
                 </div>
               </div>

@@ -25,6 +25,7 @@ import { ErrorDisplay } from "@/components/error-display";
 import { ScheduleCreatePanel } from "@/components/schedule/schedule-create-panel";
 import { ScheduleGrid } from "@/components/schedule/schedule-grid";
 import { ScheduleHeader } from "@/components/schedule/schedule-header";
+import { ScheduleMobileList } from "@/components/schedule/schedule-mobile-list";
 import { ScheduleShell } from "@/components/schedule/schedule-shell";
 import { ScheduleSidebarSummary } from "@/components/schedule/schedule-sidebar-summary";
 import { ScheduleWeekGrid } from "@/components/schedule/schedule-week-grid";
@@ -443,39 +444,73 @@ export default function SchedulePage() {
         }
         grid={
           viewMode === "day" ? (
-            <ScheduleGrid
-              professionals={professionals ?? []}
-              appointmentsByProfessional={appointmentsByProfessional}
-              timezone={timezone}
-              workWindowsByProfessional={workWindowsByProfessional}
-              globalStartMin={scheduleBounds.startMin}
-              globalEndMin={scheduleBounds.endMin}
-              pxPerHour={pxPerHour}
-              nowLineTop={nowLineTop}
-              isLoading={appointmentsQuery.isLoading || workingHoursLoading}
-              isEmpty={allAppointments.length === 0}
-              onOpenCreate={() => openCreatePanel()}
-              onCancel={handleCancel}
-              isCancelling={cancelMutation.isPending}
-            />
+            <>
+              <div className="lg:hidden">
+                <ScheduleMobileList
+                  dates={visibleDates}
+                  professionals={professionals ?? []}
+                  appointmentsByDate={appointmentsByDate}
+                  timezone={timezone}
+                  viewMode={viewMode}
+                  isLoading={appointmentsQuery.isLoading || workingHoursLoading}
+                  onOpenCreate={() => openCreatePanel()}
+                  onCancel={handleCancel}
+                  isCancelling={cancelMutation.isPending}
+                />
+              </div>
+              <div className="hidden lg:block">
+                <ScheduleGrid
+                  professionals={professionals ?? []}
+                  appointmentsByProfessional={appointmentsByProfessional}
+                  timezone={timezone}
+                  workWindowsByProfessional={workWindowsByProfessional}
+                  globalStartMin={scheduleBounds.startMin}
+                  globalEndMin={scheduleBounds.endMin}
+                  pxPerHour={pxPerHour}
+                  nowLineTop={nowLineTop}
+                  isLoading={appointmentsQuery.isLoading || workingHoursLoading}
+                  isEmpty={allAppointments.length === 0}
+                  onOpenCreate={() => openCreatePanel()}
+                  onCancel={handleCancel}
+                  isCancelling={cancelMutation.isPending}
+                />
+              </div>
+            </>
           ) : (
-            <ScheduleWeekGrid
-              dates={visibleDates}
-              professionals={professionals ?? []}
-              appointmentsByDate={appointmentsByDate}
-              workWindowsByDate={workWindowsByDate}
-              timezone={timezone}
-              globalStartMin={scheduleBounds.startMin}
-              globalEndMin={scheduleBounds.endMin}
-              pxPerHour={pxPerHour}
-              nowLineDate={nowLineDate}
-              nowLineTop={nowLineTop}
-              isLoading={appointmentsQuery.isLoading || workingHoursLoading}
-              isEmpty={allAppointments.length === 0}
-              onOpenCreate={() => openCreatePanel()}
-              onCancel={handleCancel}
-              isCancelling={cancelMutation.isPending}
-            />
+            <>
+              <div className="lg:hidden">
+                <ScheduleMobileList
+                  dates={visibleDates}
+                  professionals={professionals ?? []}
+                  appointmentsByDate={appointmentsByDate}
+                  timezone={timezone}
+                  viewMode={viewMode}
+                  isLoading={appointmentsQuery.isLoading || workingHoursLoading}
+                  onOpenCreate={() => openCreatePanel()}
+                  onCancel={handleCancel}
+                  isCancelling={cancelMutation.isPending}
+                />
+              </div>
+              <div className="hidden lg:block">
+                <ScheduleWeekGrid
+                  dates={visibleDates}
+                  professionals={professionals ?? []}
+                  appointmentsByDate={appointmentsByDate}
+                  workWindowsByDate={workWindowsByDate}
+                  timezone={timezone}
+                  globalStartMin={scheduleBounds.startMin}
+                  globalEndMin={scheduleBounds.endMin}
+                  pxPerHour={pxPerHour}
+                  nowLineDate={nowLineDate}
+                  nowLineTop={nowLineTop}
+                  isLoading={appointmentsQuery.isLoading || workingHoursLoading}
+                  isEmpty={allAppointments.length === 0}
+                  onOpenCreate={() => openCreatePanel()}
+                  onCancel={handleCancel}
+                  isCancelling={cancelMutation.isPending}
+                />
+              </div>
+            </>
           )
         }
         sidebar={

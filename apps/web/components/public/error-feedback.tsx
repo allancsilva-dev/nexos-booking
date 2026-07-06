@@ -88,7 +88,7 @@ export function ErrorFeedback({
         </div>
         <div className="text-center space-y-4">
           <p className="text-sm text-[var(--color-foreground)] max-w-md">
-            Este horario acabou de ser reservado. Os horarios disponiveis foram atualizados.
+            Este horário acabou de ser reservado. Os horários disponíveis foram atualizados.
           </p>
           {onRefetch && (
             <Button
@@ -97,7 +97,7 @@ export function ErrorFeedback({
               onClick={onRefetch}
             >
               <RefreshCw className="h-4 w-4" />
-              Atualizar horarios
+              Atualizar horários
             </Button>
           )}
         </div>
@@ -119,7 +119,7 @@ export function ErrorFeedback({
         </div>
         <div className="text-center space-y-1">
           <p className="text-sm text-[var(--color-foreground)]">
-            Este link de cancelamento nao e mais valido.
+            Este link de cancelamento não é mais válido.
           </p>
         </div>
       </div>

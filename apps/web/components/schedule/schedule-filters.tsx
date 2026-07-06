@@ -26,12 +26,12 @@ export function ScheduleFilters({
   disabled,
 }: Props) {
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <select
         value={professionalId ?? ""}
         onChange={(e) => onProfessionalChange(e.target.value)}
         disabled={disabled}
-        className="h-10 rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 text-sm text-[var(--color-foreground)]"
+        className="h-11 w-full rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 text-sm text-[var(--color-foreground)]"
       >
         <option value="">Profissional</option>
         {professionals?.map((p) => (
@@ -45,7 +45,7 @@ export function ScheduleFilters({
         value={serviceId ?? ""}
         onChange={(e) => onServiceChange(e.target.value)}
         disabled={disabled || !professionalId}
-        className="h-10 rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 text-sm text-[var(--color-foreground)]"
+        className="h-11 w-full rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 text-sm text-[var(--color-foreground)]"
       >
         <option value="">Serviço</option>
         {services?.map((s) => (
@@ -60,7 +60,7 @@ export function ScheduleFilters({
         value={date}
         onChange={(e) => onDateChange(e.target.value)}
         disabled={disabled || !professionalId || !serviceId}
-        className="h-10 rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 text-sm text-[var(--color-foreground)]"
+        className="h-11 w-full rounded-[var(--radius-control)] border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] px-3 text-sm text-[var(--color-foreground)]"
       />
     </div>
   );

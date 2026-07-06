@@ -51,7 +51,7 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-[var(--radius-nav)] p-1.5 outline-none transition-colors hover:bg-[var(--color-operational-chip)]">
+      <DropdownMenuTrigger className="flex min-h-11 w-full items-center gap-2 rounded-[var(--radius-nav)] p-1.5 outline-none transition-colors hover:bg-[var(--color-operational-chip)]">
         <Avatar className="h-7 w-7">
           <AvatarFallback className="bg-[var(--color-accent-soft)] text-[10px] text-[var(--color-accent-strong)]">
             {initials}
