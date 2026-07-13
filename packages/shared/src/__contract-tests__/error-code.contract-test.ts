@@ -2,7 +2,7 @@
 /**
  * Contrato compile-time: `ErrorCode` (API_CONTRACTS.md §7 + §22).
  *
- * Quebra o build se a união divergir dos 37 códigos canônicos, se `CONSENT_REQUIRED` virar código
+ * Quebra o build se a união divergir dos 38 códigos canônicos, se `CONSENT_REQUIRED` virar código
  * ou se `RATE_LIMITED` deixar de ser código.
  */
 import { ERROR_CODES, type ErrorCode } from "../error-code.js";
@@ -16,6 +16,7 @@ type ExpectedErrorCode =
   | "NOT_FOUND"
   | "INTERNAL_ERROR"
   | "RATE_LIMITED"
+  | "DEPENDENCY_UNAVAILABLE"
   // Auth
   | "UNAUTHENTICATED"
   | "INVALID_CREDENTIALS"
@@ -61,8 +62,8 @@ type ExpectedErrorCode =
 /** A união materializada equivale exatamente à esperada (nem mais, nem menos). */
 type _AssertUnionExact = Expect<Equal<ErrorCode, ExpectedErrorCode>>;
 
-/** A constante materializa exatamente 37 códigos (tupla `as const`). */
-type _AssertCount = Expect<Equal<(typeof ERROR_CODES)["length"], 37>>;
+/** A constante materializa exatamente 38 códigos (tupla `as const`). */
+type _AssertCount = Expect<Equal<(typeof ERROR_CODES)["length"], 38>>;
 
 /** `RATE_LIMITED` É um código aceito. */
 const _rateLimitedIsCode: ErrorCode = "RATE_LIMITED";

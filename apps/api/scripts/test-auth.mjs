@@ -111,25 +111,34 @@ function startApi(enableHarness, opts = {}) {
     const apiDir = new URL("..", import.meta.url).pathname;
     const repoRoot = path.resolve(apiDir, "../..");
     const dotEnv = loadDotEnv(repoRoot);
-    const dbPort = envOverrides.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? "5432";
-    const dbHost = envOverrides.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? "127.0.0.1";
+    const dbPort = envOverrides.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? "5432";
+    const dbHost = envOverrides.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? "127.0.0.1";
 
     const env = {
-      ...process.env,
       ...dotEnv,
+      ...process.env,
       ...envOverrides,
       PORT: port,
       ENABLE_HTTP_TEST_HARNESS: enableHarness ? "1" : "0",
       NODE_ENV: "development",
+      REDIS_URL: envOverrides.REDIS_URL ?? process.env.REDIS_URL ?? dotEnv.REDIS_URL ?? "redis://127.0.0.1:6379",
+      RATE_LIMIT_KEY_SECRET: envOverrides.RATE_LIMIT_KEY_SECRET ?? process.env.RATE_LIMIT_KEY_SECRET ?? dotEnv.RATE_LIMIT_KEY_SECRET ?? "auth-test-rate-limit-secret-at-least-32-chars",
+      REDIS_KEY_PREFIX: envOverrides.REDIS_KEY_PREFIX ?? `nexos:test:auth:${process.pid}`,
       PGHOST: undefined,
       PGUSER: undefined,
       PGPASSWORD: undefined,
       PGDATABASE: undefined,
       PGPORT: undefined,
       DATABASE_URL:
-        dotEnv.DATABASE_URL ??
         process.env.DATABASE_URL ??
-        `postgres://${dotEnv.POSTGRES_USER ?? process.env.POSTGRES_USER ?? "nexos_booking"}:${dotEnv.POSTGRES_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${dotEnv.POSTGRES_DB ?? process.env.POSTGRES_DB ?? "nexos_booking"}`,
+        dotEnv.DATABASE_URL ??
+        `postgres://${process.env.POSTGRES_USER ?? dotEnv.POSTGRES_USER ?? "nexos_booking"}:${process.env.POSTGRES_PASSWORD ?? dotEnv.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${process.env.POSTGRES_DB ?? dotEnv.POSTGRES_DB ?? "nexos_booking"}`,
+      DATABASE_RUNTIME_URL:
+        envOverrides.DATABASE_RUNTIME_URL ??
+        process.env.DATABASE_RUNTIME_URL ??
+        (process.env.POSTGRES_DB
+          ? `postgres://${process.env.APP_RUNTIME_USER ?? dotEnv.APP_RUNTIME_USER ?? "app_runtime"}:${process.env.APP_RUNTIME_PASSWORD ?? dotEnv.APP_RUNTIME_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? dotEnv.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${process.env.POSTGRES_DB}`
+          : dotEnv.DATABASE_RUNTIME_URL),
     };
 
     const tsxBin = path.resolve(apiDir, "node_modules/.bin/tsx");
@@ -158,9 +167,9 @@ function repoRoot() {
 function resolveDbEnv() {
   const dotEnv = loadDotEnv(repoRoot());
   return {
-    user: dotEnv.POSTGRES_USER ?? process.env.POSTGRES_USER ?? "nexos_booking",
-    pass: dotEnv.POSTGRES_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? "nexos_booking_local_password",
-    db: dotEnv.POSTGRES_DB ?? process.env.POSTGRES_DB ?? "nexos_booking",
+    user: process.env.POSTGRES_USER ?? dotEnv.POSTGRES_USER ?? "nexos_booking",
+    pass: process.env.POSTGRES_PASSWORD ?? dotEnv.POSTGRES_PASSWORD ?? "nexos_booking_local_password",
+    db: process.env.POSTGRES_DB ?? dotEnv.POSTGRES_DB ?? "nexos_booking",
   };
 }
 
@@ -294,7 +303,7 @@ function disableMembership(dbUser, dbPass, dbName, userId, orgId) {
     refreshCookie1 = getRefreshCookie(cookies);
     assert.ok(refreshCookie1, "refresh cookie should exist");
     assert.equal(refreshCookie1.httpOnly, true, "cookie should be httpOnly");
-    assert.equal(refreshCookie1.secure, true, "cookie should be Secure");
+    assert.equal(refreshCookie1.secure, false, "development cookie must work over local HTTP");
     assert.equal(refreshCookie1.sameSite, "Strict", "cookie should be SameSite=Strict");
     assert.equal(refreshCookie1.path, "/api/v1/auth/refresh", "cookie path should be /api/v1/auth/refresh");
   });
@@ -625,7 +634,7 @@ function disableMembership(dbUser, dbPass, dbName, userId, orgId) {
     const cookie = getRefreshCookie(res.cookies);
     assert.ok(cookie, "cookie should exist");
     assert.equal(cookie.httpOnly, true, "cookie must be httpOnly");
-    assert.equal(cookie.secure, true, "cookie must be Secure");
+    assert.equal(cookie.secure, false, "development cookie must work over local HTTP");
     assert.equal(cookie.sameSite, "Strict", "cookie must be SameSite=Strict");
     assert.equal(cookie.path, "/api/v1/auth/refresh", "cookie path must be /api/v1/auth/refresh");
   });

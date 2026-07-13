@@ -133,16 +133,25 @@ function startApi(enableHarness, opts = {}) {
 
     const dotEnv = loadDotEnv(repoRoot);
 
-    const dbPort = envOverrides.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? "5432";
-    const dbHost = envOverrides.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? "127.0.0.1";
+    const dbPort = envOverrides.POSTGRES_PORT ?? process.env.POSTGRES_PORT ?? dotEnv.POSTGRES_PORT ?? "5432";
+    const dbHost = envOverrides.POSTGRES_HOST ?? process.env.POSTGRES_HOST ?? dotEnv.POSTGRES_HOST ?? "127.0.0.1";
 
     const env = {
-      ...process.env,
       ...dotEnv,
+      ...process.env,
       ...envOverrides,
       PORT: port,
       ENABLE_HTTP_TEST_HARNESS: enableHarness ? "1" : "0",
       NODE_ENV: "development",
+      REDIS_URL: envOverrides.REDIS_URL ?? process.env.REDIS_URL ?? dotEnv.REDIS_URL ?? "redis://127.0.0.1:6379",
+      RATE_LIMIT_KEY_SECRET: envOverrides.RATE_LIMIT_KEY_SECRET ?? process.env.RATE_LIMIT_KEY_SECRET ?? dotEnv.RATE_LIMIT_KEY_SECRET ?? "http-test-rate-limit-secret-at-least-32-chars",
+      REDIS_KEY_PREFIX: envOverrides.REDIS_KEY_PREFIX ?? `nexos:test:http:${process.pid}`,
+      DATABASE_RUNTIME_URL:
+        envOverrides.DATABASE_RUNTIME_URL ??
+        process.env.DATABASE_RUNTIME_URL ??
+        (process.env.POSTGRES_DB
+          ? `postgres://${process.env.APP_RUNTIME_USER ?? dotEnv.APP_RUNTIME_USER ?? "app_runtime"}:${process.env.APP_RUNTIME_PASSWORD ?? dotEnv.APP_RUNTIME_PASSWORD ?? process.env.POSTGRES_PASSWORD ?? dotEnv.POSTGRES_PASSWORD ?? ""}@${dbHost}:${dbPort}/${process.env.POSTGRES_DB}`
+          : dotEnv.DATABASE_RUNTIME_URL),
       // Clear PG* env vars that may interfere with DATABASE_URL
       PGHOST: undefined,
       PGUSER: undefined,
@@ -404,7 +413,7 @@ try {
     const { headers } = await fetchRaw("/health");
     assert.ok(headers["x-content-type-options"]);
     assert.ok(headers["x-frame-options"]);
-    assert.ok(headers["strict-transport-security"]);
+    assert.equal(headers["strict-transport-security"], undefined);
     assert.ok(headers["referrer-policy"]);
   });
 
@@ -464,20 +473,18 @@ try {
     // Verified via code review — only buildErrorEnvelope helper is used
   });
 
-  // ── T24: /ready returns 503 with DB unavailable (deterministic, closed port) ──
+  // ── T24: /ready returns 503 with Redis unavailable ──
   await testAsync(
-    "/ready returns 503 with DB unavailable (closed-port, <3s)",
+    "/ready returns 503 with Redis unavailable (closed-port, <3s)",
     async () => {
       const SECONDARY_PORT = "3098";
       const SECONDARY_BASE = `http://localhost:${SECONDARY_PORT}`;
 
-      // Start second API instance pointing to a closed port (deterministic ECONNREFUSED)
-      console.log(`    Starting secondary instance on port ${SECONDARY_PORT} with POSTGRES_PORT=1...`);
+      console.log(`    Starting secondary instance on port ${SECONDARY_PORT} with REDIS_URL closed...`);
       const secondary = await startApi(true, {
         port: SECONDARY_PORT,
         envOverrides: {
-          POSTGRES_PORT: "1",
-          POSTGRES_HOST: "127.0.0.1",
+          REDIS_URL: "redis://127.0.0.1:1",
         },
       });
 
@@ -503,10 +510,11 @@ try {
         assert.equal(
           resp.status,
           503,
-          "/ready should return 503 when DB is unavailable",
+          "/ready should return 503 when Redis is unavailable",
         );
         assert.equal(resp.json?.status, "error");
-        assert.equal(resp.json?.database, "disconnected");
+        assert.equal(resp.json?.database, "connected");
+        assert.equal(resp.json?.redis, "disconnected");
 
         // Must not expose internal error details
         assert.ok(!resp.json?.hostname, "must not expose hostname");
@@ -521,7 +529,7 @@ try {
         // Duration must be under 3 seconds (readiness deadline, not HTTP timeout)
         assert.ok(
           elapsed < 3_000,
-          `/ready with DB unavailable took ${elapsed}ms, expected <3000ms`,
+          `/ready with Redis unavailable took ${elapsed}ms, expected <3000ms`,
         );
 
         // Verify main instance still returns 200

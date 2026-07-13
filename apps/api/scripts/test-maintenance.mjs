@@ -233,7 +233,7 @@ async function main() {
   console.log("");
 
   // ═════════════════════════════════════════════════════════════════
-  // T3: Invitations cleanup — expired deleted, valid + accepted remain
+  // T3: Invitations cleanup — all expired deleted, valid remains
   // ═════════════════════════════════════════════════════════════════
   console.log("--- T3: invitations cleanup ---");
   const INV_EXP_1 = "d3333333-1111-1111-1111-111111111111";
@@ -279,7 +279,7 @@ async function main() {
   );
   assert("T3b expired deleted (0)", invExpAfter, 0);
   assert("T3c valid remains (1)", invValidAfter, 1);
-  assert("T3d accepted but expired remains (1)", invAcceptedAfter, 1);
+  assert("T3d accepted and expired deleted (0)", invAcceptedAfter, 0);
   console.log("");
 
   // ═════════════════════════════════════════════════════════════════
@@ -323,10 +323,10 @@ async function main() {
   assert("T5a cleanupIdempotencyKeys method exists in source", hasMethod, true);
 
   const hasCronActive = maintSource.match(/@Cron\(.*\)\s*\n\s*(private\s+)?async\s+cleanupIdempotencyKeys/);
-  assert("T5b @Cron decorator NOT active on cleanupIdempotencyKeys", hasCronActive === null, true);
+  assert("T5b @Cron decorator active on cleanupIdempotencyKeys", hasCronActive !== null, true);
 
   const hasDeleteOnIdem = /delete\s*\(\s*idempotencyKeys\s*\)/i.test(maintSource);
-  assert("T5c no DELETE on idempotencyKeys in source", hasDeleteOnIdem, false);
+  assert("T5c DELETE on idempotencyKeys exists", hasDeleteOnIdem, true);
   console.log("");
 
   // ═════════════════════════════════════════════════════════════════
@@ -346,10 +346,10 @@ async function main() {
   // ═════════════════════════════════════════════════════════════════
   console.log("--- T7: Log message content (no PII) ---");
 
-  const hasRefreshLog = /\[maintenance\]\s*refresh_sessions:\s*\$\{result\.rowCount/.test(maintSource);
+  const hasRefreshLog = /\[maintenance\]\s*refresh_sessions:\s*\$\{Number\(result\.rows\[0\]\?\.deleted_count/.test(maintSource);
   assert("T7a refresh_sessions log contains entity name + rowCount", hasRefreshLog, true);
 
-  const hasVerificationLog = /\[maintenance\]\s*verification_tokens:\s*\$\{result\.rowCount/.test(maintSource);
+  const hasVerificationLog = /\[maintenance\]\s*verification_tokens:\s*\$\{Number\(result\.rows\[0\]\?\.deleted_count/.test(maintSource);
   assert("T7b verification_tokens log contains entity name + rowCount", hasVerificationLog, true);
 
   const hasInvitationLog = /\[maintenance\]\s*invitations:\s*\$\{result\.rowCount/.test(maintSource);

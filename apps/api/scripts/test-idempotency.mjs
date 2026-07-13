@@ -462,7 +462,7 @@ async function main() {
     withTenantCalls.length >= 2,
     true,
   );
-  const txWrapsHandler = /withTenantContext[\s\S]*next\.handle\(\)/.test(intSrc);
+  const txWrapsHandler = /return\s+withTenantContext\([^;]*next\.handle\(\)/s.test(intSrc);
   assert(
     "T18b Handler NOT inside tenant transaction (separate)",
     !txWrapsHandler,
@@ -554,6 +554,9 @@ async function main() {
 
   runPsql(`
     DELETE FROM idempotency_keys WHERE id IN (${quotedLiteral(IK_EXP)}, ${quotedLiteral(IK_VALID)});
+    INSERT INTO organizations (id, name, slug)
+    VALUES (${quotedLiteral(ORG)}, 'Idempotency Test', 'idempotency-test')
+    ON CONFLICT (id) DO NOTHING;
   `);
 
   runPsql(`
@@ -596,16 +599,19 @@ async function main() {
 
   const fk = runPsql(`
     SELECT EXISTS (
-      SELECT 1 FROM information_schema.table_constraints
-      WHERE table_name = 'idempotency_keys' AND constraint_type = 'UNIQUE'
+      SELECT 1 FROM pg_indexes
+      WHERE tablename = 'idempotency_keys'
+        AND indexname = 'idempotency_keys_org_key_route_uk'
+        AND indexdef ILIKE 'CREATE UNIQUE INDEX%'
     )::text;
   `);
-  assert("T25f unique constraint exists", fk.includes("t"), true);
+  assert("T25f unique idempotency index exists", fk.includes("t"), true);
   console.log("");
 
   // ─── Cleanup ─────────────────────────────────────────────────────
   runPsql(`
     DELETE FROM idempotency_keys WHERE id IN (${quotedLiteral(IK_EXP)}, ${quotedLiteral(IK_VALID)});
+    DELETE FROM organizations WHERE id = ${quotedLiteral(ORG)};
   `);
 
   console.log("============================");
