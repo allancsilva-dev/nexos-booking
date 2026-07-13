@@ -35,6 +35,11 @@ const WEEKDAY_MAP: Record<string, number> = {
 };
 const STAFF_ACTOR_TYPE = "STAFF";
 
+function getDatabaseErrorCode(error: unknown): string | undefined {
+  const candidate = error as { code?: string; cause?: { code?: string } };
+  return candidate.code ?? candidate.cause?.code;
+}
+
 function getDateKey(instant: Date, timezone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(instant);
 }
@@ -503,16 +508,7 @@ export class AppointmentsService {
             eventPayload,
           };
         } catch (err) {
-          const pgErr = err as {
-            code?: string;
-            cause?: { code?: string };
-          };
-          const code =
-            pgErr.code ??
-            (pgErr.cause && typeof pgErr.cause === "object"
-              ? (pgErr.cause as { code?: string }).code
-              : undefined);
-          if (code === "23P01") {
+          if (getDatabaseErrorCode(err) === "23P01") {
             throw new AppointmentConflictException();
           }
           throw err;
@@ -785,7 +781,12 @@ export class AppointmentsService {
           eventPayload,
         };
       },
-    );
+    ).catch((error: unknown) => {
+      if (getDatabaseErrorCode(error) === "23P01") {
+        throw new AppointmentConflictException();
+      }
+      throw error;
+    });
 
     this.publishFastPath(orgId, userId, eventId, eventPayload);
 
@@ -925,6 +926,8 @@ export class AppointmentsService {
           actor_user_id: userId,
           metadata: {
             appointmentId: id,
+            professionalId: appointment.professional_id,
+            startsAt: appointment.starts_at.toISOString(),
             previousStatus: appointment.status,
             newStatus: targetStatus,
             version: version + 1,
@@ -1081,6 +1084,37 @@ export class AppointmentsService {
     const items = page.map((row) => mapAppointmentListItem(row, role, userId));
 
     return { items, nextCursor };
+  }
+
+  async getAppointment(
+    orgId: string,
+    userId: string,
+    role: string,
+    appointmentId: string,
+  ) {
+    return withTenantContext(this.db, orgId, userId, async (tx) => {
+      const appointment = await this.repo.findAppointmentById(tx, orgId, appointmentId);
+      if (!appointment) throw new NotFoundException("Appointment not found");
+
+      const professional = await this.repo.findProfessionalById(
+        tx,
+        orgId,
+        appointment.professional_id,
+      );
+      if (role === "PROFESSIONAL" && professional?.user_id !== userId) {
+        throw new ForbiddenException("Forbidden");
+      }
+
+      const client = await this.repo.findClientById(tx, orgId, appointment.client_id);
+      return mapAppointment(
+        appointment,
+        client?.name ?? "",
+        client?.phone ?? null,
+        role,
+        userId,
+        professional?.user_id ?? null,
+      );
+    });
   }
 
   async getEvents(

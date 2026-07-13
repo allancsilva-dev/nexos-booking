@@ -242,4 +242,19 @@ export class AppointmentsController {
       id,
     );
   }
+
+  @Get(":id")
+  @UseGuards(AuthGuard, TenantGuard)
+  async getAppointment(
+    @Req() req: Request,
+    @Param("id") id: string,
+  ) {
+    const tenant = getTenant(req);
+    return this.service.getAppointment(
+      tenant.orgId,
+      tenant.userId,
+      tenant.role,
+      id,
+    );
+  }
 }
