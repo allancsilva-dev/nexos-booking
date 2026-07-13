@@ -1,7 +1,8 @@
+@import "@fontsource-variable/plus-jakarta-sans/index.css";
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-jakarta), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Plus Jakarta Sans Variable", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --color-background: #080c14;
   --color-foreground: #e6edf6;
   --color-card: #11192a;
