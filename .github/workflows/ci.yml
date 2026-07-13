@@ -12,6 +12,11 @@ env:
   POSTGRES_PORT: 5432
   POSTGRES_USER: nexos
   POSTGRES_PASSWORD: nexos_dev_password
+  APP_RUNTIME_USER: app_runtime
+  APP_RUNTIME_PASSWORD: nexos_dev_password
+  REDIS_URL: redis://localhost:6379
+  RATE_LIMIT_KEY_SECRET: ci-rate-limit-key-secret-at-least-32-characters
+  REDIS_KEY_PREFIX: nexos:ci
   JWT_SECRET: ci-test-jwt-secret-key-not-for-production
   JWT_ISSUER: nexos-booking
   JWT_AUDIENCE: nexos-api
@@ -51,8 +56,8 @@ jobs:
       - name: Audit dependencies
         run: pnpm audit --audit-level high
 
-      - name: Start disposable Postgres
-        run: docker compose up -d postgres
+      - name: Start disposable dependencies
+        run: docker compose up -d postgres redis
 
       - name: Apply migrations from zero
         run: pnpm --filter @nexos/api migrate:fresh
@@ -60,11 +65,41 @@ jobs:
       - name: Test DB (RLS isolation)
         run: pnpm --filter @nexos/api test:db
 
+      - name: Test identity RLS
+        run: pnpm --filter @nexos/api test:identity-rls
+
+      - name: Test distributed rate limiting
+        run: pnpm --filter @nexos/api test:rate-limit
+
+      - name: Test distributed realtime and cross-node kick
+        run: pnpm --filter @nexos/api test:realtime-distributed
+
+      - name: Test security contracts
+        run: pnpm --filter @nexos/api test:security-contracts
+
+      - name: Test public client upsert preservation
+        run: pnpm --filter @nexos/api test:public-client-upsert
+
       - name: Test HTTP (error filter, health, headers)
         run: pnpm --filter @nexos/api test:http
 
       - name: Test Auth (register, login, refresh, tenant, sessions, rate limit)
         run: pnpm --filter @nexos/api test:auth
+
+      - name: Test idempotency
+        run: pnpm --filter @nexos/api test:idempotency
+
+      - name: Test stable Web idempotency key
+        run: pnpm --filter @nexos/web test:idempotency-key
+
+      - name: Test Web realtime contract and refresh coordinator
+        run: pnpm --filter @nexos/web test:realtime
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @nexos/web exec playwright install --with-deps chromium
+
+      - name: Test Web operability in Chromium
+        run: pnpm --filter @nexos/web test:e2e
 
       - name: Secret scan
         uses: gitleaks/gitleaks-action@v2
