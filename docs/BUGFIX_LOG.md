@@ -71,37 +71,55 @@
 | BUG-014 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | BLOQUEANTE | Rotas públicas retornam 500 por `PublicBookingService` indefinido no controller | VALIDADO |
 | BUG-015 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Ações com `If-Match` retornam 500 por `Reflector` indefinido no `IfMatchGuard` | VALIDADO |
 | BUG-016 | 2026-06-24 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | ALTA | Availability rejeita `YYYY-MM-DD`, divergindo do contrato HTTP | VALIDADO |
-| BUG-017 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Testes existentes de RLS/idempotência não acompanham o schema atual | PARCIALMENTE_CORRIGIDO |
-| BUG-018 | 2026-06-25 | PR-WEB-FIX-MVP-OPERABILITY-01 | ALTA | Web do MVP mantinha rotas operacionais sem navegação útil e submissões com `Idempotency-Key` instável | IMPLEMENTADO_NO_BRANCH |
-| PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | RATIFICADA |
-| PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | PARCIALMENTE_IMPLEMENTADA |
-| PROP-E2b | 2026-06-24 | Pré-WEB-7A · PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT | ALTA | Vitrine pública relacionar serviço ↔ profissional | RATIFICADA |
-| PROP-E2c | 2026-06-23 | Pré-WEB-3 · PR-PROP-E2C-PROFESSIONAL-SERVICES-MGMT-01 | ALTA | API de gerenciamento do vínculo `professional_services` | RATIFICADA |
+| BUG-017 | 2026-06-24 | PR-DIAG-MVP-STABILIZATION-01 | ALTA | Testes existentes de RLS/idempotência não acompanham o schema atual | VALIDADO |
+| BUG-018 | 2026-06-25 | PR-WEB-FIX-MVP-OPERABILITY-01 | ALTA | Web do MVP mantinha rotas operacionais sem navegação útil e submissões com `Idempotency-Key` instável | VALIDADO |
+| PROP-E1 | 2026-06-24 | Pré-PR backend (web) · PR-PROP-E1-SNAPSHOT-CONTRACT | ALTA | Snapshot de preço no agendamento | CORRIGIDO |
+| PROP-E2 | 2026-06-23 | PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 · PR-BE-PROF-SVC (E2a) | ALTA | Exigir vínculo `professional_services` na reserva/disponibilidade | CORRIGIDO |
+| PROP-E2b | 2026-06-24 | Pré-WEB-7A · PR-PROP-E2B-PUBLIC-VITRINE-CONTRACT | ALTA | Vitrine pública relacionar serviço ↔ profissional | CORRIGIDO |
+| PROP-E2c | 2026-06-23 | Pré-WEB-3 · PR-PROP-E2C-PROFESSIONAL-SERVICES-MGMT-01 | ALTA | API de gerenciamento do vínculo `professional_services` | CORRIGIDO |
 | PROP-E4 | a confirmar | Transversal web | MÉDIA | Envelope de lista/paginação consistente | ACEITO_COMO_PENDÊNCIA |
 | INV-WEB-001 | 2026-06-23 | PR-DIAG-WEB | ALTA | Slug público inexistente retorna 500 | VALIDADO |
 | INV-WEB-002 | 2026-06-23 | PR-DIAG-WEB | ALTA | Cancelamento público com token inválido retorna 500 | VALIDADO |
 | INV-WEB-003 | 2026-06-23 | PR-DIAG-WEB | BAIXA | Divergência de nomenclatura entre DTOs shared e contrato/roadmap | ACEITO_COMO_PENDÊNCIA |
-| INV-WEB-004 | 2026-06-23 | PR-DIAG-WEB | BAIXA | `PasswordChangeInput` citado no contrato não exportado no shared | ABERTO |
+| INV-WEB-004 | 2026-06-23 | PR-DIAG-WEB | BAIXA | `PasswordChangeInput` citado no contrato não exportado no shared | VALIDADO |
 | INV-WEB-005 | 2026-06-23 | PR-DIAG-WEB | BAIXA | Claims do access token não exportadas como schema no shared | ACEITO_COMO_PENDÊNCIA |
-| INV-WEB-006 | 2026-06-23 | PR-DIAG-WEB | ALTA | Web pública já existe parcialmente; roadmap/conductor partiam de premissa greenfield | ABERTO |
+| INV-WEB-006 | 2026-06-23 | PR-DIAG-WEB | ALTA | Web pública já existe parcialmente; roadmap/conductor partiam de premissa greenfield | VALIDADO |
 | INV-WEB2-002 | 2026-06-25 | PR-FIX-MVP-CONTRACT-AVAILABILITY-AND-TESTS-01 | MÉDIA | `details[]` existe na API, mas o binding visual do campo no formulário real segue sem prova runtime | ACEITO_COMO_PENDÊNCIA |
 | INV-RLS-001 | 2026-06-23 | PR-FIX-RLS-RUNTIME-ROLE-01 · PR-REVERIFY-RLS-RUNTIME-01 | ALTA | GRANT genérico de setup regrediu hardening append-only de audit_logs | CORRIGIDO |
 | DIV-PR-4.3 | a confirmar | PR-4.3 / Fase 4 | BAIXA | Design-spec primária ausente | ACEITO_COMO_PENDÊNCIA |
 | BUG-019 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | ALTA | `GET /appointments` (lista) retorna items sem os 4 campos de snapshot do serviço | CORRIGIDO |
 | BUG-020 | 2026-06-25 | PR-BE-FIX-ORG-SETTINGS-ROUTE-01 | ALTA | `GET /organizations/:id` falha com `404` na tela de Configurações; `PATCH` não persistia `slotIntervalMin` | CORRIGIDO |
-| DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | MÉDIA | `DATABASE_SCHEMA_V2 §8.1` não lista colunas de snapshot que já existem (doc-lag) | PROPOSTA |
+| DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 | 2026-06-25 | PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 | MÉDIA | `DATABASE_SCHEMA_V2 §8.1` não lista colunas de snapshot que já existem (doc-lag) | CORRIGIDO |
 | PROP-SLOT-STEP-PER-SERVICE-01 | 2026-06-26 | Emenda a ADR-023 (a confirmar) | ALTA | Passo da grade por serviço (link público oferta 30/30 ignorando duração) | CORRIGIDO |
-| PROP-BUFFER-AFTER-MIN-01 | 2026-06-26 | Pré-PR (design ratificado; implementação futura) | ALTA | Intervalo de pausa pós-atendimento (buffer) para impedir agendamentos colados | RATIFICADA |
-| BUG-021 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BLOQUEANTE | Endpoints CRUD autenticados aceitam body não validado (DTOs são interfaces TS; sem zod/ValidationPipe em runtime) | IMPLEMENTADO_NO_BRANCH |
-| BUG-022 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BLOQUEANTE | `password/reset`, `password/change`, `accept-invite` não aplicam política de senha (`min(8)` só em `register`) | IMPLEMENTADO_NO_BRANCH |
-| BUG-023 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | ALTA | Campos string de entrada (incl. booking público `client.name`/`phone`) sem `max` → risco de estouro/abuso | IMPLEMENTADO_NO_BRANCH |
-| BUG-024 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | MÉDIA | Rate-limiter apenas em memória: zera no restart e não cobre múltiplas instâncias | ACEITO_COMO_PENDÊNCIA |
-| BUG-025 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | CORS não configurado explicitamente no bootstrap; verificar topologia de deploy antes de expor | IMPLEMENTADO_NO_BRANCH |
-| BUG-026 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | Resíduo de BUG-023: `CreateAppointmentSchema`/`RescheduleSchema` (painel autenticado) sem `max` em `client.name`/`phone`/`note` | IMPLEMENTADO_NO_BRANCH |
-| BUG-027 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | `JWT_SECRET` validado só por presença; segredo curto/fraco aceito sob HS256 (brute-force offline) | IMPLEMENTADO_NO_BRANCH |
-| BUG-028 | 2026-06-29 | PR-BE-PUBLIC-CLIENT-UPSERT-NO-OVERWRITE-01 | MÉDIA | Booking público sobrescreve `clients.name`/`phone` via `ON CONFLICT DO UPDATE` — visitante anônimo corrompe cadastro de balcão sabendo um telefone já registrado na org | IMPLEMENTADO_NO_BRANCH |
+| PROP-BUFFER-AFTER-MIN-01 | 2026-06-26 | PR-BE-BUFFER-AFTER-MIN-01 | ALTA | Intervalo de pausa pós-atendimento (buffer) para impedir agendamentos colados | CORRIGIDO |
+| BUG-021 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BLOQUEANTE | Endpoints CRUD autenticados aceitam body não validado (DTOs são interfaces TS; sem zod/ValidationPipe em runtime) | VALIDADO |
+| BUG-022 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BLOQUEANTE | `password/reset`, `password/change`, `accept-invite` não aplicam política de senha (`min(8)` só em `register`) | VALIDADO |
+| BUG-023 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | ALTA | Campos string de entrada (incl. booking público `client.name`/`phone`) sem `max` → risco de estouro/abuso | VALIDADO |
+| BUG-024 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | MÉDIA | Rate-limiter apenas em memória: zera no restart e não cobre múltiplas instâncias | VALIDADO |
+| BUG-025 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | CORS não configurado explicitamente no bootstrap; verificar topologia de deploy antes de expor | VALIDADO |
+| BUG-026 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | Resíduo de BUG-023: `CreateAppointmentSchema`/`RescheduleSchema` (painel autenticado) sem `max` em `client.name`/`phone`/`note` | VALIDADO |
+| BUG-027 | 2026-06-29 | PR-BE-FIX-SECURITY-HARDENING-01 | BAIXA | `JWT_SECRET` validado só por presença; segredo curto/fraco aceito sob HS256 (brute-force offline) | VALIDADO |
+| BUG-028 | 2026-06-29 | PR-BE-PUBLIC-CLIENT-UPSERT-NO-OVERWRITE-01 | MÉDIA | Booking público sobrescreve `clients.name`/`phone` via `ON CONFLICT DO UPDATE` — visitante anônimo corrompe cadastro de balcão sabendo um telefone já registrado na org | VALIDADO |
+| BUG-029 | 2026-06-29 | PR-SECURITY-DB-SANITY-AUDIT-01 | ALTA | Janela de `availability` sem teto permite DoS público | VALIDADO |
+| BUG-030 | 2026-06-29 | PR-SECURITY-DB-SANITY-AUDIT-01 | MÉDIA | Arrays de entrada sem limite máximo | VALIDADO |
+| BUG-031 | 2026-06-29 | PR-SECURITY-DB-SANITY-AUDIT-01 | BAIXA | Rate limiter duplicado e acoplado dentro de `AuthService` | VALIDADO |
+| BUG-032 | 2026-06-29 | PR-SECURITY-DB-SANITY-AUDIT-01 | BAIXA | HSTS enviado incondicionalmente em dev/HTTP | VALIDADO |
+| BUG-033 | 2026-06-29 | PR-SECURITY-DB-SANITY-AUDIT-01 | BAIXA | Tabelas globais de identidade sem RLS | VALIDADO |
+| BUG-034 | 2026-07-13 | WEB-5C | ALTA | Agenda web sem remarcar, completar e no-show | VALIDADO |
+| BUG-035 | 2026-07-13 | WEB-6 | ALTA | Web sem cliente real-time e fallback de consistência | CORRIGIDO |
+| BUG-036 | 2026-07-13 | WEB-6 / backend | BLOQUEANTE | Gateway sem contexto RLS, publicação com falso sucesso e kick local | CORRIGIDO |
+| BUG-037 | 2026-07-13 | WEB-5C / E2E | ALTA | Corrida de remarcação devolvia 500 em vez de `409 APPOINTMENT_CONFLICT` | VALIDADO |
 
 > Atualizar esta tabela a cada nova entrada e a cada mudança de status.
+
+### Evidência de fechamento — 2026-07-13
+
+- Migrations `0001`–`0011` aplicadas do zero em banco descartável: PASS.
+- Builds `shared`/API/Web e lint do monorepo: PASS.
+- RLS/idempotência/HTTP/auth (36/36)/manutenção/security contracts/upsert público: PASS.
+- Redis: duas instâncias, concorrência, TTL, HMAC de chaves e falha fechada: PASS.
+- Chromium/Playwright: sidebar, agenda, profissionais, jornada e configurações por clique: PASS.
+- `Idempotency-Key`: mesma chave em retry técnico e rotação após nova intenção: PASS.
 
 ---
 
@@ -356,7 +374,7 @@
   corrigida; criar organização antes de inserir `idempotency_keys`; transformar asserções de idempotência
   em prova server-side runtime de replay fiel, divergência `409` e `IN_PROGRESS`; manter smoke dedicado
   de availability civil-date/timezone para não regredir BUG-016.
-- Status final: PARCIALMENTE_CORRIGIDO
+- Status final: VALIDADO (suítes agregadas de RLS/idempotência atualizadas e executadas em 2026-07-13)
 
 ### BUG-011 — Cookie de refresh saía com `Secure` fixo em dev/local HTTP
 - Data: 2026-06-25
@@ -390,9 +408,11 @@
 - Teste/validação executado: `pnpm --filter @nexos/web build` (PASS, fora do sandbox por limitação do Turbopack); `pnpm --filter @nexos/api build` (PASS); `pnpm --filter @nexos/api test:runtime-role` (PASS, `current_user=app_runtime`); smoke HTTP em runtime local com tenant descartável: register `201`, `/auth/me` `200`, services `201`, professionals `201`, working-hours `200`, professional-services `200`, availability painel `200`, appointment painel `201`, cancel painel `201`, vitrine pública `200`, availability pública `200`, booking público `201`, cancel preview `200`, cancel público `200`. Prova de navegador ficou parcial: páginas reais abriram no Safari em `http://localhost:3000/login` e `http://localhost:3000/register`, mas a automação de clique foi bloqueada pelo ambiente (`Allow JavaScript from Apple Events` desabilitado e `System Events` sem permissão para teclas), então os cliques reais ficaram `NÃO EXECUTADO` nesta sessão.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: manter `Idempotency-Key` sob controle explícito do fluxo de submissão; preservar links reais para rotas já implementadas; repetir a validação browser com harness ou permissões de automação antes do commit final.
-- Status final: IMPLEMENTADO_NO_BRANCH (commit `4e1fa5d fix(web): restore MVP operability flows` no branch `fix/appointments-list-snapshot`). Código no disco, compilado sem erro. **Pendência crítica: prova de clique/automação NÃO EXECUTADA** (Safari bloqueou automação de teclas; harness de navegador faltando). **CI provisoriamente deferida (D10 conforme ARCHITECTURE_DECISIONS § decisão de infraestrutura)** — a passada final de CI será executada quando dono autorizar re-entrada. Reenquadramento: a agenda será retomada como reconciliação do aceite WEB-5A (visão diária/semanal), após o fix de backend de snapshots na lista (PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01). Para fechar: (1) prova de clique real das 4 ações (navegação sidebar, CTA dashboard, jornada/bloqueios em profissionais, submissão em agenda/público com `Idempotency-Key` estável); (2) CI rodada + report de passing tests.
+- Status final: VALIDADO (Chromium/Playwright provou navegação operacional por clique; contrato automatizado provou estabilidade e rotação de `Idempotency-Key`; build Web PASS em 2026-07-13).
 
 ### PROP-E1 — Snapshot de preço no agendamento (proposta — muda canônico)
+- **Atualização 2026-07-13:** implementada por migration 0008, schema/DTOs e leitura histórica. Estado
+  vigente: **CORRIGIDO**; texto abaixo preserva decisão original como histórico.
 - Data: a confirmar na fonte
 - PR/Fase: pré-PR de backend da camada web (`PR-BE-SNAPSHOT`), gate antes de WEB-5B/WEB-7B
 - Severidade: ALTA
@@ -430,6 +450,8 @@
 - Status final: RATIFICADA (implementação pendente no `PR-BE-SNAPSHOT-APPOINTMENT-SERVICE-01`)
 
 ### PROP-E2 — Exigir vínculo `professional_services` na reserva e na disponibilidade (proposta — muda canônico)
+- **Atualização 2026-07-13:** E2a/E2b/E2c existem em runtime (reserva/availability, vitrine e gestão).
+  Estado vigente: **CORRIGIDO**; validação final segue gates do MVP.
 - Data: 2026-06-23
 - PR/Fase: PR-PROP-E2-PROFESSIONAL-SERVICES-CONTRACT-01 (ratificação) · implementação no `PR-BE-PROF-SVC`
 - Severidade: ALTA
@@ -471,6 +493,7 @@
 - Status final: PARCIALMENTE_IMPLEMENTADA (E2a concluído; E2b e E2c pendentes — ver entradas próprias)
 
 ### PROP-E2b — Vitrine pública relacionar serviço ↔ profissional (desmembramento de PROP-E2 §4)
+- **Atualização 2026-07-13:** implementada; estado vigente **CORRIGIDO**.
 - Data: 2026-06-23
 - PR/Fase: Pré-WEB-7A
 - Severidade: ALTA
@@ -503,6 +526,7 @@
 - Status final: RATIFICADA (implementação pendente no `PR-BE-PUBLIC-VITRINE-PROF-SVC-01`)
 
 ### PROP-E2c — API de gerenciamento do vínculo `professional_services` (desmembramento de PROP-E2 §5)
+- **Atualização 2026-07-13:** implementada; estado vigente **CORRIGIDO**.
 - Data: 2026-06-23
 - PR/Fase: Pré-WEB-3
 - Severidade: ALTA
@@ -661,6 +685,9 @@
 - Status final: CORRIGIDO
 
 ### PROP-BUFFER-AFTER-MIN-01 — Intervalo de pausa pós-atendimento (buffer) para impedir agendamentos colados (proposta — exige ratificação)
+- **Atualização 2026-07-13:** implementada pela migration 0010 com `services.buffer_after_min`,
+  `appointments.occupied_until` e constraint `no_overlap`; application/availability usam mesma semântica.
+  Estado vigente: **CORRIGIDO**; texto abaixo preserva projeto original.
 - Data: 2026-06-26
 - PR/Fase: pré-PR (design já ratificado pelo humano em sessão de engenharia; implementação futura `PR-BE-BUFFER-AFTER-MIN-01`)
 - Severidade: ALTA
@@ -798,7 +825,7 @@
 - Teste/validação executado: PR-DIAG-WEB inventariou a ausência de export. Correção **NÃO EXECUTADA**.
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: validação futura de exports do shared contra `API_CONTRACTS §21`.
-- Status final: ABERTO
+- Status final: VALIDADO (`PasswordChangeSchema` e `PasswordChangeInput` exportados pelo `packages/shared`; build de contrato PASS em 2026-07-13)
 
 ### INV-WEB-005 — Claims do access token não exportadas como schema no shared
 - Data: 2026-06-23
@@ -838,7 +865,7 @@
 - Branch/commit relacionado: não se aplica.
 - Prevenção de regressão: novos handoffs WEB-7A/7B/7C devem partir de inventário/reconciliação, não de
   criação do zero.
-- Status final: ABERTO
+- Status final: VALIDADO (`WEB_IMPLEMENTATION_ROADMAP.md` e conductors já tratam WEB-7A/7B/7C como reconciliação, não greenfield)
 
 ### INV-WEB2-002 — `details[]` existe na API, mas o binding visual do campo no formulário real segue sem prova runtime
 - Data: 2026-06-25
@@ -986,6 +1013,7 @@
 - Status final: CORRIGIDO
 
 ### DIV-BE-APPOINTMENTS-LIST-SCHEMA-SNAPSHOT-01 — Schema canônico não lista colunas de snapshot que já existem (doc-lag)
+- **Atualização 2026-07-13:** `DATABASE_SCHEMA_V2.md §8.1` sincronizado. Estado vigente: **CORRIGIDO**.
 - Data: 2026-06-25
 - PR/Fase: PR-BE-FIX-APPOINTMENTS-LIST-SNAPSHOT-01 (documentação)
 - Severidade: MÉDIA
@@ -1049,7 +1077,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/shared build` PASS; `pnpm --filter @nexos/api build` PASS; `node apps/api/scripts/smoke-conformance.mjs` → 36/36 (sem regressão de contrato); `node apps/api/scripts/smoke-security-hardening.mjs` → 13/13 (body lixo/over-limit → `422`).
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch; commit é gate humano).
 - Prevenção de regressão: `apps/api/scripts/smoke-security-hardening.mjs`; convenção "controller de escrita = `parseBody` obrigatório".
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (hardening runtime e suíte de segurança PASS em 2026-07-13)
 
 ### BUG-022 — Reset/change/accept-invite não aplicam política de senha
 - Data: 2026-06-29
@@ -1064,7 +1092,7 @@
 - Teste/validação executado: `node apps/api/scripts/smoke-security-hardening.mjs` → `password/reset` senha `< 8` → `422`; `password/change` senha `< 8` → `422`; `password/forgot` email inválido → `422`; `register` senha `< 8` → `422`; baseline válido → `201`.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: schema único de senha compartilhado entre register e reset/change/invite; smoke de hardening.
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (política única de senha e auth 36/36 PASS em 2026-07-13)
 
 ### BUG-023 — Campos string de entrada sem limite máximo
 - Data: 2026-06-29
@@ -1079,7 +1107,7 @@
 - Teste/validação executado: `node apps/api/scripts/smoke-security-hardening.mjs` → booking público com nome > max → `422`; `POST services`/`professionals`/`PATCH organizations` com nome > max → `422`; `POST /public/cancel*` com token > max / ausente → `422` (ajuste pós-auditoria: rotas anônimas de cancel passaram a validar `token` via `CancelInputSchema`/`CancelPreviewInputSchema` `min(1).max(512)`).
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: regra de revisão "string de entrada exige `max` explícito"; smoke cobre limite na vitrine pública.
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (limites runtime e security contracts PASS em 2026-07-13)
 
 ### BUG-024 — Rate-limiter apenas em memória
 - Data: 2026-06-29
@@ -1090,11 +1118,11 @@
 - Causa raiz: implementação in-memory adequada a single-node, sem store compartilhado.
 - Impacto: brute-force parcialmente mitigado em VPS single-node; vira lacuna real ao escalar ou em restarts frequentes.
 - Arquivo(s) afetado(s): `apps/api/src/auth/auth.service.ts`, `apps/api/src/auth/rate-limit/**`.
-- Correção aplicada: **não corrigir neste PR.** Aceito como pendência: aceitável para VPS single-node de MVP. Migrar a store persistente/compartilhada (ex.: Redis) quando houver multi-instância.
-- Teste/validação executado: não se aplica (pendência consciente).
-- Branch/commit relacionado: não se aplica.
-- Prevenção de regressão: revisitar ao introduzir segunda instância/auto-scaling.
-- Status final: ACEITO_COMO_PENDÊNCIA
+- Correção aplicada: `RateLimitModule` global com Redis persistente/AOF, consumo atômico via Lua, HMAC-SHA256 das chaves e falha fechada `503 DEPENDENCY_UNAVAILABLE`.
+- Teste/validação executado: duas instâncias compartilharam contador; concorrência respeitou limite; TTL reiniciou janela; Redis fechado recusou consumo; `/ready` passou a verificar Redis.
+- Branch/commit relacionado: worktree de fechamento 2026-07-13.
+- Prevenção de regressão: Redis é dependência crítica no Compose/CI e possui teste dedicado.
+- Status final: VALIDADO
 
 ### BUG-025 — CORS não configurado explicitamente no bootstrap
 - Data: 2026-06-29
@@ -1109,7 +1137,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/api build` PASS; `smoke-conformance.mjs` 36/36 sem CORS habilitado (default same-origin preservado). **Pendência operacional:** confirmar `CORS_ORIGINS` no provisionamento do VPS conforme topologia.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: documentar `CORS_ORIGINS` no guia de deploy.
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (build, HTTP harness e configuração CORS PASS em 2026-07-13)
 
 ### BUG-026 — Resíduo de BUG-023: input de agendamento do painel sem `max`
 - Data: 2026-06-29
@@ -1124,7 +1152,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/shared build` PASS; `pnpm --filter @nexos/api build` PASS. Pendente: estender `smoke-security-hardening.mjs` com caso `POST /appointments` nome > `NAME_MAX` → `422`.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: mesma regra de revisão do BUG-023 ("string de entrada exige `max` explícito"), agora cobrindo o DTO de agendamento; magic numbers de tamanho centralizados em `limits.ts`.
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (`CreateAppointmentSchema`/`RescheduleSchema` cobertos por security contracts)
 
 ### BUG-027 — `JWT_SECRET` sem validação de força mínima
 - Data: 2026-06-29
@@ -1139,7 +1167,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/api build` PASS; `.env` de dev confirmado em 41 chars (boot preservado). Pendente: caso de boot com segredo < 32 → erro, no smoke.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: validação fail-fast no boot impede o retorno; placeholder instrutivo no `.env.example`.
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (segredo curto falha e segredo forte assina token em teste automatizado)
 
 ### BUG-028 — Booking público sobrescreve nome de cliente existente (upsert por telefone)
 - Data: 2026-06-29
@@ -1154,7 +1182,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/api build` PASS. Pendente (a rodar): mesmo telefone com nome diferente → cliente reutilizado, `name` **inalterado**, agendamento ainda criado; cross-tenant negado; anonimização e índice único parcial intactos.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: regra "rota pública não sobrescreve cadastro tenant-scoped"; comentário âncora no SQL referenciando este BUG; teste de upsert público com nome divergente a ser adicionado ao smoke público.
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (integração confirma nome/telefone existentes preservados)
 
 ### BUG-029 — Janela de `availability` sem teto → DoS público (event loop)
 - Data: 2026-06-29
@@ -1169,7 +1197,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/shared build` + `pnpm --filter @nexos/api build` PASS. Smoke do schema: `from=2000-01-01&to=2999-12-31` → `false` ("from..to range exceeds 62 days"); `2026-01-01..2026-02-15` (45d) → `true`.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: teto centralizado em `limits.ts`; regra de revisão "endpoint que itera por dia exige janela máxima"; adicionar caso ao smoke público.
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (range extremo rejeitado pelo schema e defesa do service compilada)
 
 ### BUG-030 — Arrays de entrada sem `max` (resíduo de classe do BUG-023)
 - Data: 2026-06-29
@@ -1184,7 +1212,7 @@
 - Teste/validação executado: builds PASS; smoke do schema: 60 shifts → `false`; 300 serviceIds → `false`.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: regra "array de entrada exige `max` explícito" (irmã da regra de strings do BUG-023).
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (arrays acima dos tetos rejeitados em teste automatizado)
 
 ### BUG-031 — `AuthService` instanciava rate-limiter próprio (2ª instância in-memory)
 - Data: 2026-06-29
@@ -1199,7 +1227,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/api build` PASS (DI resolve).
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: proibir `new MemoryRateLimiter()` fora de provider de módulo.
-- Status final: IMPLEMENTADO_NO_BRANCH (parte distribuída segue em BUG-024)
+- Status final: VALIDADO (`RateLimiter` possui provider global único Redis; não há instanciação em memória)
 
 ### BUG-032 — HSTS enviado incondicionalmente (inclusive em dev/HTTP)
 - Data: 2026-06-29
@@ -1214,7 +1242,7 @@
 - Teste/validação executado: `pnpm --filter @nexos/api build` PASS.
 - Branch/commit relacionado: `fix/appointments-list-snapshot` (implementado no branch).
 - Prevenção de regressão: revisão "headers dependentes de TLS condicionados a produção".
-- Status final: IMPLEMENTADO_NO_BRANCH
+- Status final: VALIDADO (HTTP harness confirma ausência em dev; configuração mantém HSTS em produção)
 
 ### BUG-033 — Tabelas globais sem RLS (`users`, `refresh_sessions`, `verification_tokens`)
 - Data: 2026-06-29
@@ -1225,11 +1253,79 @@
 - Causa raiz: modelo de dados intencionalmente global para identidade/sessão.
 - Impacto: aceitável; um bug de query no caminho de auth poderia tocar dados de outro usuário, sem backstop de RLS.
 - Arquivo(s) afetado(s): `apps/api/db/schema/index.ts`, `apps/api/db/migrations/0006_functions_and_rls.sql` (referência).
-- Correção aplicada: **não corrigir** — aceito como pendência consciente. Reforço defensivo recomendado: testes de escopo por `user_id` no caminho de sessão/refresh; reavaliar RLS por usuário se o modelo evoluir.
-- Teste/validação executado: provado via catálogo (`pg_class.relrowsecurity=f` nas três); não se aplica correção.
-- Branch/commit relacionado: não se aplica.
-- Prevenção de regressão: suíte de escopo de sessão; checklist de RLS ao adicionar coluna sensível a tabela global.
-- Status final: ACEITO_COMO_PENDÊNCIA
+- Correção aplicada: migration `0011_identity_rls.sql` ativa/força RLS, limita sessões/tokens ao `app.current_user_id`, revoga leitura direta de `password_hash` e expõe funções `SECURITY DEFINER` mínimas para fluxos pré-auth/limpeza.
+- Teste/validação executado: usuário A não lê/altera identidade, sessões ou tokens de B; leitura direta de `password_hash` é negada; visibilidade mínima entre membros da mesma organização permanece funcional.
+- Branch/commit relacionado: worktree de fechamento 2026-07-13.
+- Prevenção de regressão: migration do zero e `test:identity-rls` obrigatórios no CI.
+- Status final: VALIDADO
+
+### BUG-034 — Agenda web sem remarcação e desfechos operacionais
+- Data: 2026-07-13
+- PR/Fase: WEB-5C
+- Severidade: ALTA
+- Erro encontrado: agenda oferecia criação/cancelamento, sem remarcar, concluir ou no-show.
+- Sintoma: operação diária exigia API/manual e não tratava concorrência visualmente.
+- Causa raiz: roadmap WEB-5C não havia sido executado na web.
+- Impacto: fluxo operacional central incompleto.
+- Arquivo(s) afetado(s): `apps/web/components/schedule/*`, `apps/web/hooks/use-schedule.ts`,
+  `apps/api/src/appointments/appointments.controller.ts`.
+- Correção aplicada: painel responsivo de detalhes, endpoint GET individual, histórico, remarcação/nota,
+  cancelar/concluir/no-show, matriz compartilhada, confirmação, `If-Match`, idempotência e conflitos.
+- Teste/validação executado: build/typecheck e Playwright cobrindo remarcação, todos desfechos, retry
+  com mesma chave, conflito de versão, corrida de slot e estado terminal. PASS em 2026-07-13.
+- Prevenção de regressão: testes WEB-5C listados em `MVP_BUG_RESOLUTION_PLAN.md`.
+- Status final: VALIDADO.
+
+### BUG-035 — Web sem cliente real-time e fallback de consistência
+- Data: 2026-07-13
+- PR/Fase: WEB-6
+- Severidade: ALTA
+- Erro encontrado: nenhum cliente Socket.IO ou invalidação por evento existia na web.
+- Sintoma: duas telas permaneciam divergentes até refresh manual.
+- Causa raiz: WEB-6 pendente; socket existia apenas na API.
+- Impacto: agenda podia exibir cache velho durante operação concorrente.
+- Arquivo(s) afetado(s): `apps/web/components/realtime/*`, `apps/web/app/providers.tsx`,
+  `apps/web/lib/session-refresh.ts`, `packages/shared/src/dto/appointment-realtime.dto.ts`.
+- Correção aplicada: provider único, token em memória, refresh single-flight, lifecycle por org/sessão,
+  schema estrito sem PII, invalidação e fallback HTTP por focus/reconnect/staleTime.
+- Teste/validação executado: contrato/invalidation/refresh unitário, build e Playwright com duas telas sem
+  refresh. Reconnect/org-switch ainda pendente.
+- Prevenção de regressão: `apps/web/tests/realtime.test.ts` + `schedule-operations.spec.ts`.
+- Status final: CORRIGIDO (não VALIDADO até E2E distribuído).
+
+### BUG-036 — Real-time backend violava RLS e não suportava múltiplas instâncias
+- Data: 2026-07-13
+- PR/Fase: WEB-6 / backend distribuído
+- Severidade: BLOQUEANTE
+- Erro encontrado: handshake lia tabelas RLS sem contexto; EventEmitter marcava publicação mesmo sem
+  gateway; kick usava Map local.
+- Sintoma: autenticação podia negar vínculo válido; outbox podia perder invalidação; revogação em A não
+  derrubava socket em B.
+- Causa raiz: implementação single-instance contradizia topologia de produção escolhida.
+- Impacto: segurança de tenant, consistência e revogação de sessão.
+- Arquivo(s) afetado(s): `apps/api/src/{redis,realtime,rate-limit,auth,organizations}`.
+- Correção aplicada: Redis compartilhado, adapter, canal explícito, salas de sessão, kick distribuído,
+  middleware pré-connect com `withTenantContext`, sessão ativa, allowlist de origem e outbox at-least-once.
+- Teste/validação executado: build API, handshake RLS, duas instâncias com evento A→B, kick cross-node e
+  `/ready` 503 sem Redis. Isolamento cross-tenant e recovery do outbox ainda pendentes.
+- Prevenção de regressão: gate distribuído obrigatório antes de `VALIDADO`.
+- Status final: CORRIGIDO (não VALIDADO até teste distribuído).
+
+### BUG-037 — Corrida de remarcação devolvia 500
+- Data: 2026-07-13
+- PR/Fase: WEB-5C / E2E concorrente
+- Severidade: ALTA
+- Erro encontrado: `PATCH /appointments/:id` não traduzia violação `23P01` da constraint `no_overlap`.
+- Sintoma: slot livre no GET era ocupado antes do PATCH; API devolvia `500 INTERNAL_ERROR`.
+- Causa raiz: tradução de exclusion violation existia apenas no create, não na remarcação.
+- Impacto: conflito normal de concorrência aparecia como falha interna e UI não podia refazer availability.
+- Arquivo(s) afetado(s): `apps/api/src/appointments/appointments.service.ts`.
+- Correção aplicada: extração central do código PostgreSQL e tradução do fluxo de reschedule para
+  `AppointmentConflictException` (`409 APPOINTMENT_CONFLICT`).
+- Teste/validação executado: Playwright ocupa o slot após seleção e antes do PATCH; UI recebe 409, limpa
+  seleção, refaz availability e mostra mensagem operacional. PASS em 2026-07-13.
+- Prevenção de regressão: cenário concorrente em `schedule-operations.spec.ts`.
+- Status final: VALIDADO.
 
 ---
 

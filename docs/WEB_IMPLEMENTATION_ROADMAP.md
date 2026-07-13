@@ -271,6 +271,10 @@ público**.
 ## 10. Fase W4 — Operação e endurecimento
 
 ### PR-WEB-5C — Remarcação + desfechos (cancel/complete/no-show)
+- **Estado em 2026-07-13:** **VALIDADO.** Painel de detalhes responsivo busca
+  `GET /appointments/:id`, oferece ações pela matriz compartilhada, preserva `Idempotency-Key` em retry e
+  trata conflitos de slot/versão. Playwright cobre fluxos positivos, retry estável, estado terminal e
+  concorrência de slot/versão.
 - **API:** `PATCH /appointments/:id` (remarca/edita nota) + ações `POST /:id/{cancel,complete,no-show}` —
   §16 (**não** `PATCH status` genérico). `Idempotency-Key` + `If-Match: <version>`; matriz
   `APPOINTMENT_TRANSITIONS` (ADR-018) desabilita botões pelo mesmo dado que o back valida.
@@ -282,6 +286,9 @@ público**.
 - **Depende de:** WEB-7C (loop público provado primeiro).
 
 ### PR-WEB-6 — Real-time (socket + fallback de consistência)
+- **Estado em 2026-07-13:** **IMPLEMENTADO; prova distribuída final pendente.** Web usa provider único,
+  schema compartilhado, refresh single-flight e fallback HTTP. API usa Redis compartilhado, adapter
+  Socket.IO, salas distribuídas e transporte explícito para outbox.
 - **API/canal:** handshake autenticado (JWT+vínculo) — §11; rooms por `organizationId`/`professionalId`;
   payload **só invalidação** (`appointment.changed`) → refetch HTTP.
 - **Não é "só socket":** inclui **fallback de consistência** — `refetchOnReconnect`, `refetchOnWindowFocus`,
@@ -334,9 +341,9 @@ DIAG-WEB → VERIFY-RLS-RUNTIME-01
 
 | ID | O quê | Impacto |
 |---|---|---|
-| **PEND-001** | role `app_runtime` + RLS | **AFIRMADO, PROVA PENDENTE** → PR-VERIFY-RLS-RUNTIME-01 (6 provas). |
-| **PROP-E1** | snapshot de preço | Pré-PR de backend antes de 5B/7B. |
-| **PROP-E2** | exigir `professional_services` | Pré-PR de backend antes de 3/5B/7A. |
+| **PEND-001** | role `app_runtime` + RLS | **VALIDADO** pelos gates runtime/identity RLS registrados em `PROGRESSO.md`. |
+| **PROP-E1** | snapshot de preço | **IMPLEMENTADA** pela migration 0008, DTOs e leitura histórica. |
+| **PROP-E2** | exigir `professional_services` | **IMPLEMENTADA** em availability/reserva, vitrine e endpoints de gestão. |
 | **PROP-E4** | envelope de lista/paginação | **Deferida**; direção canônica `{ items, nextCursor }`, sem fechar paginação futura. |
 | **INV-WEB-001** | slug público inexistente → 500 | **ALTA**; corrigir antes de concluir WEB-7A. |
 | **INV-WEB-002** | cancelamento público token inválido → 500 | **ALTA**; corrigir antes de concluir WEB-7C. |
@@ -345,9 +352,9 @@ DIAG-WEB → VERIFY-RLS-RUNTIME-01
 | **E5** | `version` bump em toda mutação | Aceite de WEB-5C. |
 | **E6** | combo-service vs line-items | Registrar `service_id` canônico; não mudar agora. |
 | **E7** | `created_by` no catálogo | Minor; aditivo futuro. |
-| **BUG-018** | switch-org manual | WEB-1/WEB-10 (multi-org). |
+| **BUG-018** | operabilidade web/idempotência | **VALIDADO**; descrição alinhada ao índice oficial do `BUGFIX_LOG.md`. |
 | **BUG-011** | cookie `Secure` em dev | Não contamina aceite de soft-nav. |
-| **BUG-015** | `pg_trgm` | Pré-requisito de WEB-8. |
+| **BUG-015** | `IfMatchGuard` sem `Reflector` | **VALIDADO**; `pg_trgm` veio na migration 0007 e não pertence a este ID. |
 | **DIV-PR-4.3** | design-spec ausente | UI segue `FRONTEND_DESIGN_REF.md`. |
 
 ---

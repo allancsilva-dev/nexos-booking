@@ -247,7 +247,8 @@ Espelha `DATABASE_SCHEMA_V2.md` §8.1.
 > Cresce de forma aditiva. Constantes tipadas no `shared` + testes (sem `CHECK IN` no banco — espelha a
 > decisão de `audit_logs.action`, schema §9.2).
 
-**Genéricos:** `VALIDATION_ERROR`, `BAD_REQUEST`, `NOT_FOUND`, `INTERNAL_ERROR`, `RATE_LIMITED`.
+**Genéricos:** `VALIDATION_ERROR`, `BAD_REQUEST`, `NOT_FOUND`, `INTERNAL_ERROR`, `RATE_LIMITED`,
+`DEPENDENCY_UNAVAILABLE` (`503`, dependência crítica indisponível; endpoints protegidos falham fechados).
 **Auth:** `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `TOKEN_EXPIRED`, `REFRESH_REUSED`,
 `EMAIL_NOT_VERIFIED`, `VERIFICATION_TOKEN_INVALID`, `VERIFICATION_TOKEN_EXPIRED`, `EMAIL_TAKEN`
 (`409`, register com e-mail já existente), `NO_ACTIVE_ORG` (`403`, rota tenant-scoped sem `org` no
@@ -351,7 +352,7 @@ Violação → `403 EMAIL_NOT_VERIFIED`. Default declarado, revisável; ampliar 
 | Rota | Significado | Uso |
 |---|---|---|
 | `GET /health` | processo vivo (liveness) — não toca dependências | orquestrador reinicia se falhar |
-| `GET /ready` | pronto para tráfego (readiness) — checa DB e dependências críticas | load balancer só roteia se `200` |
+| `GET /ready` | pronto para tráfego (readiness) — checa PostgreSQL e Redis | load balancer só roteia se `200` |
 
 - Públicos, sem auth, fora do envelope de erro padrão (resposta mínima). Não expõem versão/infra.
 

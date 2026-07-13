@@ -110,7 +110,7 @@ aditiva — decisão revista não é apagada, é marcada `Substituída por ADR-N
 ---
 
 ## ADR-001 — Multi-tenant por `organization_id` com RLS como defesa em profundidade
-**Status:** Aceita.
+**Status:** Aceita — emendada em 2026-07-13 para transporte Redis distribuído.
 **Contexto:** vazamento entre tenants (um `WHERE organization_id` esquecido em repository novo) é risco
 crítico (PLANNING §15.5). Guard de aplicação sozinho é frágil.
 **Decisão:** isolamento por `organization_id` em toda tabela operacional + RLS (`ENABLE` + `FORCE`) com
@@ -173,28 +173,28 @@ pode trafegar no socket (LGPD).
 pendentes (at-least-once). Payload do socket é só invalidação (`appointment.changed` com
 `professionalId`, `date`, `version`/`occurredAt`) — **sem PII**; o front refaz o fetch via HTTP. Ao
 reconectar, o front **sempre** recupera o estado via HTTP.
-**Consequências:** publicação in-process (EventEmitter) é o caminho rápido; o relay é a rede de
-segurança. A entrega cross-instância depende de ADR-006. Política de falha do relay em ADR-014. O
+**Consequências:** fast path e relay publicam pela mesma interface Redis. `published_at` significa
+"aceito pelo transporte distribuído", não "recebido pelo navegador". Duplicatas são seguras porque
+cliente apenas invalida cache. Política de falha do relay em ADR-014. O
 relay opera cross-tenant sob o **contexto de sistema** do ADR-017. **Ciclo de vida da conexão sob
 revogação:** o handshake valida JWT + vínculo no connect, mas a conexão sobrevive ao access curto e à
 revogação — o gancho de kick (derrubar sockets do usuário ao revogar/`DISABLED`, via `sid` do ADR-020)
 é especificado no PLANNING §11 e implementado na Fase 5 (ROADMAP PR-5.2).
 
-## ADR-006 — Topologia: single-instance declarada no MVP
-**Status:** Aceita — fecha "a confirmar" (PLANNING §13/§17.4).
+## ADR-006 — Topologia multi-instância com Redis
+**Status:** **Substituída em 2026-07-13.** A restrição single-instance original não representa runtime atual.
 **Contexto:** rate limit em memória e publicação real-time in-process (EventEmitter) **só funcionam com
 uma instância**. Com duas (inclusive no overlap de um deploy zero-downtime), o rate limit vira
 contornável e um WebSocket conectado na instância A **não recebe** o evento publicado na instância B.
 Isso não é decisão de Fase 4 — afeta o desenho do real-time desde a Fase 1.
-**Decisão:** o MVP roda **single-instance** como **restrição declarada**. Consequentemente:
-(a) `RateLimiter` em memória é aceitável **agora**; (b) EventEmitter in-process é suficiente **agora**;
-(c) **deploy é com drain/janela** (não zero-downtime com duas instâncias simultâneas) enquanto for
-single-instance. O `RateLimiter` e o publisher nascem como **interfaces trocáveis** (PLANNING §6/§10.7,
-§11) para que a migração não toque controller nem regra de negócio.
-**Consequências — quando escalar (fase futura, NÃO no MVP):** subir Redis traz, juntos:
-(1) rate limit distribuído, (2) pub/sub do real-time entre instâncias, (3) cache. Só então o deploy vira
-zero-downtime multi-instância. Trocar antes é otimização prematura; assumir multi-instância sem Redis é
-bug silencioso. A restrição precisa estar **escrita** — é esta linha.
+**Decisão vigente:** Redis é dependência obrigatória. Um módulo compartilhado mantém command client,
+subscriber de eventos e conexões dedicadas do `@socket.io/redis-adapter`. Rate limit é distribuído;
+salas `org:*`, `professional:*` e `session:*` cruzam instâncias; kick usa `disconnectSockets(true)`.
+Eventos de appointment passam por canal Redis explícito e cada instância emite apenas para sockets
+locais, evitando duplicação N×N. `/ready` falha se Redis não estiver pronto.
+**Consequências:** deploy com sobreposição e múltiplas instâncias passa a ser topologia suportada.
+Redis indisponível fecha rate limit/readiness e mantém outbox pendente. HTTP continua correto mesmo
+sem socket; cache distribuído geral não foi introduzido.
 
 ## ADR-007 — Migrations forward-only + PITR (sem `down`)
 **Status:** Aceita — fecha "a confirmar" (PLANNING §13/§17.4).
@@ -756,7 +756,7 @@ automáticas) aponta para a mesma abstração. Sem custo no MVP além de nomear 
 
 | ADR | Fecha "a confirmar"/lacuna? | Documento espelho |
 |---|---|---|
-| 006 Topologia single-instance | ✅ | PLANNING §11/§13 |
+| 006 Topologia multi-instância Redis | ✅ | runtime real-time/rate-limit + WEB-6 |
 | 007 Forward-only + PITR | ✅ | PLANNING §13 |
 | 008 Idempotência IN_PROGRESS (+CAS, +obrigatória no painel) | ✅ | SCHEMA §9.1, API §5/§16 |
 | 009 RateLimiter + limites (público **e auth**) | — | API §19, PLANNING §10.7 |

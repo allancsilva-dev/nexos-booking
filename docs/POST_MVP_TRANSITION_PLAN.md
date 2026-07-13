@@ -68,7 +68,7 @@ Ordem recomendada após o MVP validado (não começar por marketplace/app):
 1. Produto público e conversão
 2. Configurações avançadas de agenda e lista de espera
 3. Monetização SaaS, planos e billing
-4. Escala técnica operacional: Redis, workers, filas e zero-downtime
+4. Escala técnica operacional: workers, filas e capacidade Redis/zero-downtime
 5. Notificações automáticas e comunicação
 6. Pagamentos e proteção contra no-show
 7. Cliente final e app futuro
@@ -92,8 +92,8 @@ Itens cujo ponto de extensão **já existe** no MVP — bons candidatos a abrir 
 
 - **Config por empresa de política de agenda:** `organization_booking_settings` (horizonte,
   `min_schedule_notice_min` — hoje constantes no `shared`). Mover de constante → config é aditivo.
-- **Redis / multi-instância:** trocar a impl de `RateLimiter` (memória → Redis) e o publisher (in-process
-  → pub/sub) sem tocar controller/regra — destrava zero-downtime multi-instância. **Exige ADR.**
+- **Redis / multi-instância:** **já entregue no MVP** para rate limit, Socket.IO, kick e outbox. Pós-MVP
+  dimensiona/observa Redis e adiciona cache/fila somente com ADR próprio.
 - **Notificações automáticas:** novas implementações de `NotificationSender` (WhatsApp/SMS), apoiadas em
   workers/fila (depende do item de escala). **Exige ADR de provider.**
 - **Multi-org simultâneo:** path-scoped (`/organizations/:orgId/...`) substitui o claim `org`; o guard já

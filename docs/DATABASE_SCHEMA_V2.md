@@ -421,6 +421,10 @@ CREATE TABLE services (
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name            text NOT NULL,
   duration_min    int  NOT NULL CHECK (duration_min > 0),
+  buffer_after_min int NULL CHECK (
+    buffer_after_min IS NULL OR
+    (buffer_after_min BETWEEN 0 AND 120 AND buffer_after_min % 5 = 0)
+  ),
   price_cents     int  NOT NULL CHECK (price_cents >= 0),
   currency        char(3) NOT NULL DEFAULT 'BRL',
   active          boolean NOT NULL DEFAULT true,
@@ -527,6 +531,7 @@ CREATE TABLE availability_blocks (
   professional_id uuid NOT NULL,                                    -- FK composta tenant-safe (abaixo)
   starts_at       timestamptz NOT NULL,
   ends_at         timestamptz NOT NULL,
+  occupied_until  timestamptz NOT NULL,             -- ends_at + buffer histórico
   reason          text,
   created_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -630,6 +635,10 @@ CREATE TABLE appointments (
   source          appointment_source NOT NULL,
   note            text,
   version         int NOT NULL DEFAULT 1,          -- optimistic lock + marcador de versão do real-time
+  service_name_snapshot         text NOT NULL,
+  service_duration_min_snapshot int NOT NULL,
+  service_price_cents_snapshot  int NOT NULL,
+  service_currency_snapshot     char(3) NOT NULL DEFAULT 'BRL',
   public_cancel_token_hash       text,             -- SHA-256; o token cru vai só no link
   public_cancel_token_expires_at timestamptz,
   cancelled_by_type actor_type,                     -- preenchido só ao cancelar
@@ -677,7 +686,7 @@ ALTER TABLE appointments
   EXCLUDE USING gist (
     organization_id WITH =,                       -- defesa em profundidade
     professional_id WITH =,
-    tstzrange(starts_at, ends_at, '[)') WITH &&    -- início inclusivo, fim exclusivo
+    tstzrange(starts_at, occupied_until, '[)') WITH && -- inclui buffer; fim real continua em ends_at
   )
   WHERE (status IN ('SCHEDULED', 'CONFIRMED'));     -- só status que ocupam agenda
 
@@ -1175,6 +1184,11 @@ CREATE TRIGGER trg_appointments_updated_at
 | 0004 | `0004_read_indexes.sql` | índices de leitura (slots ativos parcial, **outbox pendente** `WHERE published_at IS NULL AND publish_failed_at IS NULL`, sessão ativa parcial) | **manual** |
 | 0005 | `0005_triggers.sql` | `set_updated_at` + triggers | **manual** |
 | 0006 | `0006_functions_and_rls.sql` | `app_is_member` + **resolvers públicos (§10.7)** (SECURITY DEFINER) + `ENABLE/FORCE RLS` + policies (**inclui `tenant_or_system` — §10.8 — e `global_security_events` do `audit_logs` — §10.5**). **Toda leitura de GUC nas policies usa `NULLIF(current_setting(...), '')` / `COALESCE(...,false)` (A3 — anti-`22P02` sob pooling, §10.1)**. **Hardening de segurança (§10.9, ADR-021):** `REVOKE ALL ON SCHEMA public FROM PUBLIC`, **`audit_logs` append-only** (`REVOKE UPDATE, DELETE … FROM app_runtime`), `statement_timeout`/`idle_in_transaction_session_timeout` na role | **manual** |
+| 0007 | `0007_pg_trgm_clients.sql` | busca indexada de clientes por nome | **manual** |
+| 0008 | `0008_service_snapshot.sql` | snapshots imutáveis do serviço em `appointments` | **manual** |
+| 0009 | `0009_professional_service_slot_step.sql` | passo de grade por vínculo profissional-serviço | **manual** |
+| 0010 | `0010_service_buffer_after.sql` | `services.buffer_after_min`, `appointments.occupied_until` e `no_overlap` com buffer | **manual** |
+| 0011 | `0011_identity_rls.sql` | RLS das tabelas globais de identidade e funções estreitas de auth/manutenção | **manual** |
 
 > CI roda a sequência completa em banco limpo a cada PR (gate "migrations aplicam do zero"). O
 > provisionamento da role é pré-requisito do ambiente, não um passo da sequência versionada.
