@@ -590,6 +590,8 @@ export class PublicBookingService {
           actor_user_id: null,
           metadata: {
             appointmentId: resolved.appointment_id,
+            professionalId: appt.professional_id,
+            startsAt: appt.starts_at.toISOString(),
             previousStatus: appt.status,
             newStatus: "CANCELLED",
             version: appt.version + 1,

@@ -10,6 +10,7 @@ import { JwtService } from "../../auth/jwt/jwt.service";
 import { SessionService } from "../../auth/sessions/session.service";
 import { ResendSender } from "../../auth/notifications/resend-sender";
 import { auditLogs } from "../../../db/schema";
+import { applyTenantContext } from "../../db/tenant-context";
 import {
   EmailNotVerifiedException,
   InviteTokenInvalidException,
@@ -38,6 +39,7 @@ export class InvitationsService {
     role: string,
   ): Promise<{ id: string }> {
     return this.db.client.transaction(async (tx) => {
+      await applyTenantContext(tx, orgId, inviterUserId);
       const verif = await this.repo.findUserEmailVerified(tx, inviterUserId);
       if (!verif || !verif.emailVerifiedAt) {
         throw new EmailNotVerifiedException();
@@ -100,8 +102,9 @@ export class InvitationsService {
     });
   }
 
-  async list(orgId: string) {
+  async list(orgId: string, userId: string) {
     return this.db.client.transaction(async (tx) => {
+      await applyTenantContext(tx, orgId, userId);
       return this.repo.findPendingByOrg(tx, orgId);
     });
   }
@@ -112,6 +115,7 @@ export class InvitationsService {
     actorUserId: string,
   ): Promise<void> {
     await this.db.client.transaction(async (tx) => {
+      await applyTenantContext(tx, orgId, actorUserId);
       await this.repo.deleteInvitation(tx, invitationId);
 
       await tx.insert(auditLogs).values({
@@ -142,6 +146,8 @@ export class InvitationsService {
       if (!invitation) {
         throw new InviteTokenInvalidException();
       }
+
+      await applyTenantContext(tx, invitation.organization_id, userId ?? null);
 
       if (invitation.accepted_at) {
         throw new InviteTokenInvalidException();
@@ -178,6 +184,8 @@ export class InvitationsService {
       if (!resolvedUserId) {
         throw new InviteTokenInvalidException();
       }
+
+      await applyTenantContext(tx, invitation.organization_id, resolvedUserId);
 
       const existingMembership = await this.repo.findMembership(
         tx,

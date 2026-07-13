@@ -63,6 +63,7 @@ A documentação completa do projeto está em `docs/`:
 | `API_CONTRACTS.md` | Contrato HTTP, endpoints, envelope de erro |
 | `PLANNING.md` | Visão de produto, escopo MVP, regras de negócio |
 | `IMPLEMENTATION_ROADMAP.md` | Sequência de PRs por fase |
+| `PROGRESSO.md` | Status consolidado: feito, feito com ressalvas, pendente e pós-MVP |
 | `BUGFIX_LOG.md` | Histórico de bugs e correções |
 
 ## MVP

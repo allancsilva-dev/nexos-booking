@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { randomUUID, createHash } from "node:crypto";
-import { eq, and, isNull, ne } from "drizzle-orm";
+import { eq, and, isNull, ne, sql } from "drizzle-orm";
 
 import type { DbTransaction } from "../../db/db.types";
 import { refreshSessions } from "../../../db/schema";
@@ -17,6 +17,13 @@ export interface CreateSessionParams {
 export class SessionService {
   private hashToken(token: string): string {
     return createHash("sha256").update(token).digest("hex");
+  }
+
+  async resolveUserId(tx: DbTransaction, tokenHash: string): Promise<string | null> {
+    const rows = await tx.execute(sql`
+      SELECT app_auth_resolve_refresh_user(${tokenHash}) AS user_id
+    `);
+    return (rows.rows[0]?.user_id as string | null | undefined) ?? null;
   }
 
   async create(
@@ -178,6 +185,20 @@ export class SessionService {
       );
 
     return [...new Set(rows.map((r) => r.family_id))];
+  }
+
+  async findActiveFamilyIdsForUser(
+    tx: DbTransaction,
+    userId: string,
+  ): Promise<string[]> {
+    const rows = await tx
+      .select({ family_id: refreshSessions.family_id })
+      .from(refreshSessions)
+      .where(and(
+        eq(refreshSessions.user_id, userId),
+        isNull(refreshSessions.revoked_at),
+      ));
+    return [...new Set(rows.map((row) => row.family_id))];
   }
 
   async revokeAllForUserExceptFamily(

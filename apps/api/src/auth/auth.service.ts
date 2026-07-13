@@ -7,11 +7,11 @@ import {
 } from "@nestjs/common";
 import { RateLimitException } from "../common/exceptions/rate-limit.exception";
 import { randomUUID, randomBytes, createHash } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 import { applyTenantContext, DbService } from "../db";
 import type { DbTransaction } from "../db/db.types";
-import { refreshSessions, auditLogs } from "../../db/schema";
+import { auditLogs } from "../../db/schema";
 import { PasswordService } from "./password/password.service";
 import { JwtService } from "./jwt/jwt.service";
 import { SessionService } from "./sessions/session.service";
@@ -33,6 +33,7 @@ import {
 } from "../common/exceptions/domain.exception";
 import { ValidationException } from "../common/exceptions/validation.exception";
 import { generateSlugCandidates } from "../organizations/slug-generator";
+import { KickService } from "../realtime/kick.service";
 
 const SLUG_MAX_RETRIES = 10;
 const REGISTER_ORG_INSERT_SAVEPOINT = "register_org_insert";
@@ -61,6 +62,7 @@ export class AuthService {
     // A natureza in-memory/single-node segue sendo pendência aceita (BUG-024) —
     // trocar por store compartilhada (Redis) num único ponto ao escalar.
     @Inject("RateLimiter") private readonly rateLimiter: RateLimiter,
+    @Inject(KickService) private readonly kickService: KickService,
   ) {}
 
   async register(
@@ -258,17 +260,29 @@ export class AuthService {
     const tokenHash = createHash("sha256").update(token).digest("hex");
 
     const reuse = await this.db.client.transaction(async (tx) => {
+      const userId = await this.session.resolveUserId(tx, tokenHash);
+      if (!userId) return { reused: false, familyId: null };
+      await setCurrentUserContext(tx, userId);
       return this.session.detectReuse(tx, tokenHash);
     });
 
     if (reuse.reused && reuse.familyId) {
       await this.db.client.transaction(async (tx) => {
+        const userId = await this.session.resolveUserId(tx, tokenHash);
+        if (!userId) return;
+        await setCurrentUserContext(tx, userId);
         await this.session.revokeFamily(tx, reuse.familyId!);
       });
+      this.kickService.kickBySid(reuse.familyId);
       throw new RefreshReusedException();
     }
 
     return this.db.client.transaction(async (tx) => {
+      const userId = await this.session.resolveUserId(tx, tokenHash);
+      if (!userId) {
+        throw new TokenExpiredException();
+      }
+      await setCurrentUserContext(tx, userId);
       const newRefreshToken = this.jwt.generateRefreshToken();
 
       const rotated = await this.session.rotate(
@@ -283,18 +297,6 @@ export class AuthService {
       if (!rotated) {
         throw new TokenExpiredException();
       }
-
-      const sessionRow = await tx
-        .select({ user_id: refreshSessions.user_id })
-        .from(refreshSessions)
-        .where(eq(refreshSessions.family_id, rotated.familyId))
-        .limit(1);
-
-      if (sessionRow.length === 0) {
-        throw new TokenExpiredException();
-      }
-
-      const userId = sessionRow[0]!.user_id;
 
       const user = await this.repo.findUserById(tx, userId);
       if (!user) {
@@ -324,20 +326,22 @@ export class AuthService {
     });
   }
 
-  async logout(sid: string): Promise<void> {
+  async logout(userId: string, sid: string): Promise<void> {
     await this.db.client.transaction(async (tx) => {
+      await setCurrentUserContext(tx, userId);
       await this.session.revokeFamilyBySid(tx, sid);
     });
+    this.kickService.kickBySid(sid);
   }
 
   async me(userId: string, orgId?: string) {
     return this.db.client.transaction(async (tx) => {
+      await setCurrentUserContext(tx, userId);
       const user = await this.repo.findUserById(tx, userId);
       if (!user) {
         throw new InvalidCredentialsException();
       }
 
-      await setCurrentUserContext(tx, userId);
       const memberships = await this.repo.findOrganizationsForUser(
         tx,
         userId,
@@ -404,6 +408,12 @@ export class AuthService {
     const tokenHash = createHash("sha256").update(token).digest("hex");
 
     return this.db.client.transaction(async (tx) => {
+      const userId = await this.repo.resolveVerificationUser(
+        tx,
+        tokenHash,
+        "EMAIL_VERIFY",
+      );
+      if (userId) await setCurrentUserContext(tx, userId);
       const record = await this.repo.findVerificationTokenByHash(
         tx,
         tokenHash,
@@ -465,6 +475,7 @@ export class AuthService {
     }
 
     const user = await this.db.client.transaction(async (tx) => {
+      await setCurrentUserContext(tx, userId);
       return this.repo.findUserById(tx, userId);
     });
 
@@ -476,6 +487,7 @@ export class AuthService {
     const tokenHash = createHash("sha256").update(plainToken).digest("hex");
 
     await this.db.client.transaction(async (tx) => {
+      await setCurrentUserContext(tx, userId);
       await this.repo.invalidatePreviousTokens(
         tx,
         userId,
@@ -529,6 +541,7 @@ export class AuthService {
       const user = await this.repo.findUserByEmail(tx, normalizedEmail);
 
       if (user) {
+        await setCurrentUserContext(tx, user.id);
         const plainToken = randomBytes(32).toString("hex");
         const tokenHash = createHash("sha256")
           .update(plainToken)
@@ -569,7 +582,13 @@ export class AuthService {
 
     const tokenHash = createHash("sha256").update(token).digest("hex");
 
-    return this.db.client.transaction(async (tx) => {
+    const familyIds = await this.db.client.transaction(async (tx) => {
+      const userId = await this.repo.resolveVerificationUser(
+        tx,
+        tokenHash,
+        "PASSWORD_RESET",
+      );
+      if (userId) await setCurrentUserContext(tx, userId);
       const record = await this.repo.findVerificationTokenByHash(
         tx,
         tokenHash,
@@ -609,7 +628,7 @@ export class AuthService {
 
       await this.repo.updatePasswordHash(tx, record.user_id, passwordHash);
 
-      const familyIds = await this.session.revokeAllForUser(
+      const revokedFamilyIds = await this.session.revokeAllForUser(
         tx,
         record.user_id,
       );
@@ -627,13 +646,15 @@ export class AuthService {
         target_type: "user",
         target_id: record.user_id,
         metadata: {
-          count: familyIds.length,
+          count: revokedFamilyIds.length,
           reason: "password_reset",
         },
       });
 
-      return { success: true };
+      return revokedFamilyIds;
     });
+    this.kickService.kickBySids(familyIds);
+    return { success: true };
   }
 
   async changePassword(
@@ -656,7 +677,8 @@ export class AuthService {
       );
     }
 
-    return this.db.client.transaction(async (tx) => {
+    const familyIds = await this.db.client.transaction(async (tx) => {
+      await setCurrentUserContext(tx, userId);
       const user = await this.repo.findUserById(tx, userId);
       if (!user) {
         throw new InvalidCredentialsException();
@@ -674,7 +696,7 @@ export class AuthService {
 
       await this.repo.updatePasswordHash(tx, userId, newHash);
 
-      const familyIds =
+      const revokedFamilyIds =
         await this.session.revokeAllForUserExceptFamily(
           tx,
           userId,
@@ -694,17 +716,20 @@ export class AuthService {
         target_type: "user",
         target_id: userId,
         metadata: {
-          count: familyIds.length,
+          count: revokedFamilyIds.length,
           reason: "password_change",
         },
       });
 
-      return { success: true };
+      return revokedFamilyIds;
     });
+    this.kickService.kickBySids(familyIds);
+    return { success: true };
   }
 
   async acceptInvite(
     token: string,
+    ip: string,
     userId?: string,
     name?: string,
     password?: string,
@@ -715,7 +740,7 @@ export class AuthService {
     refreshToken?: string;
   }> {
     const rlResult = await this.rateLimiter.consume(
-      `accept-invite:ip:${token.slice(0, 8)}`,
+      `accept-invite:ip:${ip}`,
       10,
       3600_000,
     );

@@ -35,12 +35,10 @@ export class InvitationsRepository {
   }
 
   async findByHash(tx: DbTransaction, hash: string) {
-    const rows = await tx
-      .select()
-      .from(invitations)
-      .where(eq(invitations.token_hash, hash))
-      .limit(1);
-    return rows[0] ?? null;
+    const rows = await tx.execute(sql`
+      SELECT * FROM app_auth_find_invitation_by_hash(${hash})
+    `);
+    return (rows.rows[0] as typeof invitations.$inferSelect | undefined) ?? null;
   }
 
   async findPendingByOrg(tx: DbTransaction, orgId: string) {
@@ -120,26 +118,22 @@ export class InvitationsRepository {
   }
 
   async findUserByEmail(tx: DbTransaction, email: string) {
-    const rows = await tx
-      .select()
-      .from(users)
-      .where(eq(sql`lower(${users.email})`, email.toLowerCase().trim()))
-      .limit(1);
-    return rows[0] ?? null;
+    const rows = await tx.execute(sql`
+      SELECT * FROM app_auth_find_user_by_email(${email.toLowerCase().trim()})
+    `);
+    return (rows.rows[0] as typeof users.$inferSelect | undefined) ?? null;
   }
 
   async createUser(
     tx: DbTransaction,
     data: { name: string; email: string; passwordHash: string },
   ) {
-    const [row] = await tx
-      .insert(users)
-      .values({
-        name: data.name,
-        email: data.email.toLowerCase().trim(),
-        password_hash: data.passwordHash,
-      })
-      .returning();
+    const rows = await tx.execute(sql`
+      SELECT * FROM app_auth_create_user(
+        ${data.name}, ${data.email.toLowerCase().trim()}, ${data.passwordHash}
+      )
+    `);
+    const row = rows.rows[0] as typeof users.$inferSelect | undefined;
     return row!;
   }
 

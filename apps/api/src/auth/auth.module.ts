@@ -11,11 +11,12 @@ import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
 import { AuthGuard } from "./guards/auth.guard";
 import { CsrfGuard } from "./guards/csrf.guard";
 import { TenantGuard } from "./guards/tenant.guard";
-import { MemoryRateLimiter } from "./rate-limit/rate-limiter.memory";
 import { OrganizationsModule } from "../organizations";
+import { RealtimeControlModule } from "../realtime/realtime-control.module";
+import { RateLimitModule } from "../rate-limit/rate-limit.module";
 
 @Module({
-  imports: [forwardRef(() => OrganizationsModule)],
+  imports: [RateLimitModule, RealtimeControlModule, forwardRef(() => OrganizationsModule)],
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -28,7 +29,6 @@ import { OrganizationsModule } from "../organizations";
     AuthGuard,
     CsrfGuard,
     TenantGuard,
-    { provide: "RateLimiter", useClass: MemoryRateLimiter },
   ],
   exports: [
     AuthGuard,

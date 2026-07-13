@@ -183,7 +183,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const payload = (req as unknown as { accessPayload: { sub: string; sid: string; org?: string } }).accessPayload;
-    await this.auth.logout(payload.sid);
+    await this.auth.logout(payload.sub, payload.sid);
     clearRefreshCookie(res);
   }
 
@@ -276,6 +276,7 @@ export class AuthController {
 
     const result = await this.auth.acceptInvite(
       data.token,
+      getClientIp(req),
       userId,
       data.name,
       data.password,

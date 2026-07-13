@@ -16,9 +16,15 @@ import { RealtimeModule } from "./realtime/realtime.module";
 import { ClientsModule } from "./clients";
 import { DashboardModule } from "./dashboard";
 import { IdempotencyInterceptor } from "./common/interceptors/idempotency.interceptor";
+import { RateLimitModule } from "./rate-limit/rate-limit.module";
+import { RedisModule } from "./redis/redis.module";
+import { RealtimeControlModule } from "./realtime/realtime-control.module";
 
 const dynamicImports = [
   DbModule,
+  RedisModule,
+  RealtimeControlModule,
+  RateLimitModule,
   HealthModule,
   AuthModule,
   OrganizationsModule,

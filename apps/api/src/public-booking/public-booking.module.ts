@@ -4,16 +4,15 @@ import { PublicBookingController } from "./public-booking.controller";
 import { PublicBookingService } from "./public-booking.service";
 import { PublicBookingRepository } from "./public-booking.repository";
 import { PublicTenantGuard } from "./guards/public-tenant.guard";
-import { MemoryRateLimiter } from "../auth/rate-limit/rate-limiter.memory";
+import { RateLimitModule } from "../rate-limit/rate-limit.module";
 
 @Module({
-  imports: [SchedulingModule],
+  imports: [SchedulingModule, RateLimitModule],
   controllers: [PublicBookingController],
   providers: [
     PublicBookingService,
     PublicBookingRepository,
     PublicTenantGuard,
-    { provide: "RateLimiter", useClass: MemoryRateLimiter },
   ],
 })
 export class PublicBookingModule {}

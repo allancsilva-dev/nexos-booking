@@ -143,6 +143,13 @@ export type {
   AppointmentEventDTO,
 } from "./dto/appointment-event.dto.js";
 export {
+  APPOINTMENT_REALTIME_EVENT_TYPES,
+  AppointmentChangedEventSchema,
+} from "./dto/appointment-realtime.dto.js";
+export type {
+  AppointmentChangedEvent,
+} from "./dto/appointment-realtime.dto.js";
+export {
   ClientListItemSchema,
   ClientDetailSchema,
   UpdateClientSchema,

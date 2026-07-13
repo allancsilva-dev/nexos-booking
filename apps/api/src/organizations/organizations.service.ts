@@ -306,6 +306,7 @@ export class OrganizationsService {
           target_id: targetUserId,
           metadata: input.role ? { role: input.role } : undefined,
         });
+        familyIds = await this.session.findActiveFamilyIdsForUser(tx, targetUserId);
       }
 
       return this.repo.findMembership(tx, orgId, targetUserId);

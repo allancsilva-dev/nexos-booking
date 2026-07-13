@@ -32,6 +32,7 @@ function codeFromHttpException(exception: HttpException): ErrorCode {
   if (status === 401) return "UNAUTHENTICATED";
   if (status === 403) return "AUTHZ_DENIED";
   if (status === 422) return "VALIDATION_ERROR";
+  if (status === 503) return "DEPENDENCY_UNAVAILABLE";
   return "INTERNAL_ERROR";
 }
 

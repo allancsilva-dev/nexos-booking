@@ -1,20 +1,19 @@
 import { Module, forwardRef } from "@nestjs/common";
-import { EventEmitterModule } from "@nestjs/event-emitter";
-import { EventEmitterPublisher } from "./event-emitter.publisher";
 import { OutboxRelayService } from "./relay.service";
-import { KickService } from "./kick.service";
 import { AppointmentsGateway } from "./websocket.gateway";
 import { AuthModule } from "../auth";
+import { RedisRealtimeTransport } from "./redis-realtime.transport";
+import { RedisModule } from "../redis/redis.module";
+import { RealtimeControlModule } from "./realtime-control.module";
 
 @Module({
-  imports: [EventEmitterModule.forRoot(), forwardRef(() => AuthModule)],
+  imports: [RedisModule, RealtimeControlModule, forwardRef(() => AuthModule)],
   providers: [
-    EventEmitterPublisher,
+    RedisRealtimeTransport,
     OutboxRelayService,
-    KickService,
     AppointmentsGateway,
-    { provide: "AppointmentEventPublisher", useClass: EventEmitterPublisher },
+    { provide: "AppointmentEventPublisher", useExisting: RedisRealtimeTransport },
   ],
-  exports: ["AppointmentEventPublisher", KickService],
+  exports: ["AppointmentEventPublisher", RealtimeControlModule],
 })
 export class RealtimeModule {}

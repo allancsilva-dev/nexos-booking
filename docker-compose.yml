@@ -1,4 +1,18 @@
 services:
+  redis:
+    image: redis:8-alpine
+    container_name: nexos-booking-redis
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   postgres:
     image: postgres:17-alpine
     container_name: nexos-booking-postgres
@@ -20,6 +34,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://localhost:3001}
     container_name: nexos-booking-web
     depends_on:
       postgres:
@@ -37,6 +53,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       PORT: 3001
       POSTGRES_HOST: postgres
@@ -45,8 +63,12 @@ services:
       APP_RUNTIME_USER: ${APP_RUNTIME_USER}
       APP_RUNTIME_PASSWORD: ${APP_RUNTIME_PASSWORD}
       DATABASE_RUNTIME_URL: ${DATABASE_RUNTIME_URL}
+      REDIS_URL: redis://redis:6379
+      RATE_LIMIT_KEY_SECRET: ${RATE_LIMIT_KEY_SECRET}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX:-nexos:production}
     ports:
       - "${API_PORT}:3001"
 
 volumes:
   postgres_data:
+  redis_data:

@@ -15,7 +15,12 @@
     "smoke:auth-register-runtime": "node ./scripts/smoke-auth-register-runtime.mjs",
     "test:auth-email": "node ./scripts/test-auth-email.mjs",
     "test:maintenance": "node scripts/test-maintenance.mjs",
-    "test:idempotency": "node scripts/test-idempotency.mjs"
+    "test:idempotency": "node scripts/test-idempotency.mjs",
+    "test:rate-limit": "pnpm exec tsx ./scripts/test-redis-rate-limiter.ts",
+    "test:realtime-distributed": "pnpm exec tsx ./scripts/test-realtime-distributed.ts",
+    "test:identity-rls": "node ./scripts/test-identity-rls.mjs",
+    "test:security-contracts": "pnpm exec tsx ./scripts/test-security-contracts.ts",
+    "test:public-client-upsert": "pnpm exec tsx ./scripts/test-public-client-upsert.ts"
   },
   "dependencies": {
     "@nestjs/common": "latest",
@@ -26,12 +31,14 @@
     "@nestjs/schedule": "^5",
     "@nestjs/websockets": "^11",
     "@nexos/shared": "workspace:*",
+    "@socket.io/redis-adapter": "^8.3.0",
     "@node-rs/argon2": "^2.0.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
     "helmet": "^8.2.0",
     "jose": "^6.2.3",
     "pg": "^8.21.0",
+    "redis": "^6.1.0",
     "reflect-metadata": "latest",
     "resend": "latest",
     "rxjs": "latest",

@@ -3,7 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { isNull, and, eq } from "drizzle-orm";
 import { DbService } from "../db";
 import { withSystemContext } from "../db/system-context";
-import { appointmentEvents } from "../../db/schema";
+import { appointmentEvents, appointments } from "../../db/schema";
 import type { AppointmentEventPublisher, PublishedEvent } from "./publisher.interface";
 import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
 
@@ -32,12 +32,34 @@ export class OutboxRelayService {
 
         for (const row of rows) {
           try {
+            const metadata = row.metadata as Record<string, unknown>;
+            let professionalId = typeof metadata?.professionalId === "string"
+              ? metadata.professionalId
+              : undefined;
+            let startsAt = typeof metadata?.startsAt === "string"
+              ? new Date(metadata.startsAt)
+              : undefined;
+            if (!professionalId || !startsAt || Number.isNaN(startsAt.getTime())) {
+              const [appointment] = await tx
+                .select({
+                  professionalId: appointments.professional_id,
+                  startsAt: appointments.starts_at,
+                })
+                .from(appointments)
+                .where(eq(appointments.id, row.appointment_id))
+                .limit(1);
+              professionalId = appointment?.professionalId;
+              startsAt = appointment?.startsAt;
+            }
+            if (!professionalId || !startsAt) {
+              throw new Error("Appointment context unavailable for realtime event");
+            }
             const event: PublishedEvent = {
               appointmentId: row.appointment_id,
-              professionalId: (row.metadata as Record<string, unknown>)?.professionalId as string ?? "",
+              professionalId,
               eventType: row.event_type,
-              date: new Date(row.created_at).toISOString().split("T")[0]!,
-              version: ((row.metadata as Record<string, unknown>)?.version as number) ?? 1,
+              date: startsAt.toISOString().split("T")[0]!,
+              version: (metadata?.version as number) ?? 1,
               occurredAt: row.created_at.toISOString(),
               organizationId: row.organization_id,
             };

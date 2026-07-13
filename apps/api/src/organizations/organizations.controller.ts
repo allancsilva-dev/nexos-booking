@@ -115,7 +115,8 @@ export class OrganizationsController {
   @Roles("OWNER")
   async listInvitations(@Param("id") id: string, @Req() req: Request) {
     validateOrgId(req, id);
-    return this.invitations.list(id);
+    const tenant = getTenant(req);
+    return this.invitations.list(id, tenant.userId);
   }
 
   @Post(":id/members/invite")

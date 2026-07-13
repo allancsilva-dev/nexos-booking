@@ -15,9 +15,15 @@ import { buildErrorEnvelope } from "./common/errors/build-error-envelope";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { requestIdMiddleware } from "./common/middleware/request-id.middleware";
 import { AppModule } from "./app.module";
+import { RedisService } from "./redis/redis.service";
+import { RedisIoAdapter } from "./realtime/redis-io.adapter";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const redisAdapter = new RedisIoAdapter(app, app.get(RedisService));
+  await redisAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisAdapter);
 
   const port = Number(process.env.PORT ?? 3001);
   const bodyLimit = Number(process.env.BODY_LIMIT_BYTES ?? 102400);

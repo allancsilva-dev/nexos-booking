@@ -1,22 +1,63 @@
 import { Inject } from "@nestjs/common";
 import {
-  WebSocketGateway,
-  WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
+  WebSocketGateway,
+  WebSocketServer,
 } from "@nestjs/websockets";
-import { OnEvent } from "@nestjs/event-emitter";
-import { Server, Socket } from "socket.io";
-import { and, eq } from "drizzle-orm";
-import { JwtService } from "../auth/jwt/jwt.service";
-import { DbService } from "../db";
-import { KickService } from "./kick.service";
-import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
-import { organizationUsers, professionals } from "../../db/schema";
-import type { PublishedEvent } from "./publisher.interface";
+import { and, eq, gt, isNull } from "drizzle-orm";
+import type { ExtendedError, Server, Socket } from "socket.io";
 
-@WebSocketGateway({ namespace: "/appointments" })
+import { JwtService } from "../auth/jwt/jwt.service";
+import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
+import { DbService } from "../db";
+import { withTenantContext } from "../db/tenant-context";
+import {
+  organizationUsers,
+  professionals,
+  refreshSessions,
+} from "../../db/schema";
+import { KickService } from "./kick.service";
+import { RedisRealtimeTransport } from "./redis-realtime.transport";
+
+const corsOrigins = (process.env.CORS_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+type AuthenticatedSocketData = {
+  sid: string;
+  userId: string;
+  orgId: string;
+  role: string;
+  professionalId?: string;
+};
+
+function authError(code: "TOKEN_EXPIRED" | "UNAUTHORIZED"): ExtendedError {
+  const error = new Error("WebSocket authentication failed") as ExtendedError;
+  error.data = { code };
+  return error;
+}
+
+function isOriginAllowed(client: Socket): boolean {
+  const origin = client.handshake.headers.origin;
+  if (!origin) return true;
+  if (corsOrigins.length > 0) return corsOrigins.includes(origin);
+
+  const forwardedHost = client.handshake.headers["x-forwarded-host"];
+  const host = (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)
+    ?? client.handshake.headers.host;
+  const forwardedProto = client.handshake.headers["x-forwarded-proto"];
+  const protocol = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto)
+    ?? (client.handshake.secure ? "https" : "http");
+  return !!host && origin === `${protocol}://${host}`;
+}
+
+@WebSocketGateway({
+  namespace: "/appointments",
+  cors: { origin: corsOrigins, credentials: true },
+})
 export class AppointmentsGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
@@ -29,127 +70,110 @@ export class AppointmentsGateway
     @Inject(JwtService) private readonly jwt: JwtService,
     @Inject(DbService) private readonly db: DbService,
     @Inject(KickService) private readonly kickService: KickService,
+    @Inject(RedisRealtimeTransport) private readonly transport: RedisRealtimeTransport,
   ) {}
 
-  afterInit(server?: Server) {
+  afterInit(server?: Server): void {
     const socketServer = server ?? this.server;
-    if (!socketServer) {
-      this.logger.warn("[ws] socket server not available during gateway init");
-      return;
-    }
+    if (!socketServer) throw new Error("Socket server unavailable during gateway init.");
+
     this.server = socketServer;
     this.kickService.setServer(socketServer);
+    this.transport.setServer(socketServer);
+    socketServer.use((client, next) => void this.authenticate(client, next));
   }
 
-  async handleConnection(client: Socket): Promise<void> {
-    try {
-      const data = client.handshake.auth as Record<string, unknown>;
-      const token = typeof data.token === "string" ? data.token : undefined;
-      if (!token) {
-        this.logger.warn(`[ws] missing token, disconnecting ${client.id}`);
-        client.disconnect(true);
-        return;
-      }
-
-      const payload = await this.jwt.verifyAccess(token);
-      const userId = payload.sub;
-      const sid = payload.sid;
-      const orgId = payload.org;
-
-      if (!orgId) {
-        this.logger.warn(`[ws] no org in token for ${client.id}`);
-        client.disconnect(true);
-        return;
-      }
-
-      const [membership] = await this.db.client
-        .select()
-        .from(organizationUsers)
-        .where(
-          and(
-            eq(organizationUsers.organization_id, orgId),
-            eq(organizationUsers.user_id, userId),
-            eq(organizationUsers.status, "ACTIVE"),
-          ),
-        )
-        .limit(1);
-
-      if (!membership) {
-        this.logger.warn(`[ws] no active membership for ${client.id}`);
-        client.disconnect(true);
-        return;
-      }
-
-      let professionalId: string | undefined;
-      if (membership.role === "PROFESSIONAL") {
-        const [prof] = await this.db.client
-          .select({ id: professionals.id })
-          .from(professionals)
-          .where(
-            and(
-              eq(professionals.organization_id, orgId),
-              eq(professionals.user_id, userId),
-            ),
-          )
-          .limit(1);
-        professionalId = prof?.id;
-      }
-
-      client.data = {
-        sid,
-        userId,
-        orgId,
-        role: membership.role,
-        professionalId,
-      };
-
-      if (membership.role !== "PROFESSIONAL") {
-        client.join(`org:${orgId}`);
-      }
-      if (membership.role === "PROFESSIONAL" && professionalId) {
-        client.join(`professional:${orgId}:${professionalId}`);
-      }
-
-      this.kickService.register(sid, client.id);
-      this.logger.log(`[ws] ${client.id} connected (user=${userId}, org=${orgId})`);
-    } catch (err) {
-      this.logger.warn(
-        `[ws] auth failed for ${client.id}: ${err instanceof Error ? err.message : "unknown"}`,
-      );
-      client.disconnect(true);
+  handleConnection(client: Socket): void {
+    const data = client.data as AuthenticatedSocketData;
+    void client.join(`session:${data.sid}`);
+    if (data.role === "PROFESSIONAL" && data.professionalId) {
+      void client.join(`professional:${data.orgId}:${data.professionalId}`);
+    } else {
+      void client.join(`org:${data.orgId}`);
     }
+    this.logger.log(`[ws] connected socket=${client.id}`);
   }
 
   handleDisconnect(client: Socket): void {
-    const data = client.data as Record<string, unknown> | undefined;
-    const sid = typeof data?.sid === "string" ? data.sid : undefined;
-    if (sid) {
-      this.kickService.unregister(sid, client.id);
-    }
-    this.logger.log(`[ws] ${client.id} disconnected`);
+    this.logger.log(`[ws] disconnected socket=${client.id}`);
   }
 
-  @OnEvent("appointment.changed")
-  handleAppointmentChanged(event: PublishedEvent): void {
-    if (!this.server) {
-      this.logger.warn("[ws] socket server unavailable, skipping appointment.changed emit");
+  private async authenticate(
+    client: Socket,
+    next: (error?: ExtendedError) => void,
+  ): Promise<void> {
+    if (!isOriginAllowed(client)) {
+      next(authError("UNAUTHORIZED"));
       return;
     }
 
-    const payload = {
-      appointmentId: event.appointmentId,
-      professionalId: event.professionalId,
-      eventType: event.eventType,
-      date: event.date,
-      version: event.version,
-      occurredAt: event.occurredAt,
-    };
+    try {
+      const data = client.handshake.auth as Record<string, unknown>;
+      const token = typeof data.token === "string" ? data.token : undefined;
+      if (!token) throw authError("UNAUTHORIZED");
 
-    if (event.organizationId) {
-      this.server.to(`org:${event.organizationId}`).emit("appointment.changed", payload);
-      this.server
-        .to(`professional:${event.organizationId}:${event.professionalId}`)
-        .emit("appointment.changed", payload);
+      const payload = await this.jwt.verifyAccess(token);
+      if (!payload.org) throw authError("UNAUTHORIZED");
+
+      const auth = await withTenantContext(
+        this.db,
+        payload.org,
+        payload.sub,
+        async (tx): Promise<AuthenticatedSocketData | null> => {
+          const [session] = await tx
+            .select({ id: refreshSessions.id })
+            .from(refreshSessions)
+            .where(and(
+              eq(refreshSessions.family_id, payload.sid),
+              eq(refreshSessions.user_id, payload.sub),
+              isNull(refreshSessions.revoked_at),
+              gt(refreshSessions.expires_at, new Date()),
+            ))
+            .limit(1);
+          if (!session) return null;
+
+          const [membership] = await tx
+            .select({ role: organizationUsers.role })
+            .from(organizationUsers)
+            .where(and(
+              eq(organizationUsers.organization_id, payload.org!),
+              eq(organizationUsers.user_id, payload.sub),
+              eq(organizationUsers.status, "ACTIVE"),
+            ))
+            .limit(1);
+          if (!membership) return null;
+
+          let professionalId: string | undefined;
+          if (membership.role === "PROFESSIONAL") {
+            const [professional] = await tx
+              .select({ id: professionals.id })
+              .from(professionals)
+              .where(and(
+                eq(professionals.organization_id, payload.org!),
+                eq(professionals.user_id, payload.sub),
+                eq(professionals.active, true),
+              ))
+              .limit(1);
+            if (!professional) return null;
+            professionalId = professional.id;
+          }
+
+          return {
+            sid: payload.sid,
+            userId: payload.sub,
+            orgId: payload.org!,
+            role: membership.role,
+            professionalId,
+          };
+        },
+      );
+
+      if (!auth) throw authError("UNAUTHORIZED");
+      client.data = auth;
+      next();
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      next(authError(code === "ERR_JWT_EXPIRED" ? "TOKEN_EXPIRED" : "UNAUTHORIZED"));
     }
   }
 }

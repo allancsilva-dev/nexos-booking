@@ -1,9 +1,9 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { lt } from "drizzle-orm";
+import { lt, sql } from "drizzle-orm";
 import { DbService } from "../db/db.service";
 import { withSystemContext } from "../db/system-context";
-import { refreshSessions, verificationTokens, invitations, idempotencyKeys } from "../../db/schema";
+import { invitations, idempotencyKeys } from "../../db/schema";
 import { ScrubbedLogger } from "../common/logger/scrubbed-logger.service";
 
 @Injectable()
@@ -15,13 +15,11 @@ export class MaintenanceService {
   @Cron("0 * * * *")
   async cleanupRefreshSessions() {
     try {
-      const result = await withSystemContext(this.db, async (tx) => {
-        return tx
-          .delete(refreshSessions)
-          .where(lt(refreshSessions.expires_at, new Date()));
-      });
+      const result = await this.db.client.execute(sql`
+        SELECT app_maintenance_cleanup_refresh_sessions() AS deleted_count
+      `);
       this.logger.log(
-        `[maintenance] refresh_sessions: ${result.rowCount ?? 0} rows deleted`,
+        `[maintenance] refresh_sessions: ${Number(result.rows[0]?.deleted_count ?? 0)} rows deleted`,
       );
     } catch (err) {
       this.logger.error(
@@ -33,13 +31,11 @@ export class MaintenanceService {
   @Cron("15 * * * *")
   async cleanupVerificationTokens() {
     try {
-      const result = await withSystemContext(this.db, async (tx) => {
-        return tx
-          .delete(verificationTokens)
-          .where(lt(verificationTokens.expires_at, new Date()));
-      });
+      const result = await this.db.client.execute(sql`
+        SELECT app_maintenance_cleanup_verification_tokens() AS deleted_count
+      `);
       this.logger.log(
-        `[maintenance] verification_tokens: ${result.rowCount ?? 0} rows deleted`,
+        `[maintenance] verification_tokens: ${Number(result.rows[0]?.deleted_count ?? 0)} rows deleted`,
       );
     } catch (err) {
       this.logger.error(

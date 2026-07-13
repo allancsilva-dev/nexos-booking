@@ -6,10 +6,10 @@ import { OrganizationsRepository } from "./organizations.repository";
 import { InvitationsService } from "./invitations/invitations.service";
 import { InvitationsRepository } from "./invitations/invitations.repository";
 import { AuthModule } from "../auth";
-import { RealtimeModule } from "../realtime/realtime.module";
+import { RealtimeControlModule } from "../realtime/realtime-control.module";
 
 @Module({
-  imports: [forwardRef(() => AuthModule), RealtimeModule],
+  imports: [forwardRef(() => AuthModule), RealtimeControlModule],
   controllers: [OrganizationsController],
   providers: [
     OrganizationsService,

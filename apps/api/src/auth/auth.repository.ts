@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import type { DbTransaction } from "../db/db.types";
 import {
   users,
@@ -14,12 +14,10 @@ export class AuthRepository {
     tx: DbTransaction,
     email: string,
   ) {
-    const rows = await tx
-      .select()
-      .from(users)
-      .where(eq(users.email, email.toLowerCase().trim()))
-      .limit(1);
-    return rows[0] ?? null;
+    const rows = await tx.execute(sql`
+      SELECT * FROM app_auth_find_user_by_email(${email.toLowerCase().trim()})
+    `);
+    return (rows.rows[0] as typeof users.$inferSelect | undefined) ?? null;
   }
 
   async createUser(
@@ -30,14 +28,12 @@ export class AuthRepository {
       passwordHash: string;
     },
   ) {
-    const [row] = await tx
-      .insert(users)
-      .values({
-        name: params.name,
-        email: params.email.toLowerCase().trim(),
-        password_hash: params.passwordHash,
-      })
-      .returning();
+    const rows = await tx.execute(sql`
+      SELECT * FROM app_auth_create_user(
+        ${params.name}, ${params.email.toLowerCase().trim()}, ${params.passwordHash}
+      )
+    `);
+    const row = rows.rows[0] as typeof users.$inferSelect | undefined;
     return row!;
   }
 
@@ -137,12 +133,10 @@ export class AuthRepository {
   }
 
   async findUserById(tx: DbTransaction, userId: string) {
-    const rows = await tx
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    return rows[0] ?? null;
+    const rows = await tx.execute(sql`
+      SELECT * FROM app_auth_find_user_by_id(${userId})
+    `);
+    return (rows.rows[0] as typeof users.$inferSelect | undefined) ?? null;
   }
 
   async createVerificationToken(
@@ -182,6 +176,17 @@ export class AuthRepository {
       )
       .limit(1);
     return rows[0] ?? null;
+  }
+
+  async resolveVerificationUser(
+    tx: DbTransaction,
+    hash: string,
+    purpose: string,
+  ): Promise<string | null> {
+    const rows = await tx.execute(sql`
+      SELECT app_auth_resolve_verification_user(${hash}, ${purpose}) AS user_id
+    `);
+    return (rows.rows[0]?.user_id as string | null | undefined) ?? null;
   }
 
   async consumeToken(

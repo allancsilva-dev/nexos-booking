@@ -157,7 +157,13 @@ export class OrganizationsRepository {
 
   async findUserById(tx: DbTransaction, userId: string) {
     const rows = await tx
-      .select()
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        emailVerifiedAt: users.email_verified_at,
+      })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
