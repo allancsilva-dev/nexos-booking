@@ -1,8 +1,6 @@
 "use client";
 
-import { Loader2, Trash2 } from "lucide-react";
 import type { AppointmentListItemDTO } from "@nexos/shared";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   clamp,
@@ -18,8 +16,7 @@ interface ScheduleAppointmentCardProps {
   left?: string;
   width?: string;
   secondaryLabel?: string;
-  onCancel?: (appointmentId: string, version: number) => void;
-  isCancelling?: boolean;
+  onSelect?: (appointmentId: string) => void;
 }
 
 const palettes = [
@@ -51,8 +48,7 @@ export function ScheduleAppointmentCard({
   left = "0%",
   width = "100%",
   secondaryLabel,
-  onCancel,
-  isCancelling,
+  onSelect,
 }: ScheduleAppointmentCardProps) {
   const palette = getPalette(appointment.serviceNameSnapshot);
   const range = `${formatTimeInTimeZone(appointment.startsAt, timezone)}–${formatTimeInTimeZone(appointment.endsAt, timezone)}`;
@@ -77,9 +73,12 @@ export function ScheduleAppointmentCard({
   const showBufferLabel = bufferHeight >= 24 && visualHeight >= 72;
 
   return (
-    <article
+    <button
+      type="button"
+      aria-label={`Abrir detalhes de ${appointment.clientName}`}
+      onClick={() => onSelect?.(appointment.id)}
       className={cn(
-        "absolute overflow-hidden rounded-xl border shadow-[var(--shadow-operational-card)]",
+        "absolute overflow-hidden rounded-xl border text-left shadow-[var(--shadow-operational-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
         appointment.status === "CANCELLED" && "opacity-60",
       )}
       style={{
@@ -117,23 +116,6 @@ export function ScheduleAppointmentCard({
         </span>
       </div>
 
-      {appointment.status === "CONFIRMED" && onCancel ? (
-        <div
-          className="absolute right-2"
-          style={{ bottom: hasBuffer ? bufferHeight + 4 : 8 }}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 rounded-full bg-black/10 text-[var(--color-foreground)]/90 hover:bg-black/20 lg:h-9 lg:w-9"
-            onClick={() => onCancel(appointment.id, appointment.version)}
-            disabled={isCancelling}
-          >
-            {isCancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-          </Button>
-        </div>
-      ) : null}
-
       {hasBuffer ? (
         <div
           className="absolute inset-x-0 bottom-0 flex items-center border-t border-[var(--color-border-strong)] bg-[var(--color-operational-overlay)] px-3 text-[10px] font-semibold text-[var(--color-muted-foreground)]"
@@ -145,6 +127,6 @@ export function ScheduleAppointmentCard({
           ) : null}
         </div>
       ) : null}
-    </article>
+    </button>
   );
 }

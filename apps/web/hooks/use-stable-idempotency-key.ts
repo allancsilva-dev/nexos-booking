@@ -1,20 +1,18 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { IdempotencyKeyState } from "@/lib/idempotency-key";
 
 export function useStableIdempotencyKey() {
-  const keyRef = useRef<string | null>(null);
+  const stateRef = useRef<IdempotencyKeyState | null>(null);
+  stateRef.current ??= new IdempotencyKeyState();
 
   const getKey = useCallback((): string => {
-    if (!keyRef.current) {
-      keyRef.current = crypto.randomUUID();
-    }
-
-    return keyRef.current;
+    return stateRef.current!.get();
   }, []);
 
   const resetKey = useCallback((): void => {
-    keyRef.current = null;
+    stateRef.current!.reset();
   }, []);
 
   return {

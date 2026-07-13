@@ -32,13 +32,13 @@ export function ScheduleHeader({
     <header className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex items-center rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-surface-operational-strong)] p-1">
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)]" onClick={onPrev}>
+          <Button aria-label="Período anterior" variant="ghost" size="icon" className="h-10 w-10 text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)]" onClick={onPrev}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button className="h-10 rounded-xl bg-[var(--color-accent-soft)] px-5 text-[var(--color-accent-strong)] hover:bg-[var(--color-accent-soft)]/80" onClick={onToday}>
             Hoje
           </Button>
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)]" onClick={onNext}>
+          <Button aria-label="Próximo período" variant="ghost" size="icon" className="h-10 w-10 text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)]" onClick={onNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

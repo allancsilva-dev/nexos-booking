@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { AppointmentListItemDTO, ProfessionalDTO } from "@nexos/shared";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -21,8 +21,7 @@ interface ScheduleMobileListProps {
   viewMode: "day" | "week";
   isLoading?: boolean;
   onOpenCreate: () => void;
-  onCancel?: (appointmentId: string, version: number) => void;
-  isCancelling?: boolean;
+  onSelectAppointment?: (appointmentId: string) => void;
 }
 
 const statusLabels: Record<string, string> = {
@@ -41,8 +40,7 @@ export function ScheduleMobileList({
   viewMode,
   isLoading,
   onOpenCreate,
-  onCancel,
-  isCancelling,
+  onSelectAppointment,
 }: ScheduleMobileListProps) {
   const [professionalId, setProfessionalId] = useState("all");
   const professionalName = useMemo(
@@ -155,8 +153,7 @@ export function ScheduleMobileList({
                     "Profissional"
                   }
                   timezone={timezone}
-                  onCancel={onCancel}
-                  isCancelling={isCancelling}
+                  onSelect={onSelectAppointment}
                 />
               ))}
             </div>
@@ -180,23 +177,24 @@ function MobileAppointmentCard({
   appointment,
   professionalName,
   timezone,
-  onCancel,
-  isCancelling,
+  onSelect,
 }: {
   appointment: AppointmentListItemDTO;
   professionalName: string;
   timezone: string;
-  onCancel?: (appointmentId: string, version: number) => void;
-  isCancelling?: boolean;
+  onSelect?: (appointmentId: string) => void;
 }) {
   const start = formatTimeInTimeZone(appointment.startsAt, timezone);
   const end = formatTimeInTimeZone(getOperationalEndIso(appointment), timezone);
   const cancelled = appointment.status === "CANCELLED";
 
   return (
-    <article
+    <button
+      type="button"
+      onClick={() => onSelect?.(appointment.id)}
+      aria-label={`Abrir detalhes de ${appointment.clientName}`}
       className={cn(
-        "rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-4",
+        "w-full rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-operational-strong)] p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
         cancelled && "opacity-65",
       )}
     >
@@ -228,24 +226,8 @@ function MobileAppointmentCard({
           </span>
         </div>
 
-        {appointment.status === "CONFIRMED" && onCancel ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-11 bg-[var(--color-surface-operational-muted)] text-[var(--color-destructive)]"
-            onClick={() => onCancel(appointment.id, appointment.version)}
-            disabled={isCancelling}
-          >
-            {isCancelling ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-            Cancelar
-          </Button>
-        ) : null}
+        <span className="text-xs font-bold text-[var(--color-accent-strong)]">Ver detalhes</span>
       </div>
-    </article>
+    </button>
   );
 }

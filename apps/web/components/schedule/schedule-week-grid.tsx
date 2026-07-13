@@ -29,8 +29,7 @@ interface ScheduleWeekGridProps {
   isLoading?: boolean;
   isEmpty?: boolean;
   onOpenCreate: () => void;
-  onCancel?: (appointmentId: string, version: number) => void;
-  isCancelling?: boolean;
+  onSelectAppointment?: (appointmentId: string) => void;
 }
 
 type AppointmentLane = {
@@ -111,8 +110,7 @@ export function ScheduleWeekGrid({
   isLoading,
   isEmpty,
   onOpenCreate,
-  onCancel,
-  isCancelling,
+  onSelectAppointment,
 }: ScheduleWeekGridProps) {
   const totalMinutes = globalEndMin - globalStartMin;
   const bodyHeight = (totalMinutes / 60) * pxPerHour;
@@ -206,8 +204,7 @@ export function ScheduleWeekGrid({
                         left={laneLeft}
                         width={laneWidth}
                         secondaryLabel={professionalNames.get(appointment.professionalId) ?? "Profissional"}
-                        onCancel={onCancel}
-                        isCancelling={isCancelling}
+                        onSelect={onSelectAppointment}
                       />
                     );
                   })}

@@ -21,8 +21,7 @@ interface ScheduleGridProps {
   isLoading?: boolean;
   isEmpty?: boolean;
   onOpenCreate: () => void;
-  onCancel?: (appointmentId: string, version: number) => void;
-  isCancelling?: boolean;
+  onSelectAppointment?: (appointmentId: string) => void;
 }
 
 export function ScheduleGrid({
@@ -37,8 +36,7 @@ export function ScheduleGrid({
   isLoading,
   isEmpty,
   onOpenCreate,
-  onCancel,
-  isCancelling,
+  onSelectAppointment,
 }: ScheduleGridProps) {
   const totalMinutes = globalEndMin - globalStartMin;
   const bodyHeight = (totalMinutes / 60) * pxPerHour;
@@ -85,8 +83,7 @@ export function ScheduleGrid({
               globalStartMin={globalStartMin}
               globalEndMin={globalEndMin}
               pxPerHour={pxPerHour}
-              onCancel={onCancel}
-              isCancelling={isCancelling}
+              onSelectAppointment={onSelectAppointment}
             />
           ))}
 

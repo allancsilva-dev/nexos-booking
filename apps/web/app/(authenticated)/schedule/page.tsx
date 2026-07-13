@@ -17,7 +17,6 @@ import { useServicesQuery } from "@/hooks/use-services";
 import {
   useAppointmentsQuery,
   useAvailabilityQuery,
-  useCancelAppointmentMutation,
   useCreateAppointmentMutation,
 } from "@/hooks/use-schedule";
 import { LoadingState } from "@/components/loading-state";
@@ -29,6 +28,7 @@ import { ScheduleMobileList } from "@/components/schedule/schedule-mobile-list";
 import { ScheduleShell } from "@/components/schedule/schedule-shell";
 import { ScheduleSidebarSummary } from "@/components/schedule/schedule-sidebar-summary";
 import { ScheduleWeekGrid } from "@/components/schedule/schedule-week-grid";
+import { AppointmentDetailsPanel } from "@/components/schedule/appointment-details-panel";
 import { OperationalModal } from "@/components/ui/operational/modal";
 import { PageChrome } from "@/components/shell/page-chrome";
 import {
@@ -44,7 +44,6 @@ import {
 } from "@/components/schedule/schedule-utils";
 import { ApiError, apiFetch } from "@/lib/http-client";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
-import { formatGlobalError } from "@/lib/error-handler";
 import { toast } from "sonner";
 
 type ViewMode = "day" | "week";
@@ -114,6 +113,7 @@ export default function SchedulePage() {
   const [createProfessionalId, setCreateProfessionalId] = useState<string | null>(null);
   const [createServiceId, setCreateServiceId] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!organization?.timezone) return;
@@ -173,7 +173,6 @@ export default function SchedulePage() {
   );
 
   const createMutation = useCreateAppointmentMutation(activeOrgId ?? "");
-  const cancelMutation = useCancelAppointmentMutation(activeOrgId ?? "");
 
   const timezone = organization?.timezone ?? "America/Sao_Paulo";
   const pxPerHour = 82;
@@ -356,21 +355,6 @@ export default function SchedulePage() {
     }
   }
 
-  async function handleCancel(appointmentId: string, version: number) {
-    const idempotencyKey = crypto.randomUUID();
-    try {
-      await cancelMutation.mutateAsync({ appointmentId, version, idempotencyKey });
-      toast.success("Agendamento cancelado");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        const { code, message, requestId } = formatGlobalError(err);
-        toast.error(message, { description: `${code} — Ref: ${requestId || "N/A"}` });
-      } else {
-        toast.error("Erro ao cancelar.");
-      }
-    }
-  }
-
   if (!activeOrgId || orgLoading || professionalsLoading || !date) {
     return (
       <div className="p-6">
@@ -454,8 +438,7 @@ export default function SchedulePage() {
                   viewMode={viewMode}
                   isLoading={appointmentsQuery.isLoading || workingHoursLoading}
                   onOpenCreate={() => openCreatePanel()}
-                  onCancel={handleCancel}
-                  isCancelling={cancelMutation.isPending}
+                  onSelectAppointment={setSelectedAppointmentId}
                 />
               </div>
               <div className="hidden lg:block">
@@ -471,8 +454,7 @@ export default function SchedulePage() {
                   isLoading={appointmentsQuery.isLoading || workingHoursLoading}
                   isEmpty={allAppointments.length === 0}
                   onOpenCreate={() => openCreatePanel()}
-                  onCancel={handleCancel}
-                  isCancelling={cancelMutation.isPending}
+                  onSelectAppointment={setSelectedAppointmentId}
                 />
               </div>
             </>
@@ -487,8 +469,7 @@ export default function SchedulePage() {
                   viewMode={viewMode}
                   isLoading={appointmentsQuery.isLoading || workingHoursLoading}
                   onOpenCreate={() => openCreatePanel()}
-                  onCancel={handleCancel}
-                  isCancelling={cancelMutation.isPending}
+                  onSelectAppointment={setSelectedAppointmentId}
                 />
               </div>
               <div className="hidden lg:block">
@@ -506,8 +487,7 @@ export default function SchedulePage() {
                   isLoading={appointmentsQuery.isLoading || workingHoursLoading}
                   isEmpty={allAppointments.length === 0}
                   onOpenCreate={() => openCreatePanel()}
-                  onCancel={handleCancel}
-                  isCancelling={cancelMutation.isPending}
+                  onSelectAppointment={setSelectedAppointmentId}
                 />
               </div>
             </>
@@ -565,6 +545,21 @@ export default function SchedulePage() {
           onClearSlot={() => setSelectedSlot(null)}
         />
       </OperationalModal>
+      <AppointmentDetailsPanel
+        open={!!selectedAppointmentId}
+        appointmentId={selectedAppointmentId}
+        activeOrgId={activeOrgId}
+        timezone={timezone}
+        professionalName={
+          professionals?.find((professional) =>
+            allAppointments.find((appointment) =>
+              appointment.id === selectedAppointmentId &&
+              appointment.professionalId === professional.id,
+            ),
+          )?.name
+        }
+        onClose={() => setSelectedAppointmentId(null)}
+      />
     </>
   );
 }

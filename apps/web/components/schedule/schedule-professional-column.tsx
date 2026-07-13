@@ -19,8 +19,7 @@ interface ScheduleProfessionalColumnProps {
   globalStartMin: number;
   globalEndMin: number;
   pxPerHour: number;
-  onCancel?: (appointmentId: string, version: number) => void;
-  isCancelling?: boolean;
+  onSelectAppointment?: (appointmentId: string) => void;
 }
 
 export function ScheduleProfessionalColumn({
@@ -31,8 +30,7 @@ export function ScheduleProfessionalColumn({
   globalStartMin,
   globalEndMin,
   pxPerHour,
-  onCancel,
-  isCancelling,
+  onSelectAppointment,
 }: ScheduleProfessionalColumnProps) {
   const totalMinutes = globalEndMin - globalStartMin;
   const bodyHeight = (totalMinutes / 60) * pxPerHour;
@@ -90,8 +88,7 @@ export function ScheduleProfessionalColumn({
               height={height}
               left="6px"
               width="calc(100% - 12px)"
-              onCancel={onCancel}
-              isCancelling={isCancelling}
+              onSelect={onSelectAppointment}
             />
           );
         })}

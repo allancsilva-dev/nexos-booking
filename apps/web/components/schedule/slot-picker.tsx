@@ -57,6 +57,9 @@ export function SlotPicker({ data, isLoading, selectedSlot, onSelectSlot }: Prop
               return (
                 <button
                   key={key}
+                  type="button"
+                  data-starts-at={slot.startsAt}
+                  aria-label={`Selecionar horário ${formatTime(slot.startsAt, data.timezone)}`}
                   onClick={() => onSelectSlot(slot)}
                   className={`rounded-[var(--radius-control)] border px-2 py-2 text-xs font-medium transition-colors ${
                     selected
