@@ -3,6 +3,7 @@
 import type { ErrorBody, ErrorCode } from "@nexos/shared";
 import { useAuthStore } from "@/stores/auth-store";
 import { INTERNAL_ERROR } from "@/lib/error-codes";
+import { refreshAccessToken } from "@/lib/session-refresh";
 
 export class ApiError extends Error {
   code: ErrorCode;
@@ -23,45 +24,6 @@ export class ApiError extends Error {
 interface RequestOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
   version?: number;
-}
-
-let refreshPromise: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise;
-
-  refreshPromise = (async () => {
-    try {
-      const res = await fetch("/api/v1/auth/refresh", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "X-Request-Id": crypto.randomUUID(),
-          "X-CSRF": "1",
-        },
-      });
-
-      if (!res.ok) {
-        useAuthStore.getState().clearAuth();
-        return null;
-      }
-
-      const data = await res.json();
-      const token = data.accessToken ?? null;
-
-      if (token) {
-        useAuthStore.getState().setAccessToken(token);
-      }
-
-      return token;
-    } catch {
-      return null;
-    } finally {
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
 }
 
 function getHeaders(
@@ -128,7 +90,7 @@ export async function apiFetch<T = unknown>(
   let res = await makeRequest();
 
   if (res.status === 401) {
-    const newToken = await refreshAccessToken();
+    const { token: newToken } = await refreshAccessToken();
 
     if (newToken) {
       res = await makeRequest();

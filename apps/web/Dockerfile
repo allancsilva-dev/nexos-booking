@@ -23,6 +23,8 @@ COPY packages packages
 # (errado dentro da rede Docker). O valor runtime não reescreve o manifest.
 ARG NEXT_INTERNAL_API_BASE_URL=http://api:3001
 ENV NEXT_INTERNAL_API_BASE_URL=${NEXT_INTERNAL_API_BASE_URL}
+ARG NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+ENV NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
 
 RUN pnpm install --frozen-lockfile --offline --force
 

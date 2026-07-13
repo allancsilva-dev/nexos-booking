@@ -33,6 +33,7 @@ export interface AuthBootstrapCtxValue {
    * É a origem única de promoção para `authenticated` ou `idle`.
    */
   refreshSession: (token: string) => Promise<void>;
+  invalidateSession: () => void;
 }
 
 /**
@@ -43,6 +44,7 @@ export const AuthBootstrapContext = createContext<AuthBootstrapCtxValue>({
   result: { status: "loading" },
   // no-op seguro: consumidor fora do AuthBootstrap (não ocorre em runtime normal)
   refreshSession: async () => {},
+  invalidateSession: () => {},
 });
 
 /**
@@ -66,4 +68,8 @@ export function useAuthBootstrap(): BootstrapResult {
  */
 export function useRefreshSession(): (token: string) => Promise<void> {
   return useContext(AuthBootstrapContext).refreshSession;
+}
+
+export function useInvalidateSession(): () => void {
+  return useContext(AuthBootstrapContext).invalidateSession;
 }

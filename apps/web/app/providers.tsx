@@ -12,6 +12,8 @@ import {
   type BootstrapResult,
 } from "@/hooks/use-auth-bootstrap";
 import type { MeResponse } from "@/lib/auth-schemas";
+import { refreshAccessToken } from "@/lib/session-refresh";
+import { RealtimeProvider } from "@/components/realtime/realtime-provider";
 
 type ErrorEnvelope = {
   error?: {
@@ -38,6 +40,10 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const setAccessToken = useAuthStore((s) => s.setAccessToken);
   const setSavedOrgId = useAuthStore((s) => s.setSavedOrgId);
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const invalidateSession = useCallback(() => {
+    clearAuth();
+    setResult({ status: "error", error: "Session expired" });
+  }, [clearAuth]);
 
   // -----------------------------------------------------------------------
   // ADR-020 / PR-BUGFIX-1 (defeito B1):
@@ -173,6 +179,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
           user: meData.user,
           memberships: meData.memberships,
         });
+        setSavedOrgId(meData.activeOrg);
       } catch {
         // Falha abrupta de rede/parse em /auth/me nunca pode vazar como
         // unhandled rejection nem promover authenticated.
@@ -190,24 +197,17 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 
     async function bootstrap() {
       try {
-        const refreshRes = await fetch("/api/v1/auth/refresh", {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "X-Request-Id": crypto.randomUUID(),
-            "X-CSRF": "1",
-          },
-        });
+        const refresh = await refreshAccessToken();
 
-        if (!refreshRes.ok) {
-          const code = await readErrorCode(refreshRes);
+        if (!refresh.token) {
+          const code = refresh.code;
           if (!cancelled) {
             clearAuth();
-            if (refreshRes.status === 401 && !isSessionExpiredCode(code)) {
+            if (refresh.status === 401 && !isSessionExpiredCode(code)) {
               setResult({ status: "idle" });
             } else if (isSessionExpiredCode(code)) {
               setResult({ status: "error", error: "Session expired" });
-            } else if (refreshRes.status >= 500) {
+            } else if (refresh.status === 0 || refresh.status >= 500) {
               setResult({ status: "error", error: "API unavailable" });
             } else {
               setResult({ status: "error", error: "Failed to refresh session" });
@@ -216,16 +216,7 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const refreshData = await refreshRes.json();
-        const token = refreshData.accessToken;
-
-        if (!token) {
-          if (!cancelled) {
-            clearAuth();
-            setResult({ status: "error", error: "No access token" });
-          }
-          return;
-        }
+        const token = refresh.token;
 
         // Token válido: persiste em memória e delega toda a lógica de
         // promoção para refreshSession — fonte única (ADR-020).
@@ -253,8 +244,14 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
   // Mutations chamam refreshSession(token) e o estado é produzido
   // internamente via GET /auth/me — sem síntese externa.
   return (
-    <AuthBootstrapContext.Provider value={{ result, refreshSession }}>
-      {children}
+    <AuthBootstrapContext.Provider
+      value={{
+        result,
+        refreshSession,
+        invalidateSession,
+      }}
+    >
+      <RealtimeProvider>{children}</RealtimeProvider>
     </AuthBootstrapContext.Provider>
   );
 }
@@ -271,7 +268,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             retry: 1,
-            refetchOnWindowFocus: false,
+            staleTime: 15_000,
+            refetchOnReconnect: true,
+            refetchOnWindowFocus: true,
           },
         },
       })
