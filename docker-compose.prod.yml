@@ -1,0 +1,145 @@
+name: nexos-booking
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  web:
+    container_name: NexosBooking-Web
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_INTERNAL_API_BASE_URL: http://NexosBooking-Api:3023
+        # Origem publica do socket.io. O nginx-proxy-manager encaminha
+        # /socket.io para NexosBooking-Api:3023 com upgrade de websocket;
+        # o RealtimeProvider abre o namespace /appointments nesta URL.
+        NEXT_PUBLIC_SOCKET_URL: https://booking.nexostech.com.br
+    restart: unless-stopped
+    mem_limit: 512m
+    logging: *default-logging
+    environment:
+      NODE_ENV: production
+      PORT: 3020
+    expose:
+      - "3020"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3020/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - proxy
+      - nexos-booking-internal
+
+  api:
+    container_name: NexosBooking-Api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    mem_limit: 512m
+    logging: *default-logging
+    env_file:
+      - ./.env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3023
+      POSTGRES_HOST: dbnexos-booking
+      POSTGRES_PORT: 5432
+      POSTGRES_SSL_MODE: disable
+      POSTGRES_SSL: "false"
+      TRUST_PROXY_HOPS: 1
+      # RedisService e instanciado no bootstrap e lanca "REDIS_URL is required."
+      # sem esta variavel: a API nao sobe sem Redis.
+      REDIS_URL: redis://redis:6379
+      PUBLIC_APP_URL: https://booking.nexostech.com.br
+      # Cobranca ASAAS ainda nao configurada nesta instancia; o interceptor so
+      # bloqueia acesso quando o valor for exatamente "true".
+      BILLING_ENFORCEMENT_ENABLED: "false"
+    expose:
+      - "3023"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3023/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      # proxy: o nginx-proxy-manager precisa resolver NexosBooking-Api para
+      # encaminhar /socket.io (websocket do realtime). A API continua sem
+      # porta publicada no host; so e alcancavel de dentro das redes Docker.
+      - proxy
+      - nexos-booking-internal
+      - dbnexos-booking_default
+
+  redis:
+    container_name: NexosBooking-Redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *default-logging
+    # Rate limit e adapter do Socket.IO: estado efemero, sem persistencia.
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - nexos-booking-internal
+
+  postgres-backup:
+    container_name: NexosBooking-Backup
+    image: postgres:17-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    env_file:
+      - ./.env.production
+    environment:
+      PGHOST: dbnexos-booking
+      PGPORT: 5432
+      BACKUP_RETENTION_DAYS: 7
+    volumes:
+      - ./backups/postgres:/backups
+    networks:
+      - dbnexos-booking_default
+    command:
+      - sh
+      - -c
+      - |
+        export PGUSER="$$POSTGRES_USER" PGPASSWORD="$$POSTGRES_PASSWORD" PGDATABASE="$$POSTGRES_DB"
+        while true; do
+          file="/backups/$${PGDATABASE}_$$(date +%Y%m%d_%H%M%S).dump"
+          if pg_dump -Fc -f "$$file"; then
+            echo "[backup] wrote $$file"
+          else
+            echo "[backup] FAILED $$file" >&2
+            rm -f "$$file"
+          fi
+          find /backups -type f -name "$${PGDATABASE}_*.dump" -mtime +"$${BACKUP_RETENTION_DAYS}" -delete
+          sleep 86400
+        done
+
+networks:
+  proxy:
+    external: true
+  nexos-booking-internal:
+  dbnexos-booking_default:
+    external: true
