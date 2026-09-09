@@ -13,6 +13,7 @@ import {
   Settings,
   MoreHorizontal,
   X,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/shell/user-menu";
@@ -85,11 +86,24 @@ export function Sidebar() {
       <div className="flex-1" />
 
       <Link
+        href="/settings/billing"
+        title="Plano e cobrança"
+        className={cn(
+          "flex h-[42px] w-[42px] items-center justify-center rounded-[11px] transition-colors",
+          isItemActive(pathname, "/settings/billing")
+            ? "bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]"
+            : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)] hover:text-[var(--color-foreground)]",
+        )}
+      >
+        <CreditCard className="h-5 w-5" />
+      </Link>
+
+      <Link
         href="/settings/organization"
         title="Configurações"
         className={cn(
           "flex h-[42px] w-[42px] items-center justify-center rounded-[11px] transition-colors",
-          isItemActive(pathname, "/settings")
+          isItemActive(pathname, "/settings/organization")
             ? "bg-[var(--color-accent-soft)] text-[var(--color-accent-strong)]"
             : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-operational-chip)] hover:text-[var(--color-foreground)]",
         )}
@@ -108,7 +122,7 @@ const secondaryMobileItems = [...navItems.slice(3), {
   label: "Configurações",
   href: "/settings/organization",
   icon: Settings,
-}];
+}, { label: "Plano e cobrança", href: "/settings/billing", icon: CreditCard }];
 
 export function MobileNavigation() {
   const pathname = usePathname();
