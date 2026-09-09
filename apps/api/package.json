@@ -20,6 +20,7 @@
     "test:realtime-distributed": "pnpm exec tsx ./scripts/test-realtime-distributed.ts",
     "test:identity-rls": "node ./scripts/test-identity-rls.mjs",
     "test:security-contracts": "pnpm exec tsx ./scripts/test-security-contracts.ts",
+    "test:billing": "pnpm exec tsx ./scripts/test-billing.ts",
     "test:public-client-upsert": "pnpm exec tsx ./scripts/test-public-client-upsert.ts"
   },
   "dependencies": {

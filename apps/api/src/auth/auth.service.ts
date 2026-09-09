@@ -34,6 +34,7 @@ import {
 import { ValidationException } from "../common/exceptions/validation.exception";
 import { generateSlugCandidates } from "../organizations/slug-generator";
 import { KickService } from "../realtime/kick.service";
+import { BillingService } from "../billing/billing.service";
 
 const SLUG_MAX_RETRIES = 10;
 const REGISTER_ORG_INSERT_SAVEPOINT = "register_org_insert";
@@ -63,6 +64,7 @@ export class AuthService {
     // trocar por store compartilhada (Redis) num único ponto ao escalar.
     @Inject("RateLimiter") private readonly rateLimiter: RateLimiter,
     @Inject(KickService) private readonly kickService: KickService,
+    @Inject(forwardRef(() => BillingService)) private readonly billing: BillingService,
   ) {}
 
   async register(
@@ -128,6 +130,8 @@ export class AuthService {
         role: "OWNER",
         status: "ACTIVE",
       });
+
+      await this.billing.createTrial(tx, org.id);
 
       const refreshToken = this.jwt.generateRefreshToken();
 

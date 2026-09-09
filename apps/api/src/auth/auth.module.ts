@@ -14,9 +14,10 @@ import { TenantGuard } from "./guards/tenant.guard";
 import { OrganizationsModule } from "../organizations";
 import { RealtimeControlModule } from "../realtime/realtime-control.module";
 import { RateLimitModule } from "../rate-limit/rate-limit.module";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
-  imports: [RateLimitModule, RealtimeControlModule, forwardRef(() => OrganizationsModule)],
+  imports: [RateLimitModule, RealtimeControlModule, forwardRef(() => OrganizationsModule), forwardRef(() => BillingModule)],
   controllers: [AuthController],
   providers: [
     AuthService,

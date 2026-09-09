@@ -268,3 +268,90 @@ export const auditLogs = pgTable("audit_logs", {
   index("audit_logs_org_created_idx").on(table.organization_id, table.created_at),
   index("audit_logs_actor_created_idx").on(table.actor_user_id, table.created_at),
 ]);
+
+// ─── 10. SaaS billing ─────────────────────────────────────────────
+export const billingPlans = pgTable("billing_plans", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  provider_cycle: text("provider_cycle").notNull(),
+  price_cents: integer("price_cents").notNull(),
+  currency: char("currency", { length: 3 }).notNull().default("BRL"),
+  months: smallint("months").notNull(),
+  active: boolean("active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("billing_plans_code_uk").on(table.code)]);
+
+export const billingSubscriptions = pgTable("billing_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organization_id: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  plan_id: uuid("plan_id").references(() => billingPlans.id, { onDelete: "restrict" }),
+  provider: text("provider").notNull().default("ASAAS"),
+  provider_customer_id: text("provider_customer_id"),
+  provider_subscription_id: text("provider_subscription_id"),
+  status: text("status").notNull().default("TRIALING"),
+  trial_ends_at: timestamp("trial_ends_at", { withTimezone: true }),
+  current_period_starts_at: timestamp("current_period_starts_at", { withTimezone: true }),
+  current_period_ends_at: timestamp("current_period_ends_at", { withTimezone: true }),
+  grace_ends_at: timestamp("grace_ends_at", { withTimezone: true }),
+  cancel_at_period_end: boolean("cancel_at_period_end").notNull().default(false),
+  canceled_at: timestamp("canceled_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("billing_subscriptions_org_uk").on(table.organization_id),
+  uniqueIndex("billing_subscriptions_provider_sub_uk")
+    .on(table.provider_subscription_id)
+    .where(isNotNull(table.provider_subscription_id)),
+]);
+
+export const billingCheckoutSessions = pgTable("billing_checkout_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organization_id: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  plan_id: uuid("plan_id").notNull().references(() => billingPlans.id, { onDelete: "restrict" }),
+  provider_checkout_id: text("provider_checkout_id").notNull(),
+  checkout_url: text("checkout_url").notNull(),
+  status: text("status").notNull().default("PENDING"),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  completed_at: timestamp("completed_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("billing_checkout_provider_uk").on(table.provider_checkout_id),
+  index("billing_checkout_org_created_idx").on(table.organization_id, table.created_at),
+]);
+
+export const billingInvoices = pgTable("billing_invoices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organization_id: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  subscription_id: uuid("subscription_id").notNull().references(() => billingSubscriptions.id, { onDelete: "cascade" }),
+  provider_payment_id: text("provider_payment_id").notNull(),
+  status: text("status").notNull(),
+  amount_cents: integer("amount_cents").notNull(),
+  due_date: text("due_date").notNull(),
+  paid_at: timestamp("paid_at", { withTimezone: true }),
+  provider_event_at: timestamp("provider_event_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("billing_invoices_provider_payment_uk").on(table.provider_payment_id),
+  index("billing_invoices_org_due_idx").on(table.organization_id, table.due_date),
+]);
+
+export const billingWebhookEvents = pgTable("billing_webhook_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  provider_event_id: text("provider_event_id").notNull(),
+  event_type: text("event_type").notNull(),
+  payload: jsonb("payload").notNull(),
+  state: text("state").notNull().default("PENDING"),
+  attempts: integer("attempts").notNull().default(0),
+  next_attempt_at: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  processed_at: timestamp("processed_at", { withTimezone: true }),
+  failed_at: timestamp("failed_at", { withTimezone: true }),
+  last_error: text("last_error"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("billing_webhook_provider_event_uk").on(table.provider_event_id),
+  index("billing_webhook_pending_idx").on(table.next_attempt_at)
+    .where(sql`${table.processed_at} IS NULL AND ${table.failed_at} IS NULL`),
+]);

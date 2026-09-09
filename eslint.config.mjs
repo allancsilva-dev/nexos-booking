@@ -8,7 +8,7 @@ const globalIgnores = {
 const apiConfig = [
   {
     files: ["apps/api/src/**/*.ts"],
-    ignores: ["apps/api/src/db/**/*.ts", "apps/api/src/maintenance/**/*.ts", "apps/api/src/realtime/**/*.ts"],
+    ignores: ["apps/api/src/db/**/*.ts", "apps/api/src/maintenance/**/*.ts", "apps/api/src/realtime/**/*.ts", "apps/api/src/billing/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -34,6 +34,15 @@ const apiConfig = [
           ],
         },
       ],
+    },
+  },
+  {
+    files: ["apps/api/src/billing/**/*.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [{ name: "pg", message: "Direct pg access is restricted to apps/api/src/db/. Use DbService instead." }],
+        patterns: [{ group: ["pg/*"], message: "Direct pg access is restricted to apps/api/src/db/. Use DbService instead." }],
+      }],
     },
   },
 ];

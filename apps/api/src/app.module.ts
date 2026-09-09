@@ -19,6 +19,7 @@ import { IdempotencyInterceptor } from "./common/interceptors/idempotency.interc
 import { RateLimitModule } from "./rate-limit/rate-limit.module";
 import { RedisModule } from "./redis/redis.module";
 import { RealtimeControlModule } from "./realtime/realtime-control.module";
+import { BillingModule } from "./billing";
 
 const dynamicImports = [
   DbModule,
@@ -27,6 +28,7 @@ const dynamicImports = [
   RateLimitModule,
   HealthModule,
   AuthModule,
+  BillingModule,
   OrganizationsModule,
   AuthorizationModule,
   ScheduleModule.forRoot(),

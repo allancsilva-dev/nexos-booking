@@ -12,6 +12,12 @@ export class DomainException extends HttpException {
   }
 }
 
+export class SubscriptionRequiredException extends DomainException {
+  constructor() {
+    super("SUBSCRIPTION_REQUIRED", "A paid subscription is required to continue", HttpStatus.PAYMENT_REQUIRED);
+  }
+}
+
 export class EmailTakenException extends DomainException {
   constructor() {
     super("EMAIL_TAKEN", "Email already registered", HttpStatus.CONFLICT);
