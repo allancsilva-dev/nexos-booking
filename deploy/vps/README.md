@@ -138,17 +138,58 @@ docker compose --env-file deploy/vps/.env.vps -f docker-compose.vps.yml exec -T 
   < backups/postgres/ARQUIVO.dump
 ```
 
-## Firewall VPS
+## Superfície de rede
 
-Abrir:
+Portas alcançáveis pela internet, e só essas:
 
-- `22/tcp`: SSH.
-- `80/tcp`: HTTP/Nginx (redireciona para HTTPS + serve o desafio ACME).
-- `443/tcp`: HTTPS/Nginx (entrada real da aplicação).
-- `3020/tcp`: Web direto, quando usado sem Nginx.
-- `3023/tcp`: API direta, quando usada sem Nginx.
+- `22/tcp`: SSH — apenas chave pública (ver abaixo).
+- `80/tcp`: redirect 301 para HTTPS.
+- `443/tcp`: entrada real, via `nginx-proxy-manager`.
 
-Não expor `5432`, `3000`, `3001`.
+**Não publicar porta no host para `web` (3020) nem para `api` (3023).** Elas usam
+`expose`, não `ports`: o proxy as alcança pela rede Docker. Abrir essas portas no
+host contornaria o TLS e o proxy. O mesmo vale para `5432` (Postgres) e `6379`
+(Redis), que ficam em `127.0.0.1` ou apenas na rede interna.
+
+**ufw não protege portas publicadas pelo Docker.** O tráfego para elas é
+encaminhado via `FORWARD`/`DOCKER-USER` após o DNAT e nunca passa pelo `INPUT`,
+onde ficam as regras do ufw. Para restringir uma porta de container, o caminho é
+mudar o *bind* no compose (como em `127.0.0.1:81:81`) ou usar `DOCKER-USER` —
+não `ufw allow`/`deny`. Filtragem de borda, se desejada, deve ficar no firewall
+do provedor, fora do host.
+
+## Endurecimento do host
+
+Mudanças fora deste repositório, registradas aqui para rastreabilidade.
+
+**SSH** — `/etc/ssh/sshd_config.d/10-hardening.conf`:
+
+```
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+PermitEmptyPasswords no
+MaxAuthTries 3
+X11Forwarding no
+```
+
+O prefixo `10-` é obrigatório: o `Include` está na linha 12 do `sshd_config` e o
+sshd usa o **primeiro** valor obtido para cada diretiva. O arquivo precisa
+ordenar antes de `50-cloud-init.conf`, que define `PasswordAuthentication yes`.
+Um `99-*.conf` seria lido por último e não teria efeito nenhum.
+
+Aplicar com `sshd -t && systemctl reload ssh` (reload, nunca restart — não
+derruba a sessão aberta) e confirmar com `sshd -T`. Validar por uma **segunda**
+conexão antes de fechar a atual.
+
+**Painel do nginx-proxy-manager** — em `/opt/nginx-proxy-manager/docker-compose.yml`
+a porta `81` está publicada como `127.0.0.1:81:81`. O painel não fica exposto na
+internet; o acesso é por túnel:
+
+```sh
+ssh -L 8181:127.0.0.1:81 root@VPS   # depois: http://localhost:8181
+```
 
 ## Limites conhecidos
 
