@@ -1,8 +1,23 @@
 # Deploy VPS Hostinger
 
+> **Stack em produção hoje: `docker-compose.prod.yml`.**
+> Ela sobe apenas `web`, `api` e `postgres-backup`, ligando-se ao Postgres
+> **externo** `dbnexos-booking` (gerido fora deste repositório) e ao
+> `nginx-proxy-manager` já existente na VPS pela rede `proxy`.
+> `docker-compose.vps.yml` é a stack **legada/de teste**: ela sobe o próprio
+> Postgres, Nginx e Certbot e **não deve ser usada na VPS atual** — subiria um
+> segundo banco e disputaria as portas 80/443 com o nginx-proxy-manager.
+>
+> Para aplicar migrations na produção real, use o modo de banco externo:
+>
+> ```sh
+> DB_CONTAINER=dbnexos-booking sh deploy/vps/apply-migrations.sh
+> ```
+
 Arquivos:
 
-- `docker-compose.vps.yml`: stack online para teste.
+- `docker-compose.prod.yml`: stack de produção (web + api + backup, banco externo).
+- `docker-compose.vps.yml`: stack legada/de teste, com banco e Nginx próprios.
 - `deploy/vps/nginx.conf.template`: proxy HTTP→HTTPS via Nginx (renderizado com `${DOMAIN}`).
 - `deploy/vps/.env.vps.example`: modelo de secrets/env.
 - `deploy/vps/apply-migrations.sh`: bootstrap `app_runtime` (com grants DML) e migrations.
@@ -41,6 +56,15 @@ Edite `deploy/vps/.env.vps`:
 ```sh
 COMPOSE_ENV_FILE=deploy/vps/.env.vps sh deploy/vps/apply-migrations.sh
 ```
+
+Na produção atual (banco externo), o equivalente é:
+
+```sh
+DB_CONTAINER=dbnexos-booking sh deploy/vps/apply-migrations.sh
+```
+
+`DB_ENV_FILE` (padrão `.env.production`) é de onde o script lê
+`APP_RUNTIME_PASSWORD`, que o container do banco externo não carrega.
 
 2. Sobe API e WEB (constrói as imagens):
 
