@@ -66,6 +66,11 @@ services:
       REDIS_URL: redis://redis:6379
       RATE_LIMIT_KEY_SECRET: ${RATE_LIMIT_KEY_SECRET}
       REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX:-nexos:production}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+      ASAAS_API_BASE_URL: ${ASAAS_API_BASE_URL:-https://api-sandbox.asaas.com/v3}
+      ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      BILLING_ENFORCEMENT_ENABLED: ${BILLING_ENFORCEMENT_ENABLED:-false}
     ports:
       - "${API_PORT}:3001"
 
