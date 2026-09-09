@@ -10,6 +10,7 @@ export * from "./error-envelope.js";
 export * from "./datetime.js";
 export * from "./civil-date.js";
 export * from "./money.js";
+export * from "./dto/billing.dto.js";
 export * from "./limits.js";
 export {
   OrganizationSchema,
