@@ -21,18 +21,28 @@ Arquivos:
 - `deploy/vps/nginx.conf.template`: proxy HTTP→HTTPS via Nginx (renderizado com `${DOMAIN}`).
 - `deploy/vps/.env.vps.example`: modelo de secrets/env.
 - `deploy/vps/apply-migrations.sh`: bootstrap `app_runtime` (com grants DML) e migrations.
-- `deploy/vps/init-letsencrypt.sh`: emissão inicial do certificado TLS.
+- `deploy/vps/deploy.sh`: deploy da stack de produção (build, reload do proxy e verificação).
+- `deploy/vps/init-letsencrypt.sh`: emissão inicial do certificado TLS (só na stack legada).
 
 ## Containers
 
-- `NexosBooking-Web`: Next.js, porta interna `3020`, host `3020`.
-- `NexosBooking-Api`: NestJS, porta interna `3001`, host `3023`.
-- `dbnexos-booking`: PostgreSQL 17, volume `dbnexos-booking_postgres_data`.
-- `NexosBooking-Nginx`: entrada pública `80`/`443`, proxy para API/WEB/WebSocket + TLS.
-- `NexosBooking-Certbot`: renovação automática do certificado Let's Encrypt (loop a cada 12h).
-- `NexosBooking-Postgres-Backup`: `pg_dump -Fc` diário em `./backups/postgres`.
+Stack de produção (`docker-compose.prod.yml`):
 
-Redis não é necessário para um único container de API. WebSocket atual usa Socket.IO em memória. Redis passa a ser necessário se escalar `NexosBooking-Api` para mais de 1 réplica ou mover eventos para fila distribuída.
+- `NexosBooking-Web`: Next.js na porta `3020`. **Sem porta publicada no host** — só alcançável pelas redes Docker.
+- `NexosBooking-Api`: NestJS na porta `3023`. **Sem porta publicada no host.**
+- `NexosBooking-Redis`: rate limit e adapter do Socket.IO. Efêmero, sem persistência.
+- `NexosBooking-Backup`: `pg_dump -Fc` diário em `./backups/postgres`, retenção de 7 dias.
+- `dbnexos-booking`: PostgreSQL 17, **externo a este repositório**, publicado apenas em `127.0.0.1`.
+
+A entrada pública é o `nginx-proxy-manager`, que já existe na VPS e serve também
+os outros sistemas. Ele encaminha `/socket.io` direto para `NexosBooking-Api` e
+**todo o resto para `NexosBooking-Web`** — inclusive `/api/v1/*`, que chega à API
+pelo `rewrite` do `apps/web/next.config.ts`. `NexosBooking-Nginx` e
+`NexosBooking-Certbot` existem apenas na stack legada `docker-compose.vps.yml`.
+
+> **Redis é obrigatório.** O `RedisService` é instanciado no bootstrap e lança
+> `REDIS_URL is required.`: sem essa variável a API não sobe. A afirmação
+> anterior de que Redis era dispensável para uma única réplica não vale mais.
 
 ## Pré-requisito de DNS
 
@@ -68,11 +78,34 @@ DB_CONTAINER=dbnexos-booking sh deploy/vps/apply-migrations.sh
 
 2. Sobe API e WEB (constrói as imagens):
 
+Na produção atual, **use sempre o script** — não o `docker compose` cru:
+
+```sh
+sh deploy/vps/deploy.sh
+```
+
+Ele constrói as imagens, espera `api` e `web` ficarem healthy, recarrega o
+nginx do proxy e verifica `web`, `api` e `socket.io`.
+
+> **Por que o reload é obrigatório.** O nginx resolve `NexosBooking-Api` uma
+> única vez, no load da configuração, e guarda o IP. Todo deploy que recria o
+> container da API lhe dá um IP novo na rede `proxy`, e o nginx segue tentando
+> o antigo: `/socket.io` passa a responder **502 e o realtime morre**. A falha
+> é silenciosa — os healthchecks continuam verdes, porque testam a API por
+> dentro do container. Por isso a verificação faz parte do script.
+
+Na stack legada (`docker-compose.vps.yml`), o equivalente é:
+
 ```sh
 docker compose --env-file deploy/vps/.env.vps -f docker-compose.vps.yml up -d --build api web
 ```
 
 3. Emite o certificado e ativa o HTTPS (rode uma vez):
+
+> **Só na stack legada.** Na produção atual o TLS é do `nginx-proxy-manager`,
+> que já detém as portas 80/443 e renova os certificados sozinho. Rodar este
+> script na VPS atual subiria um Nginx concorrente e disputaria a porta 80,
+> derrubando os outros sistemas.
 
 ```sh
 COMPOSE_ENV_FILE=deploy/vps/.env.vps sh deploy/vps/init-letsencrypt.sh
@@ -83,10 +116,15 @@ COMPOSE_ENV_FILE=deploy/vps/.env.vps sh deploy/vps/init-letsencrypt.sh
 Verifique:
 
 ```sh
-docker compose --env-file deploy/vps/.env.vps -f docker-compose.vps.yml ps
-curl -i https://SEU_DOMINIO/health
-curl -i https://SEU_DOMINIO/api/v1/services
+docker compose -f docker-compose.prod.yml ps
+curl -sI https://SEU_DOMINIO/                       # web: 200
+curl -sI https://SEU_DOMINIO/api/v1/auth/me         # api: 401 (sem token)
+curl -sI "https://SEU_DOMINIO/socket.io/?EIO=4&transport=polling"   # realtime: 200
 ```
+
+> `/health` e `/ready` **não** servem para verificar a API pelo domínio público:
+> o proxy manda esses caminhos para o app web, que responde o próprio HTML. Os
+> healthchecks da API rodam dentro do container.
 
 ## Backup e restore
 
