@@ -196,3 +196,6 @@ ssh -L 8181:127.0.0.1:81 root@VPS   # depois: http://localhost:8181
 - Script de migrations criado para banco novo de teste. Ele registra arquivos em `schema_migrations` depois da primeira execução.
 - Se banco já tiver migrations aplicadas manualmente sem `schema_migrations`, alinhar estado antes.
 - `POSTGRES_SSL_MODE=disable` é correto para Postgres dentro da mesma rede Docker. Para banco externo gerenciado, usar `POSTGRES_SSL_MODE=require` e `POSTGRES_CA_CERT` se necessário.
+- A CSP do app web está em `Content-Security-Policy-Report-Only`: o App Router emite `<script>` inline (`self.__next_f.push`) e uma política impositiva com `script-src 'self'` quebraria a hidratação. Torná-la impositiva exige nonce por request via middleware.
+- `RESEND_API_KEY` vazio em `.env.production`: verificação de e-mail e reset de senha não enviam nada.
+- Os dumps em `./backups/postgres` contêm PII, estão em modo `0644` e não têm cópia off-site nem criptografia.
