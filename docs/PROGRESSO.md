@@ -220,7 +220,10 @@ Estes itens não bloqueiam o MVP se estiverem documentados como fora de escopo:
 
 - Redis, filas/workers, rate limit distribuído e zero-downtime.
 - Notificações automáticas por WhatsApp/SMS/e-mail.
-- Pagamentos, no-show fee, billing SaaS, planos, trial e feature flags.
+- Pagamentos de clientes finais, no-show fee e feature flags por nível de plano. O billing SaaS básico
+  (trial, ciclos mensal/semestral/anual, checkout ASAAS, carência e bloqueio somente leitura) foi
+  implementado em 2026-07-13; ativação de produção depende da homologação Sandbox e das credenciais.
+  O ponto de retomada operacional está em `docs/ASAAS_BILLING_HANDOFF.md`.
 - Marketplace, descoberta, avaliações, reputação, portfólio e SEO público avançado.
 - Login/app do cliente final.
 - Lista de espera.

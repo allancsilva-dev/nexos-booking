@@ -65,6 +65,7 @@ A documentação completa do projeto está em `docs/`:
 | `IMPLEMENTATION_ROADMAP.md` | Sequência de PRs por fase |
 | `PROGRESSO.md` | Status consolidado: feito, feito com ressalvas, pendente e pós-MVP |
 | `BUGFIX_LOG.md` | Histórico de bugs e correções |
+| `ASAAS_BILLING_HANDOFF.md` | Estado, configuração e checklist para retomar o billing ASAAS |
 
 ## MVP
 

@@ -962,3 +962,26 @@ cobrem tudo acima — inclusive os adicionados nesta rodada: `NO_ACTIVE_ORG`, `E
 
 Materializar o `packages/shared` (tipos + schemas Zod das seções 14–22) junto com a Fase 1/2, e os
 controllers que produzem estes contratos. O `IMPLEMENTATION_ROADMAP.md` (v3) sequencia isso em PRs.
+
+---
+
+## 24. Billing SaaS / ASAAS
+
+Billing pertence à organização e não se confunde com pagamentos dos clientes finais. Toda organização
+nasce em `TRIALING` por sete dias; o backend decide o acesso pelo estado local conciliado por webhook.
+
+| Método | Rota | Papel |
+|---|---|---|
+| `GET` | `/billing/plans` | membro |
+| `GET` | `/billing/status` | membro |
+| `GET` | `/billing/invoices` | membro |
+| `POST` | `/billing/checkout` | OWNER — `{ planCode }`, com `Idempotency-Key` |
+| `POST` | `/billing/cancel` | OWNER |
+| `POST` | `/billing/webhooks/asaas` | ASAAS, autenticado por `asaas-access-token` |
+
+- Planos iniciais: `MONTHLY` R$ 59,90; `SEMIANNUAL` R$ 323,40; `ANNUAL` R$ 575,00.
+- O retorno do checkout não concede acesso. Somente `PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED` ativa o período.
+- Falha ou atraso concede três dias de carência. Depois, mutações operacionais e novos bookings públicos
+  retornam `402 SUBSCRIPTION_REQUIRED`; leituras e cancelamentos existentes continuam disponíveis.
+- Cancelar interrompe a renovação no ASAAS e preserva acesso até o fim do período pago.
+- Webhooks são persistidos por ID, processados assincronamente e toleram duplicação e campos adicionais.
